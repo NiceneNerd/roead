@@ -1,0 +1,3 @@
+[submodule "include/oead"]
+	path = include/oead
+	url = https://github.com/zeldamods/oead.git
