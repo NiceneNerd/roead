@@ -8,28 +8,11 @@
 #include <nonstd/span.h>
 #include <oead/sarc.h>
 
-SarcFile::SarcFile(const oead::Sarc::File file) : inner(std::move(file)) {}
-rust::Str SarcFile::name() const {
-    return rust::Str(inner.name.data(), inner.name.size());
-}
-
-rust::Slice<const uint8_t> SarcFile::data() const {
-    return rust::Slice<const uint8_t>(inner.data.data(), inner.data.size());
-}
-
 Sarc::Sarc(const rust::Slice<const uint8_t> data) : inner({data.data(), data.size()}) {}
 
 std::unique_ptr<Sarc> sarc_from_binary(const rust::Slice<const uint8_t> data)
 {
     return std::unique_ptr<Sarc>(new Sarc(data));
-}
-
-std::unique_ptr<std::vector<SarcFile>> Sarc::get_files() const {
-    std::vector<SarcFile> files;
-    for (const oead::Sarc::File file: inner.GetFiles()) {
-        files.push_back(SarcFile(file));
-    }
-    return std::make_unique<std::vector<SarcFile>>(files);
 }
 
 rust::Slice<const uint8_t> Sarc::get_file_data(const rust::Str name) const {

@@ -12,12 +12,7 @@ mod ffi {
     unsafe extern "C++" {
         include!("roead/include/sarc.h");
 
-        type SarcFile;
-        fn name(self: &SarcFile) -> &str;
-        fn data(self: &SarcFile) -> &[u8];
-
         type Sarc;
-        fn get_files(self: &Sarc) -> UniquePtr<CxxVector<SarcFile>>;
         fn num_files(self: &Sarc) -> u16;
         fn get_offset(self: &Sarc) -> u32;
         fn guess_align(self: &Sarc) -> usize;
