@@ -1,4 +1,5 @@
 use crate::{ffi, Endian};
+use std::io;
 use thiserror::Error;
 
 #[derive(Error, Debug)]
@@ -123,12 +124,26 @@ impl From<&Sarc<'_>> for SarcWriter {
     }
 }
 
+impl From<Sarc<'_>> for SarcWriter {
+    fn from(sarc: Sarc) -> Self {
+        SarcWriter(ffi::WriterFromSarc(&sarc.inner))
+    }
+}
+
 impl SarcWriter {
     pub fn new(endian: Endian) -> SarcWriter {
         SarcWriter(ffi::NewSarcWriter(endian == Endian::Big, false))
     }
     pub fn new_legacy_mode(endian: Endian) -> SarcWriter {
         SarcWriter(ffi::NewSarcWriter(endian == Endian::Big, true))
+    }
+
+    pub fn len(&self) -> usize {
+        self.0.NumFiles()
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.0.NumFiles() == 0
     }
 
     pub fn add_file<B: Into<Vec<u8>>>(&mut self, name: &str, data: B) {
@@ -151,21 +166,24 @@ impl SarcWriter {
         self.0.pin_mut().SetMode(legacy)
     }
 
-    pub fn make_bytes(&mut self) -> Vec<u8> {
+    #[allow(clippy::clippy::wrong_self_convention)]
+    pub fn to_binary(&mut self) -> Vec<u8> {
         self.0.pin_mut().Write().data
     }
 
-    pub fn make_bytes_and_get_alignment(&mut self) -> (Vec<u8>, usize) {
+    #[allow(clippy::clippy::wrong_self_convention)]
+    pub fn to_binary_and_check_alignment(&mut self) -> (Vec<u8>, usize) {
         let result = self.0.pin_mut().Write();
         (result.data, result.alignment)
     }
 
-    pub fn len(&self) -> usize {
-        self.0.NumFiles()
+    pub fn write<W: io::Write>(&mut self, writer: &mut W) -> io::Result<()> {
+        writer.write_all(&self.to_binary())
     }
 
-    pub fn is_empty(&self) -> bool {
-        self.0.NumFiles() == 0
+    pub fn write_compressed<W: io::Write>(&mut self, writer: &mut W) -> io::Result<()> {
+        let bytes = crate::yaz0::compress(self.to_binary());
+        writer.write_all(&bytes)
     }
 }
 
@@ -207,12 +225,15 @@ mod tests {
         assert_eq!(writer.len(), 2);
         assert!(writer.delete_file("Test/Test2.txt"));
         assert_eq!(writer.len(), 1);
-        let bytes = writer.make_bytes();
+        let bytes = writer.to_binary();
         let sarc = sarc::Sarc::read(&bytes).unwrap();
         assert_eq!(
             sarc.get_file_data("Test/Test.txt").unwrap(),
             b"This is some test data"
         );
+        let mut bytes2: Vec<u8> = vec![];
+        writer.write_compressed(&mut bytes2).unwrap();
+        assert_eq!(bytes, crate::yaz0::decompress(bytes2).unwrap());
     }
 
     #[test]
@@ -221,6 +242,6 @@ mod tests {
         let sarc = sarc::Sarc::read(&bytes).unwrap();
         let mut writer = sarc::SarcWriter::from(&sarc);
         assert_eq!(writer.len(), sarc.len());
-        assert_eq!(writer.make_bytes(), sarc._decomp.unwrap());
+        assert_eq!(writer.to_binary(), sarc._decomp.unwrap());
     }
 }
