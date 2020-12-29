@@ -46,8 +46,8 @@ mod tests {
 
     #[test]
     fn compress_test() {
-        let data = std::fs::read("test/Enemy_Lynel_Dark.bactorpack").unwrap();
+        let data = std::fs::read("Cargo.toml").unwrap();
         let comp = compress(&data);
-        assert_eq!(comp.len(), 643798);
+        assert_eq!(comp.len(), 307);
     }
 }
