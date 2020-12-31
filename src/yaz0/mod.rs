@@ -48,6 +48,6 @@ mod tests {
     fn compress_test() {
         let data = std::fs::read("Cargo.toml").unwrap();
         let comp = compress(&data);
-        assert_eq!(comp.len(), 307);
+        assert_eq!(comp.len(), 326);
     }
 }

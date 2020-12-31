@@ -1,4 +1,6 @@
+pub mod byml;
 pub mod sarc;
+pub mod types;
 pub mod yaz0;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -13,6 +15,48 @@ mod ffi {
         alignment: usize,
         data: Vec<u8>,
     }
+
+    #[repr(u32)]
+    enum BymlType {
+        Null = 0,
+        String,
+        Binary,
+        Array,
+        Hash,
+        Bool,
+        Int,
+        Float,
+        UInt,
+        Int64,
+        UInt64,
+        Double,
+    }
+
+    struct U8 {
+        value: u8,
+    }
+    struct U16 {
+        value: u16,
+    }
+    struct U32 {
+        value: u32,
+    }
+    struct U64 {
+        value: u64,
+    }
+    struct S8 {
+        value: i8,
+    }
+    struct S16 {
+        value: i16,
+    }
+    struct S32 {
+        value: i32,
+    }
+    struct S64 {
+        value: i64,
+    }
+
     unsafe extern "C++" {
         include!("roead/include/sarc.h");
 
@@ -42,5 +86,55 @@ mod ffi {
 
         fn decompress(data: &[u8]) -> Result<Vec<u8>>;
         fn compress(data: &[u8], level: u8) -> Vec<u8>;
+
+        include!("roead/include/types.h");
+
+        type U8;
+        fn v(self: &U8) -> u8;
+        type U16;
+        fn v(self: &U16) -> u16;
+        type U32;
+        fn v(self: &U32) -> u32;
+        type U64;
+        fn v(self: &U64) -> u64;
+        type S8;
+        fn v(self: &S8) -> i8;
+        type S16;
+        fn v(self: &S16) -> i16;
+        type S32;
+        fn v(self: &S32) -> i32;
+        type S64;
+        fn v(self: &S64) -> i64;
+        type F32;
+        fn v(self: &F32) -> f32;
+        type F64;
+        fn v(self: &F64) -> f64;
+
+        include!("roead/include/byml.h");
+
+        fn BymlFromBinary(data: &[u8]) -> Result<UniquePtr<Byml>>;
+        fn BymlFromText(text: &str) -> Result<UniquePtr<Byml>>;
+        fn BymlToBinary(node: &Byml, big_endian: bool, version: usize) -> Vec<u8>;
+        fn BymlToText(node: &Byml) -> String;
+
+        type Byml;
+        type Hash;
+        type BymlType;
+        type HashNode;
+        fn at<'a, 'b>(self: &'a Hash, key: &'b CxxString) -> &'a Byml;
+        fn GetType(self: &Byml) -> BymlType;
+        fn GetString(self: &Byml) -> &CxxString;
+        fn GetBool(self: &Byml) -> bool;
+        fn GetInt(self: &Byml) -> i32;
+        fn GetUInt(self: &Byml) -> u32;
+        fn GetInt64(self: &Byml) -> i64;
+        fn GetUInt64(self: &Byml) -> u64;
+        fn GetFloat(self: &Byml) -> f32;
+        fn GetDouble(self: &Byml) -> f64;
+        fn GetBinary(self: &Byml) -> &CxxVector<u8>;
+        fn GetArray(self: &Byml) -> &CxxVector<Byml>;
+        fn GetHash(self: &Byml) -> &Hash;
+
+        fn GetHashKeys(hash: &Hash) -> UniquePtr<CxxVector<CxxString>>;
     }
 }

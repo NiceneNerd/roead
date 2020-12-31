@@ -7,9 +7,10 @@ edition = "2018"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-cxx = "1.0.23"
+cxx = "1.0.25"
+derivative = "2.1.1"
 thiserror = "1.0.22"
 
 [build-dependencies]
-cxx-build = "1.0.23"
+cxx-build = "1.0.25"
 glob = "*"

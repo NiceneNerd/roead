@@ -1,7 +1,15 @@
 fn main() {
     cxx_build::bridge("src/lib.rs")
-        .file("src/sarc/sarc.cc")
-        .file("src/yaz0/yaz0.cc")
+        .flag("-w")
+        .files(
+            [
+                "src/byml/byml.cc",
+                "src/sarc/sarc.cc",
+                "src/types/types.cc",
+                "src/yaz0/yaz0.cc",
+            ]
+            .iter(),
+        )
         .include("include/oead/src/include")
         .include("include/oead/lib/abseil")
         .include("include/oead/lib/EasyIterator/include")
