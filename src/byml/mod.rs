@@ -1,5 +1,9 @@
 use crate::{ffi, Endian};
-use std::{collections::BTreeMap, pin::Pin};
+use std::{
+    collections::BTreeMap,
+    ops::{Deref, Index, IndexMut},
+    pin::Pin,
+};
 use thiserror::Error;
 
 #[derive(Error, Debug)]
@@ -8,11 +12,31 @@ pub enum BymlError {
     MagicError(String),
     #[error("Compressed BYML could not be decompressed: {0}")]
     Yaz0Error(#[from] crate::yaz0::Yaz0Error),
+    #[error("BYML value is not of expected type")]
+    TypeError,
     #[error("Failed to parse BYML: {0}")]
     OeadError(#[from] cxx::Exception),
 }
 
 type Result<T> = std::result::Result<T, BymlError>;
+pub type Hash = BTreeMap<String, Byml>;
+
+pub enum BymlIndex<'a> {
+    HashIdx(&'a str),
+    ArrayIdx(usize),
+}
+
+impl<'a> From<&'a str> for BymlIndex<'a> {
+    fn from(s: &'a str) -> Self {
+        Self::HashIdx(s)
+    }
+}
+
+impl<'a> From<usize> for BymlIndex<'a> {
+    fn from(idx: usize) -> Self {
+        Self::ArrayIdx(idx)
+    }
+}
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum Byml {
@@ -20,7 +44,7 @@ pub enum Byml {
     String(String),
     Binary(Vec<u8>),
     Array(Vec<Byml>),
-    Hash(BTreeMap<String, Byml>),
+    Hash(Hash),
     Bool(bool),
     Int(i32),
     Float(f32),
@@ -30,9 +54,192 @@ pub enum Byml {
     Double(f64),
 }
 
+impl Default for Byml {
+    fn default() -> Self {
+        Self::Null
+    }
+}
+
+impl<'a, I: Into<BymlIndex<'a>>> Index<I> for Byml {
+    type Output = Byml;
+    fn index(&self, index: I) -> &Self::Output {
+        let index: BymlIndex = index.into();
+        match self {
+            Self::Array(a) => {
+                if let BymlIndex::ArrayIdx(idx) = index {
+                    &a[idx]
+                } else {
+                    panic!("Wrong index type for Byml::Array")
+                }
+            }
+            Self::Hash(h) => {
+                if let BymlIndex::HashIdx(key) = index {
+                    &h[key]
+                } else {
+                    panic!("Wrong index type for Byml::Hash")
+                }
+            }
+            _ => panic!("Cannot index, Byml type is not Hash or Array"),
+        }
+    }
+}
+
+impl<'a, I: Into<BymlIndex<'a>>> IndexMut<I> for Byml {
+    fn index_mut(&mut self, index: I) -> &mut Self::Output {
+        let index: BymlIndex = index.into();
+        match self {
+            Self::Array(a) => {
+                if let BymlIndex::ArrayIdx(idx) = index {
+                    &mut a[idx]
+                } else {
+                    panic!("Wrong index type for Byml::Array")
+                }
+            }
+            Self::Hash(h) => {
+                if let BymlIndex::HashIdx(key) = index {
+                    h.get_mut(key).unwrap()
+                } else {
+                    panic!("Wrong index type for Byml::Hash")
+                }
+            }
+            _ => panic!("Cannot index, Byml type is not Hash or Array"),
+        }
+    }
+}
+
 impl Byml {
+    pub fn as_bool(&self) -> Result<bool> {
+        if let Byml::Bool(v) = self {
+            Ok(*v)
+        } else {
+            Err(BymlError::TypeError)
+        }
+    }
+
+    pub fn as_int(&self) -> Result<i32> {
+        if let Byml::Int(v) = self {
+            Ok(*v)
+        } else {
+            Err(BymlError::TypeError)
+        }
+    }
+
+    pub fn as_uint(&self) -> Result<u32> {
+        if let Byml::UInt(v) = self {
+            Ok(*v)
+        } else {
+            Err(BymlError::TypeError)
+        }
+    }
+
+    pub fn as_int64(&self) -> Result<i64> {
+        if let Byml::Int64(v) = self {
+            Ok(*v)
+        } else {
+            Err(BymlError::TypeError)
+        }
+    }
+
+    pub fn as_uint64(&self) -> Result<u64> {
+        if let Byml::UInt64(v) = self {
+            Ok(*v)
+        } else {
+            Err(BymlError::TypeError)
+        }
+    }
+
+    pub fn as_float(&self) -> Result<f32> {
+        if let Byml::Float(v) = self {
+            Ok(*v)
+        } else {
+            Err(BymlError::TypeError)
+        }
+    }
+
+    pub fn as_double(&self) -> Result<f64> {
+        if let Byml::Double(v) = self {
+            Ok(*v)
+        } else {
+            Err(BymlError::TypeError)
+        }
+    }
+
+    pub fn as_string(&self) -> Result<&str> {
+        if let Byml::String(v) = self {
+            Ok(v.as_str())
+        } else {
+            Err(BymlError::TypeError)
+        }
+    }
+
+    pub fn as_binary(&self) -> Result<&[u8]> {
+        if let Byml::Binary(v) = self {
+            Ok(v.as_slice())
+        } else {
+            Err(BymlError::TypeError)
+        }
+    }
+
+    pub fn as_array(&self) -> Result<&[Byml]> {
+        if let Byml::Array(v) = self {
+            Ok(v.as_slice())
+        } else {
+            Err(BymlError::TypeError)
+        }
+    }
+
+    pub fn as_hash(&self) -> Result<&Hash> {
+        if let Byml::Hash(v) = self {
+            Ok(v)
+        } else {
+            Err(BymlError::TypeError)
+        }
+    }
+
+    pub fn as_mut_string(&mut self) -> Result<&mut str> {
+        if let Byml::String(v) = self {
+            Ok(v.as_mut_str())
+        } else {
+            Err(BymlError::TypeError)
+        }
+    }
+
+    pub fn as_mut_binary(&mut self) -> Result<&mut [u8]> {
+        if let Byml::Binary(v) = self {
+            Ok(v.as_mut_slice())
+        } else {
+            Err(BymlError::TypeError)
+        }
+    }
+
+    pub fn as_mut_array(&mut self) -> Result<&mut [Byml]> {
+        if let Byml::Array(v) = self {
+            Ok(v.as_mut_slice())
+        } else {
+            Err(BymlError::TypeError)
+        }
+    }
+
+    pub fn as_mut_hash(&self) -> Result<&Hash> {
+        if let Byml::Hash(v) = self {
+            Ok(v)
+        } else {
+            Err(BymlError::TypeError)
+        }
+    }
+
     pub fn from_binary(data: &[u8]) -> Result<Self> {
         let byml = ffi::BymlFromBinary(data)?;
+        Ok(match byml.GetType() {
+            ffi::BymlType::Hash | ffi::BymlType::Array | ffi::BymlType::Null => {
+                Self::from_ffi(byml.as_ref().unwrap())
+            }
+            _ => unreachable!(),
+        })
+    }
+
+    pub fn from_text(text: &str) -> Result<Self> {
+        let byml = ffi::BymlFromText(text)?;
         Ok(match byml.GetType() {
             ffi::BymlType::Hash | ffi::BymlType::Array | ffi::BymlType::Null => {
                 Self::from_ffi(byml.as_ref().unwrap())
@@ -51,7 +258,7 @@ impl Byml {
                     .collect()
             }),
             ffi::BymlType::Bool => Byml::Bool(byml.GetBool()),
-            ffi::BymlType::Binary => Byml::Binary(byml.GetBinary().iter().map(|u| *u).collect()),
+            ffi::BymlType::Binary => Byml::Binary(byml.GetBinary().iter().copied().collect()),
             ffi::BymlType::Int => Byml::Int(byml.GetInt()),
             ffi::BymlType::UInt => Byml::UInt(byml.GetUInt()),
             ffi::BymlType::Int64 => Byml::Int64(byml.GetInt64()),
@@ -73,10 +280,32 @@ mod tests {
 
     #[test]
     fn read_byml() {
-        for file in ["include/oead/test/byml/files/MainFieldLocation.byml", "include/oead/test/byml/files/ActorInfo.product.byml", "include/oead/test/byml/files/EventInfo.product.byml", "include/oead/test/byml/files/A-1_Dynamic.byml"].iter() {
+        for file in [
+            "include/oead/test/byml/files/MainFieldLocation.byml",
+            "include/oead/test/byml/files/ActorInfo.product.byml",
+            "include/oead/test/byml/files/EventInfo.product.byml",
+            "include/oead/test/byml/files/A-1_Dynamic.byml",
+        ]
+        .iter()
+        {
             let data = std::fs::read(file).unwrap();
             let byml = Byml::from_binary(&data).unwrap();
-            dbg!(byml);
+            assert!(matches!(byml, Byml::Array(_) | Byml::Hash(_)))
         }
+    }
+
+    #[test]
+    fn read_actorinfo() {
+        let text =
+            std::fs::read_to_string("include/oead/test/byml/files/ActorInfo.product.yml").unwrap();
+        let byml = Byml::from_text(&text).unwrap();
+        assert!(matches!(byml, Byml::Hash(_)));
+        assert!(byml["Actors"].as_array().unwrap().len() > 7000);
+        byml["Actors"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .take(20)
+            .for_each(|a| println!("{}", a["name"].as_string().unwrap()))
     }
 }

@@ -14,18 +14,5 @@ rust::Vec<uint8_t> BymlToBinary(const Byml &node, bool big_endian,
                                 size_t version);
 rust::String BymlToText(const Byml &node);
 
-rust::String GetBymlString(Byml &byml);
 
-class HashNode {
-public:
-  rust::String key() const;
-  const Byml &value() const;
-  std::string m_key;
-  const Byml &m_value;
-  HashNode(std::string key, const Byml &value) : m_key(key), m_value(value) {}
-};
-
-const std::vector<HashNode> &GetHashNodes(const Hash &hash);
 std::unique_ptr<std::vector<std::string>> GetHashKeys(const Hash &hash);
-std::vector<Byml> &GetHashVals(Hash &hash,
-                               const std::vector<std::string> &keys);

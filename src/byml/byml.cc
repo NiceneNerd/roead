@@ -37,18 +37,6 @@ rust::String GetBymlString(Byml &byml) {
   return rust::String(str.data(), str.size());
 }
 
-rust::String HashNode::key() const { return rust::String(m_key); }
-
-const Byml &HashNode::value() const { return m_value; }
-
-const std::vector<HashNode> &GetHashNodes(const Hash &hash) {
-  std::vector<HashNode> nodes;
-  for (const auto &[key, val] : hash) {
-    nodes.push_back(HashNode(key, val));
-  }
-  return nodes;
-}
-
 std::unique_ptr<std::vector<std::string>> GetHashKeys(const Hash &hash) {
   std::vector<std::string> keys;
   keys.reserve(hash.size());
@@ -56,13 +44,4 @@ std::unique_ptr<std::vector<std::string>> GetHashKeys(const Hash &hash) {
     keys.push_back(key);
   }
   return std::make_unique<std::vector<std::string>>(keys);
-}
-
-std::vector<Byml> &GetHashVals(Hash &hash,
-                               const std::vector<std::string> &keys) {
-  std::vector<Byml> vals;
-  for (const auto &key : keys) {
-    vals.push_back(hash.at(key));
-  }
-  return vals;
 }

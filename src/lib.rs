@@ -90,25 +90,15 @@ mod ffi {
         include!("roead/include/types.h");
 
         type U8;
-        fn v(self: &U8) -> u8;
         type U16;
-        fn v(self: &U16) -> u16;
         type U32;
-        fn v(self: &U32) -> u32;
         type U64;
-        fn v(self: &U64) -> u64;
         type S8;
-        fn v(self: &S8) -> i8;
         type S16;
-        fn v(self: &S16) -> i16;
         type S32;
-        fn v(self: &S32) -> i32;
         type S64;
-        fn v(self: &S64) -> i64;
         type F32;
-        fn v(self: &F32) -> f32;
         type F64;
-        fn v(self: &F64) -> f64;
 
         include!("roead/include/byml.h");
 
@@ -120,8 +110,6 @@ mod ffi {
         type Byml;
         type Hash;
         type BymlType;
-        type HashNode;
-        fn at<'a, 'b>(self: &'a Hash, key: &'b CxxString) -> &'a Byml;
         fn GetType(self: &Byml) -> BymlType;
         fn GetString(self: &Byml) -> &CxxString;
         fn GetBool(self: &Byml) -> bool;
@@ -136,5 +124,6 @@ mod ffi {
         fn GetHash(self: &Byml) -> &Hash;
 
         fn GetHashKeys(hash: &Hash) -> UniquePtr<CxxVector<CxxString>>;
+        fn at<'a, 'b>(self: &'a Hash, key: &'b CxxString) -> &'a Byml;
     }
 }
