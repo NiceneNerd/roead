@@ -250,18 +250,30 @@ impl Byml {
     }
 
     pub fn to_text(&self) -> String {
-        ffi::BymlToText(self)
+        if matches!(self, Byml::Array(_) | Byml::Hash(_) | Byml::Null) {
+            ffi::BymlToText(self)
+        } else {
+            panic!("Root node must be an array, hash, or null value")
+        }
     }
 
     pub fn to_binary(&self, endian: Endian) -> Vec<u8> {
-        ffi::BymlToBinary(self, matches!(endian, Endian::Big), 2)
+        if matches!(self, Byml::Array(_) | Byml::Hash(_) | Byml::Null) {
+            ffi::BymlToBinary(self, matches!(endian, Endian::Big), 2)
+        } else {
+            panic!("Root node must be an array, hash, or null value")
+        }
     }
 
     pub fn to_binary_with_version(&self, endian: Endian, version: u8) -> Vec<u8> {
         if version > 4 {
             panic!("Version must be <= 4")
         }
-        ffi::BymlToBinary(self, matches!(endian, Endian::Big), version as usize)
+        if matches!(self, Byml::Array(_) | Byml::Hash(_) | Byml::Null) {
+            ffi::BymlToBinary(self, matches!(endian, Endian::Big), version as usize)
+        } else {
+            panic!("Root node must be an array, hash, or null value")
+        }
     }
 
     fn from_ffi(byml: &ffi::Byml) -> Self {
