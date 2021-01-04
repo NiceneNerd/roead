@@ -3,6 +3,10 @@ pub mod sarc;
 pub mod types;
 pub mod yaz0;
 
+use crate::byml::Byml as RByml;
+type RArray = [RByml];
+use crate::byml::Hash as RHash;
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Endian {
     Big,
@@ -11,6 +15,7 @@ pub enum Endian {
 
 #[cxx::bridge]
 mod ffi {
+
     struct SarcWriteResult {
         alignment: usize,
         data: Vec<u8>,
@@ -55,6 +60,23 @@ mod ffi {
     }
     struct S64 {
         value: i64,
+    }
+
+    extern "Rust" {
+        type RByml;
+        fn get_ffi_type(self: &RByml) -> BymlType;
+        fn as_string(self: &RByml) -> Result<&str>;
+        fn as_binary(self: &RByml) -> Result<&[u8]>;
+        fn as_bool(self: &RByml) -> Result<bool>;
+        fn as_int(self: &RByml) -> Result<i32>;
+        fn as_int64(self: &RByml) -> Result<i64>;
+        fn as_uint(self: &RByml) -> Result<u32>;
+        fn as_uint64(self: &RByml) -> Result<u64>;
+        fn as_float(self: &RByml) -> Result<f32>;
+        fn as_double(self: &RByml) -> Result<f64>;
+        fn len(self: &RByml) -> usize;
+        fn get(self: &RByml, index: usize) -> &RByml;
+        fn get_key_by_index(self: &RByml, index: usize) -> &String;
     }
 
     unsafe extern "C++" {
@@ -104,8 +126,8 @@ mod ffi {
 
         fn BymlFromBinary(data: &[u8]) -> Result<UniquePtr<Byml>>;
         fn BymlFromText(text: &str) -> Result<UniquePtr<Byml>>;
-        fn BymlToBinary(node: &Byml, big_endian: bool, version: usize) -> Vec<u8>;
-        fn BymlToText(node: &Byml) -> String;
+        fn BymlToBinary(node: &RByml, big_endian: bool, version: usize) -> Vec<u8>;
+        fn BymlToText(node: &RByml) -> String;
 
         type Byml;
         type Hash;

@@ -3,6 +3,7 @@ use std::{
     collections::BTreeMap,
     ops::{Deref, Index, IndexMut},
     pin::Pin,
+    usize,
 };
 use thiserror::Error;
 
@@ -248,6 +249,21 @@ impl Byml {
         })
     }
 
+    pub fn to_text(&self) -> String {
+        ffi::BymlToText(self)
+    }
+
+    pub fn to_binary(&self, endian: Endian) -> Vec<u8> {
+        ffi::BymlToBinary(self, matches!(endian, Endian::Big), 2)
+    }
+
+    pub fn to_binary_with_version(&self, endian: Endian, version: u8) -> Vec<u8> {
+        if version > 4 {
+            panic!("Version must be <= 4")
+        }
+        ffi::BymlToBinary(self, matches!(endian, Endian::Big), version as usize)
+    }
+
     fn from_ffi(byml: &ffi::Byml) -> Self {
         match byml.GetType() {
             ffi::BymlType::Hash => Self::Hash({
@@ -272,11 +288,52 @@ impl Byml {
             _ => Self::Null,
         }
     }
+
+    pub(crate) fn len(&self) -> usize {
+        match self {
+            Byml::Array(v) => v.len(),
+            Byml::Hash(v) => v.len(),
+            _ => unreachable!(),
+        }
+    }
+
+    pub(crate) fn get_key_by_index(&self, index: usize) -> &String {
+        if let Byml::Hash(h) = self {
+            h.iter().nth(index).unwrap().0
+        } else {
+            unreachable!()
+        }
+    }
+
+    pub(crate) fn get(&self, index: usize) -> &Byml {
+        match self {
+            Byml::Hash(h) => h.iter().nth(index).unwrap().1,
+            Byml::Array(a) => a.get(index).unwrap(),
+            _ => unreachable!(),
+        }
+    }
+
+    pub(crate) fn get_ffi_type(&self) -> ffi::BymlType {
+        match self {
+            Self::Array(_) => ffi::BymlType::Array,
+            Self::Hash(_) => ffi::BymlType::Hash,
+            Self::Null => ffi::BymlType::Null,
+            Self::Bool(_) => ffi::BymlType::Bool,
+            Self::Binary(_) => ffi::BymlType::Binary,
+            Self::Int(_) => ffi::BymlType::Int,
+            Self::UInt(_) => ffi::BymlType::UInt,
+            Self::Int64(_) => ffi::BymlType::Int64,
+            Self::UInt64(_) => ffi::BymlType::UInt64,
+            Self::Float(_) => ffi::BymlType::Float,
+            Self::Double(_) => ffi::BymlType::Double,
+            Self::String(_) => ffi::BymlType::String,
+        }
+    }
 }
 
 #[cfg(test)]
 mod tests {
-    use super::Byml;
+    use super::{Byml, Endian};
 
     #[test]
     fn read_byml() {
@@ -307,5 +364,22 @@ mod tests {
             .iter()
             .take(20)
             .for_each(|a| println!("{}", a["name"].as_string().unwrap()))
+    }
+
+    #[test]
+    fn dump_yml() {
+        let data = std::fs::read("include/oead/test/byml/files/GameROMPlayer.byml").unwrap();
+        let byml = Byml::from_binary(&data).unwrap();
+        println!("{}", byml.to_text());
+    }
+
+    #[test]
+    fn binary_roundtrip() {
+        let text =
+            std::fs::read_to_string("include/oead/test/byml/files/ActorInfo.product.yml").unwrap();
+        let byml = Byml::from_text(&text4555555555555555555tntf ff    cvvfndxfxv).unwrap();
+        let bytes = byml.to_binary(Endian::Big);
+        let byml2 = Byml::from_binary(&bytes).unwrap();
+        assert_eq!(byml, byml2);
     }
 }
