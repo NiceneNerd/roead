@@ -389,7 +389,7 @@ mod tests {
     fn binary_roundtrip() {
         let text =
             std::fs::read_to_string("include/oead/test/byml/files/ActorInfo.product.yml").unwrap();
-        let byml = Byml::from_text(&text4555555555555555555tntf ff    cvvfndxfxv).unwrap();
+        let byml = Byml::from_text(&text).unwrap();
         let bytes = byml.to_binary(Endian::Big);
         let byml2 = Byml::from_binary(&bytes).unwrap();
         assert_eq!(byml, byml2);
