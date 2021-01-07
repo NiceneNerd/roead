@@ -1,4 +1,16 @@
+use std::process::Command;
+
 fn main() {
+    std::fs::create_dir("include/oead/build").unwrap_or(());
+    Command::new("cmake")
+        .current_dir("include/oead/build")
+        .args(&["../"])
+        .output()
+        .expect("Failed to run CMake");
+    Command::new("make")
+        .current_dir("include/oead/build")
+        .output()
+        .expect("Failed to run CMake");
     cxx_build::bridge("src/lib.rs")
         .flag("-w")
         .files(
