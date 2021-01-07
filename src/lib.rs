@@ -4,8 +4,6 @@ pub mod types;
 pub mod yaz0;
 
 use crate::byml::Byml as RByml;
-type RArray = [RByml];
-use crate::byml::Hash as RHash;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Endian {

@@ -1,12 +1,12 @@
+/// Bindings for `oead::Byml` functionality
 use crate::{ffi, Endian};
 use std::{
     collections::BTreeMap,
-    ops::{Deref, Index, IndexMut},
-    pin::Pin,
-    usize,
+    ops::{Index, IndexMut},
 };
 use thiserror::Error;
 
+/// An error when serializing/deserializing BYML documents
 #[derive(Error, Debug)]
 pub enum BymlError {
     #[error("Invalid BYML magic, expected \"BY\" or \"YB\", found {0}")]
@@ -15,6 +15,7 @@ pub enum BymlError {
     Yaz0Error(#[from] crate::yaz0::Yaz0Error),
     #[error("BYML value is not of expected type")]
     TypeError,
+    /// Wraps any other error returned by `oead` in C++
     #[error("Failed to parse BYML: {0}")]
     OeadError(#[from] cxx::Exception),
 }
@@ -22,6 +23,7 @@ pub enum BymlError {
 type Result<T> = std::result::Result<T, BymlError>;
 pub type Hash = BTreeMap<String, Byml>;
 
+/// Convenience type used for indexing into `Byml`s
 pub enum BymlIndex<'a> {
     HashIdx(&'a str),
     ArrayIdx(usize),
@@ -39,6 +41,59 @@ impl<'a> From<usize> for BymlIndex<'a> {
     }
 }
 
+/// Represents a Nintendo binary YAML (BYML) document or node. A `Byml` will usually be constructed
+/// from binary data or a YAML string, e.g.
+/// ```
+/// # use roead::byml::Byml;
+/// # use std::{fs::read, error::Error};
+/// # fn docttest() -> Result<(), Box<dyn Error>> {
+/// let buf: Vec<u8> = std::fs::read("A-1_Static.smubin")?;
+/// let map_unit = Byml::from_binary(&buf)?;
+/// let text: String = std::fs::read_to_string("A-1_Static.yml")?;
+/// let map_unit2 = Byml::from_text(&text)?;
+/// assert_eq!(map_unit, map_unit2);
+/// # Ok(())
+/// # }
+/// ```
+/// You can also easily serialize to binary or a YAML string.
+/// ```
+/// # use roead::{byml::Byml, Endian};
+/// # fn docttest() -> Result<(), Box<dyn std::error::Error>> {
+/// let buf: Vec<u8> = std::fs::read("A-1_Static.smubin")?;
+/// let map_unit = Byml::from_binary(&buf)?;
+/// std::fs::write("A-1_Static.yml", &map_unit.to_text())?;
+/// std::fs::write("A-1_Static.copy.mubin", &map_unit.to_binary(Endian::Big))?;
+/// # Ok(())
+/// # }
+/// ```
+///
+/// A number of convenience getters are available which return a result for a variant value:
+/// ```
+/// # use roead::byml::Byml;
+/// # use std::collections::BTreeMap;
+/// # fn docttest() -> Result<(), Box<dyn std::error::Error>> {
+/// # let some_data = b"BYML";
+/// let doc = Byml::from_binary(some_data)?;
+/// let hash: &BTreeMap<String, Byml> = doc.as_hash()?;
+/// # Ok(())
+/// # }
+/// ```
+///
+/// Most of the node types are fairly self-explanatory. Arrays are implemented as `Vec<Byml>`, and
+/// hash nodes as `BTreeMap<String, Byml>`.
+///
+/// For convenience, a `Byml` *known* to be an array or hash node can be indexed. **Panics if the
+/// node has the wrong type, the index has the wrong type, or the index is not found**.
+/// ```
+/// # use roead::byml::Byml;
+/// # fn docttest() -> Result<(), Box<dyn std::error::Error>> {
+/// let buf: Vec<u8> = std::fs::read("ActorInfo.product.sbyml")?;
+/// let actor_info = Byml::from_binary(&buf)?;
+/// assert_eq!(actor_info["Actors"].as_array()?.len(), 7934);
+/// assert_eq!(actor_info["Hashes"][0].as_int()?, 31119);
+/// # Ok(())
+/// # }
+/// ```
 #[derive(Debug, Clone, PartialEq)]
 pub enum Byml {
     Null,
@@ -109,6 +164,7 @@ impl<'a, I: Into<BymlIndex<'a>>> IndexMut<I> for Byml {
 }
 
 impl Byml {
+    /// Returns a result with the inner boolean value or a type error
     pub fn as_bool(&self) -> Result<bool> {
         if let Byml::Bool(v) = self {
             Ok(*v)
@@ -117,6 +173,7 @@ impl Byml {
         }
     }
 
+    /// Returns a result with the inner s32 value or a type error
     pub fn as_int(&self) -> Result<i32> {
         if let Byml::Int(v) = self {
             Ok(*v)
@@ -125,6 +182,7 @@ impl Byml {
         }
     }
 
+    /// Returns a result with the inner u32 value or a type error
     pub fn as_uint(&self) -> Result<u32> {
         if let Byml::UInt(v) = self {
             Ok(*v)
@@ -133,6 +191,7 @@ impl Byml {
         }
     }
 
+    /// Returns a result with the inner i64 value or a type error
     pub fn as_int64(&self) -> Result<i64> {
         if let Byml::Int64(v) = self {
             Ok(*v)
@@ -141,6 +200,7 @@ impl Byml {
         }
     }
 
+    /// Returns a result with the inner u64 value or a type error
     pub fn as_uint64(&self) -> Result<u64> {
         if let Byml::UInt64(v) = self {
             Ok(*v)
@@ -149,6 +209,7 @@ impl Byml {
         }
     }
 
+    /// Returns a result with the inner f32 value or a type error
     pub fn as_float(&self) -> Result<f32> {
         if let Byml::Float(v) = self {
             Ok(*v)
@@ -157,6 +218,7 @@ impl Byml {
         }
     }
 
+    /// Returns a result with the inner f64 value or a type error
     pub fn as_double(&self) -> Result<f64> {
         if let Byml::Double(v) = self {
             Ok(*v)
@@ -165,6 +227,7 @@ impl Byml {
         }
     }
 
+    /// Returns a result with the inner string slice or a type error
     pub fn as_string(&self) -> Result<&str> {
         if let Byml::String(v) = self {
             Ok(v.as_str())
@@ -173,6 +236,7 @@ impl Byml {
         }
     }
 
+    /// Returns a result with the inner byte slice or a type error
     pub fn as_binary(&self) -> Result<&[u8]> {
         if let Byml::Binary(v) = self {
             Ok(v.as_slice())
@@ -181,6 +245,7 @@ impl Byml {
         }
     }
 
+    /// Returns a result with the inner Byml array slice or a type error
     pub fn as_array(&self) -> Result<&[Byml]> {
         if let Byml::Array(v) = self {
             Ok(v.as_slice())
@@ -189,6 +254,7 @@ impl Byml {
         }
     }
 
+    /// Returns a result with a reference to the inner hash or a type error
     pub fn as_hash(&self) -> Result<&Hash> {
         if let Byml::Hash(v) = self {
             Ok(v)
@@ -379,7 +445,7 @@ mod tests {
     }
 
     #[test]
-    fn dump_yml() {
+    fn byml_to_yml() {
         let data = std::fs::read("include/oead/test/byml/files/GameROMPlayer.byml").unwrap();
         let byml = Byml::from_binary(&data).unwrap();
         println!("{}", byml.to_text());
