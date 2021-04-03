@@ -2,6 +2,7 @@ use std::process::Command;
 
 fn main() {
     std::fs::create_dir("include/oead/build").unwrap_or(());
+    let profile = std::env::var("PROFILE").unwrap();
     Command::new("cmake")
         .current_dir("include/oead/build")
         .args(&["../"])
@@ -32,14 +33,23 @@ fn main() {
         .include("include/oead/lib/rapidyaml")
         .include("include/oead/lib/zlib-ng")
         .flag_if_supported("-std=c++17")
+        .flag_if_supported("/std:c++17")
         .flag_if_supported("-static")
+        .flag_if_supported(" /NODEFAULTLIB:MSVCRTD")
         .compile("roead");
 
     for file in glob::glob("include/oead/build/**/*.a")
         .unwrap()
+        .chain(glob::glob("include/oead/build/**/*.lib").unwrap())
         .flat_map(|f| f.ok())
     {
-        if file.to_str().unwrap().contains("subprojects") {
+        let name = file.to_str().unwrap();
+        if name.contains("subprojects") {
+            continue;
+        }
+        if (profile != "debug" && name.contains("Debug"))
+            || (profile != "release" && name.contains("Release"))
+        {
             continue;
         }
         println!(
@@ -48,7 +58,13 @@ fn main() {
         );
         println!(
             "cargo:rustc-link-lib=static={}",
-            &file.file_stem().unwrap().to_str().unwrap()[3..]
+            &file
+                .file_stem()
+                .unwrap()
+                .to_str()
+                .unwrap()
+                .strip_prefix("lib")
+                .unwrap_or(&file.file_stem().unwrap().to_str().unwrap())
         );
     }
     println!("cargo:rerun-if-changed=src/lib.rs");
