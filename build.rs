@@ -35,12 +35,12 @@ fn main() {
         .flag_if_supported("-std=c++17")
         .flag_if_supported("/std:c++17")
         .flag_if_supported("-static")
-        .flag_if_supported(" /NODEFAULTLIB:MSVCRTD")
         .compile("roead");
 
     for file in glob::glob("include/oead/build/**/*.a")
         .unwrap()
         .chain(glob::glob("include/oead/build/**/*.lib").unwrap())
+        .chain(glob::glob("target/**/*.lib").unwrap())
         .flat_map(|f| f.ok())
     {
         let name = file.to_str().unwrap();

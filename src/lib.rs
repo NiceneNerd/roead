@@ -12,7 +12,7 @@ pub enum Endian {
 }
 
 #[cxx::bridge]
-mod ffi {
+pub mod ffi {
 
     struct SarcWriteResult {
         alignment: usize,
