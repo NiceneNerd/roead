@@ -13,15 +13,58 @@ pub enum Endian {
 }
 
 #[cxx::bridge]
-pub mod ffi {
+pub(crate) mod ffi {
 
+    #[derive(Debug, Default, Clone, Copy, PartialEq, PartialOrd)]
+    pub struct Vector2f {
+        x: f32,
+        y: f32
+    }
+    
+    #[derive(Debug, Default, Clone, Copy, PartialEq, PartialOrd)]
+    pub struct Vector3f {
+        x: f32,
+        y: f32,
+        z: f32
+    }
+    
+    #[derive(Debug, Default, Clone, Copy, PartialEq, PartialOrd)]
+    pub struct Vector4f {
+        x: f32,
+        y: f32,
+        z: f32,
+        t: f32
+    }
+    #[derive(Debug, Default, Clone, Copy, PartialEq, PartialOrd)]
+    pub struct Quat {
+        a: f32,
+        b: f32,
+        c: f32,
+        d: f32
+    }
+    
+    #[derive(Debug, Default, Clone, Copy, PartialEq, PartialOrd)]
+    pub struct Color {
+        r: f32,
+        g: f32,
+        b: f32,
+        a: f32
+    }
+    
+    #[derive(Debug, Default, Clone, Copy, PartialEq, PartialOrd)]
+    pub struct Curve {
+        a: u32,
+        b: u32,
+        floats: [f32; 30]
+    }
+    
     struct SarcWriteResult {
         alignment: usize,
         data: Vec<u8>,
     }
 
     #[repr(u32)]
-    enum BymlType {
+    pub(crate) enum BymlType {
         Null = 0,
         String,
         Binary,
@@ -35,6 +78,31 @@ pub mod ffi {
         UInt64,
         Double,
     }
+
+    #[repr(u8)]
+    pub(crate) enum ParamType {
+        Bool = 0,
+        F32,
+        Int,
+        Vec2,
+        Vec3,
+        Vec4,
+        Color,
+        String32,
+        String64,
+        Curve1,
+        Curve2,
+        Curve3,
+        Curve4,
+        BufferInt,
+        BufferF32,
+        String256,
+        Quat,
+        U32,
+        BufferU32,
+        BufferBinary,
+        StringRef,
+      }
 
     struct U8 {
         value: u8,
@@ -150,8 +218,26 @@ pub mod ffi {
         include!("roead/include/aamp.h");
 
         type ParameterIO;
+        type Parameter;
+        type ParamType;
+        type ParameterList;
+        type ParameterObject;
+        type ParameterListMap;
+        type ParameterObjectMap;
+        type ParameterMap;
 
         fn AampFromBinary(data: &[u8]) -> Result<UniquePtr<ParameterIO>>;
         fn AampFromText(text: &str) -> Result<UniquePtr<ParameterIO>>;
+
+        fn GetType(self: &Parameter) -> ParamType;
+        pub(crate) fn GetParamBool(param: &Parameter) -> bool;
+        pub(crate) fn GetParamInt(param: &Parameter) -> i32;
+        pub(crate) fn GetParamU32(param: &Parameter) -> u32;
+        pub(crate) fn GetParamF32(param: &Parameter) -> f32;
+        pub(crate) fn GetParamVec2(param: &Parameter) -> Vector2f;
+        pub(crate) fn GetParamVec3(param: &Parameter) -> Vector3f;
+        pub(crate) fn GetParamVec4(param: &Parameter) -> Vector4f;
+        pub(crate) fn GetParamColor(param: &Parameter) -> Color;
+        pub(crate) fn GetParamQuat(param: &Parameter) -> Quat;
     }
 }
