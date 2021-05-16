@@ -1,3 +1,4 @@
+pub mod aamp;
 pub mod byml;
 pub mod sarc;
 pub mod types;
@@ -145,5 +146,12 @@ pub mod ffi {
 
         fn GetHashKeys(hash: &Hash) -> UniquePtr<CxxVector<CxxString>>;
         fn at<'a, 'b>(self: &'a Hash, key: &'b CxxString) -> &'a Byml;
+
+        include!("roead/include/aamp.h");
+
+        type ParameterIO;
+
+        fn AampFromBinary(data: &[u8]) -> Result<UniquePtr<ParameterIO>>;
+        fn AampFromText(text: &str) -> Result<UniquePtr<ParameterIO>>;
     }
 }

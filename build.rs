@@ -1,6 +1,26 @@
-use std::{collections::BTreeSet, path::PathBuf, process::Command};
+use std::{
+    collections::BTreeSet,
+    path::{Path, PathBuf},
+    process::Command,
+};
 
 fn main() {
+    println!("cargo:rerun-if-changed=src/lib.rs");
+    let root = std::env::var("CARGO_MANIFEST_DIR").unwrap().replace("\\", "/");
+    for file in glob::glob(&format!("{}/src/**/*.cc", &root))
+        .unwrap()
+        .filter_map(|f| f.ok())
+        .chain(glob::glob(&format!("{}/include/*.h", &root)).unwrap().filter_map(|f| f.ok()))
+    {
+        println!(
+            "cargo:rerun-if-changed={}",
+            file.strip_prefix(PathBuf::from(&root))
+                .unwrap()
+                .to_string_lossy()
+                .replace("\\", "/")
+        );
+    }
+    println!("cargo:rerun-if-changed=Cargo.toml");
     std::fs::create_dir("include/oead/build").unwrap_or(());
     Command::new("cmake")
         .current_dir("include/oead/build")
@@ -20,6 +40,7 @@ fn main() {
         .flag("-w")
         .files(
             [
+                "src/aamp/aamp.cc",
                 "src/byml/byml.cc",
                 "src/sarc/sarc.cc",
                 "src/types/types.cc",
@@ -32,7 +53,7 @@ fn main() {
         .include("include/oead/lib/EasyIterator/include")
         .include("include/oead/lib/libyaml")
         .include("include/oead/lib/nonstd")
-        .include("include/oead/lib/ordered-map")
+        .include("include/oead/lib/ordered-map/include")
         .include("include/oead/lib/pybind11")
         .include("include/oead/lib/rapidyaml")
         .include("include/oead/lib/zlib-ng")
@@ -51,7 +72,7 @@ fn main() {
         .into_iter()
         .filter_map(|file| -> Option<(String, String)> {
             let name = file.to_str().unwrap();
-            if name.contains("subprojects") || name.contains("Debug") {
+            if name.contains("subprojects") || name.contains("Debug") || name.contains("target") {
                 None
             } else {
                 Some((
@@ -72,7 +93,4 @@ fn main() {
         .for_each(|l| println!("cargo:rustc-link-search=native={}", l));
     libs.iter()
         .for_each(|l| println!("cargo:rustc-link-lib=static={}", l));
-    println!("cargo:rerun-if-changed=src/lib.rs");
-    println!("cargo:rerun-if-changed=src/roead.cc");
-    println!("cargo:rerun-if-changed=include/roead.h");
 }
