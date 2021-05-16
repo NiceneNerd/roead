@@ -40,14 +40,17 @@ mod tests {
     fn decompress_test() {
         let data = std::fs::read("test/Cargo.stoml").unwrap();
         let contents = String::from_utf8(decompress(&data).unwrap()).unwrap();
+        let decomp = std::fs::read_to_string("Cargo.toml").unwrap();
         assert_eq!(&contents[0..9], "[package]");
-        assert_eq!(&contents[contents.len() - 3..], "\"*\"");
+        assert_eq!(&contents, &decomp);
     }
 
     #[test]
     fn compress_test() {
         let data = std::fs::read("Cargo.toml").unwrap();
+        let meta = std::fs::metadata("test/Cargo.stoml").unwrap();
         let comp = compress(&data);
-        assert_eq!(comp.len(), 326);
+        assert_eq!(comp.len(), meta.len() as usize);
+        std::fs::write("test/Cargo.stoml", &comp).unwrap();
     }
 }
