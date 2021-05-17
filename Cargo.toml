@@ -6,8 +6,13 @@ edition = "2018"
 
 [dependencies]
 cxx = "1.0.49"
+crc = "1.8.1"
 derivative = "2.1.1"
+indexmap = "1.6.2"
 thiserror = "1.0.22"
+
+[dev-dependencies]
+glob = "*"
 
 [build-dependencies]
 cxx-build = "1.0.49"

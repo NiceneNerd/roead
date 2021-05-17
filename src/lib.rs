@@ -5,6 +5,10 @@ pub mod types;
 pub mod yaz0;
 
 use crate::byml::Byml as RByml;
+use crate::aamp::Parameter as RsParameter;
+use crate::aamp::ParameterIO as RsParameterIO;
+use crate::aamp::ParameterList as RsParameterList;
+use crate::aamp::ParameterObject as RsParameterObject;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Endian {
@@ -14,53 +18,67 @@ pub enum Endian {
 
 #[cxx::bridge]
 pub(crate) mod ffi {
-
     #[derive(Debug, Default, Clone, Copy, PartialEq, PartialOrd)]
     pub struct Vector2f {
-        x: f32,
-        y: f32
+        pub x: f32,
+        pub y: f32
     }
     
     #[derive(Debug, Default, Clone, Copy, PartialEq, PartialOrd)]
     pub struct Vector3f {
-        x: f32,
-        y: f32,
-        z: f32
+        pub x: f32,
+        pub y: f32,
+        pub z: f32
     }
     
     #[derive(Debug, Default, Clone, Copy, PartialEq, PartialOrd)]
     pub struct Vector4f {
-        x: f32,
-        y: f32,
-        z: f32,
-        t: f32
+        pub x: f32,
+        pub y: f32,
+        pub z: f32,
+        pub t: f32
     }
     #[derive(Debug, Default, Clone, Copy, PartialEq, PartialOrd)]
     pub struct Quat {
-        a: f32,
-        b: f32,
-        c: f32,
-        d: f32
+        pub a: f32,
+        pub b: f32,
+        pub c: f32,
+        pub d: f32
     }
     
     #[derive(Debug, Default, Clone, Copy, PartialEq, PartialOrd)]
     pub struct Color {
-        r: f32,
-        g: f32,
-        b: f32,
-        a: f32
+        pub r: f32,
+        pub g: f32,
+        pub b: f32,
+        pub a: f32
     }
     
     #[derive(Debug, Default, Clone, Copy, PartialEq, PartialOrd)]
     pub struct Curve {
-        a: u32,
-        b: u32,
-        floats: [f32; 30]
+        pub a: u32,
+        pub b: u32,
+        pub floats: [f32; 30]
     }
     
     struct SarcWriteResult {
         alignment: usize,
         data: Vec<u8>,
+    }
+
+    struct ParamPair<'a> {
+        hash: u32,
+        param: &'a Parameter
+    }
+
+    struct ParamObjPair {
+        hash: u32,
+        param: UniquePtr<ParameterObject>
+    }
+
+    struct ParamListPair<'a> {
+        hash: u32,
+        param: &'a ParameterList
     }
 
     #[repr(u32)]
@@ -144,6 +162,50 @@ pub(crate) mod ffi {
         fn len(self: &RByml) -> usize;
         fn get(self: &RByml, index: usize) -> &RByml;
         fn get_key_by_index(self: &RByml, index: usize) -> &String;
+
+        type RsParameter;
+        fn get_ffi_type(self: &RsParameter) -> ParamType;
+        fn as_bool(self: &RsParameter) -> bool;
+        fn as_f32(self: &RsParameter) -> f32;
+        fn as_int(self: &RsParameter) -> i32;
+        fn as_vec2(self: &RsParameter) -> &Vector2f;
+        fn as_vec3(self: &RsParameter) -> &Vector3f;
+        fn as_vec4(self: &RsParameter) -> &Vector4f;
+        fn as_color(self: &RsParameter) -> &Color;
+        fn as_string32(self: &RsParameter) -> &str;
+        fn as_string64(self: &RsParameter) -> &str;
+        fn as_curve1(self: &RsParameter) -> &[Curve; 1];
+        fn as_curve2(self: &RsParameter) -> &[Curve; 2];
+        fn as_curve3(self: &RsParameter) -> &[Curve; 3];
+        fn as_curve4(self: &RsParameter) -> &[Curve; 4];
+        fn as_buf_int(self: &RsParameter) -> &[i32];
+        fn as_buf_f32(self: &RsParameter) -> &[f32];
+        fn as_string_256(self: &RsParameter) -> &str;
+        fn as_quat(self: &RsParameter) -> &Quat;
+        fn as_u32(self: &RsParameter) -> u32;
+        fn as_buf_u32(self: &RsParameter) -> &[u32];
+        fn as_buf_bin(self: &RsParameter) -> &[u8];
+        fn as_str_ref(self: &RsParameter) -> &str;
+        type RsParameterIO;
+        fn list_count(self: &RsParameterIO) -> usize;
+        fn object_count(self: &RsParameterIO) -> usize;
+        fn list_hash_at(self: &RsParameterIO, i: usize) -> u32;
+        fn obj_hash_at(self: &RsParameterIO, i: usize) -> u32;
+        fn list_at(self: &RsParameterIO, i: usize) -> &RsParameterList;
+        fn obj_at(self: &RsParameterIO, i: usize) -> &RsParameterObject;
+        fn version(self: &RsParameterIO) -> u32;
+        fn pio_type(self: &RsParameterIO) -> &str;
+        type RsParameterList;
+        fn list_count(self: &RsParameterList) -> usize;
+        fn object_count(self: &RsParameterList) -> usize;
+        fn list_hash_at(self: &RsParameterList, i: usize) -> u32;
+        fn obj_hash_at(self: &RsParameterList, i: usize) -> u32;
+        fn list_at(self: &RsParameterList, i: usize) -> &RsParameterList;
+        fn obj_at(self: &RsParameterList, i: usize) -> &RsParameterObject;
+        type RsParameterObject;
+        fn size(self: &RsParameterObject) -> usize;
+        fn hash_at(self: &RsParameterObject, idx: usize) -> u32;
+        fn val_at(self: &RsParameterObject, idx: usize) -> &RsParameter;
     }
 
     unsafe extern "C++" {
@@ -217,17 +279,22 @@ pub(crate) mod ffi {
 
         include!("roead/include/aamp.h");
 
-        type ParameterIO;
+        pub(crate) type ParameterIO;
         type Parameter;
         type ParamType;
-        type ParameterList;
-        type ParameterObject;
-        type ParameterListMap;
-        type ParameterObjectMap;
-        type ParameterMap;
+        pub(crate) type ParameterList;
+        pub(crate) type ParameterObject;
+        pub(crate) type ParameterListMap;
+        pub(crate) type ParameterObjectMap;
+        pub(crate) type ParameterMap;
+        pub(crate) fn size(self: &ParameterMap) -> usize;
+        pub(crate) fn size(self: &ParameterObjectMap) -> usize;
+        pub(crate) fn size(self: &ParameterListMap) -> usize;
 
-        fn AampFromBinary(data: &[u8]) -> Result<UniquePtr<ParameterIO>>;
-        fn AampFromText(text: &str) -> Result<UniquePtr<ParameterIO>>;
+        pub(crate) fn AampFromBinary(data: &[u8]) -> Result<UniquePtr<ParameterIO>>;
+        pub(crate) fn AampFromText(text: &str) -> Result<UniquePtr<ParameterIO>>;
+        pub(crate) fn AampToText(pio: &RsParameterIO) -> String;
+        pub(crate) fn AampToBinary(pio: &RsParameterIO) -> Vec<u8>;
 
         fn GetType(self: &Parameter) -> ParamType;
         pub(crate) fn GetParamBool(param: &Parameter) -> bool;
@@ -239,5 +306,24 @@ pub(crate) mod ffi {
         pub(crate) fn GetParamVec4(param: &Parameter) -> Vector4f;
         pub(crate) fn GetParamColor(param: &Parameter) -> Color;
         pub(crate) fn GetParamQuat(param: &Parameter) -> Quat;
+        pub(crate) fn GetParamCurve1(param: &Parameter) -> [Curve; 1];
+        pub(crate) fn GetParamCurve2(param: &Parameter) -> [Curve; 2];
+        pub(crate) fn GetParamCurve3(param: &Parameter) -> [Curve; 3];
+        pub(crate) fn GetParamCurve4(param: &Parameter) -> [Curve; 4];
+        pub(crate) fn GetParamString(param: &Parameter) -> String;
+        pub(crate) fn GetParamBufInt(param: &Parameter) -> Vec<i32>;
+        pub(crate) fn GetParamBufF32(param: &Parameter) -> Vec<f32>;
+        pub(crate) fn GetParamBufU32(param: &Parameter) -> Vec<u32>;
+        pub(crate) fn GetParamBufBin(param: &Parameter) -> Vec<u8>;
+        pub(crate) fn GetParams(pobj: &ParameterObject) -> &ParameterMap;
+        pub(crate) fn GetParamObjs(plist: &ParameterList) -> &ParameterObjectMap;
+        pub(crate) fn GetParamLists(plist: &ParameterList) -> &ParameterListMap;
+        pub(crate) fn GetParamObjsFromPio(pio: &ParameterIO) -> &ParameterObjectMap;
+        pub(crate) fn GetParamListsFromPio(pio: &ParameterIO) -> &ParameterListMap;
+        pub(crate) fn GetParamAt(pmap: &ParameterMap, idx: usize) -> ParamPair;
+        pub(crate) fn GetParamObjAt(pmap: &ParameterObjectMap, idx: usize) -> ParamObjPair;
+        pub(crate) fn GetParamListAt(pmap: &ParameterListMap, idx: usize) -> ParamListPair;
+        pub(crate) fn GetPioVersion(pio: &ParameterIO) -> u32;
+        pub(crate) fn GetPioType(pio: &ParameterIO) -> String;
     }
 }
