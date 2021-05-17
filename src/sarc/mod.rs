@@ -1,5 +1,5 @@
 use crate::{ffi, Endian};
-use std::io;
+use std::{borrow::Cow, hash::Hash, io};
 use thiserror::Error;
 
 #[derive(Error, Debug)]
@@ -18,8 +18,7 @@ type Result<T> = std::result::Result<T, SarcError>;
 
 pub struct Sarc<'a> {
     inner: cxx::UniquePtr<ffi::Sarc>,
-    _marker: std::marker::PhantomData<&'a [u8]>,
-    _decomp: Option<Vec<u8>>,
+    _data: Cow<'a, [u8]>
 }
 
 impl std::fmt::Debug for Sarc<'_> {
@@ -33,9 +32,24 @@ impl std::fmt::Debug for Sarc<'_> {
     }
 }
 
+impl Hash for Sarc<'_> {
+    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+        self._data.hash(state)
+    }
+}
+
+impl Clone for Sarc<'_> {
+    fn clone(&self) -> Self {
+        match &self._data {
+            Cow::Borrowed(data) => Self::read(*data).unwrap(),
+            Cow::Owned(data) => Self::read(data.clone()).unwrap()
+        }
+    }
+}
+
 impl PartialEq for Sarc<'_> {
     fn eq(&self, other: &Sarc) -> bool {
-        self.inner.files_eq(&other.inner)
+        self._data == other._data
     }
 }
 
@@ -94,13 +108,17 @@ impl Sarc<'_> {
         self.inner.guess_align()
     }
 
-    pub fn read(data: &[u8]) -> Result<Sarc> {
+    pub fn files_are_equal(&self, other: &Sarc) -> bool {
+        self.inner.files_eq(&other.inner)
+    }
+
+    pub fn read<'a, D: Into<Cow<'a, [u8]>>>(data: D) -> Result<Sarc<'a>> {
+        let data = data.into();
         if &data[0..4] == b"Yaz0" {
             let data = crate::yaz0::decompress(data)?;
             Ok(Sarc {
                 inner: ffi::sarc_from_binary(&data)?,
-                _marker: std::marker::PhantomData,
-                _decomp: Some(data),
+                _data: Cow::Owned(data)
             })
         } else if data.len() < 40 {
             Err(SarcError::InsufficientDataError(data.len()))
@@ -108,9 +126,8 @@ impl Sarc<'_> {
             Err(SarcError::MagicError)
         } else {
             Ok(Sarc {
-                inner: ffi::sarc_from_binary(data)?,
-                _marker: std::marker::PhantomData,
-                _decomp: None,
+                inner: ffi::sarc_from_binary(data.as_ref())?,
+                _data: data
             })
         }
     }
@@ -209,6 +226,25 @@ mod tests {
     }
 
     #[test]
+    fn read_sarc_with_owned_data() {
+        let sarc = {
+            let data = std::fs::read("test/Enemy_Lynel_Dark.sbactorpack").unwrap();
+            sarc::Sarc::read(data).unwrap()
+        };
+        dbg!(&sarc);
+        assert_eq!(sarc.data_offset(), 6492);
+        assert_eq!(sarc.guess_min_alignment(), 4);
+        assert_eq!(sarc.endian(), Endian::Big);
+        assert_eq!(sarc.files().count(), 125);
+        assert_eq!(
+            sarc.get_file_data("Actor/AS/Lynel_StunEnd.bas")
+                .expect("Could not find file data")
+                .len(),
+            132
+        );
+    }
+
+    #[test]
     fn sarc_eq() {
         let data = std::fs::read("test/Enemy_Lynel_Dark.sbactorpack").unwrap();
         let data2 = std::fs::read("test/Enemy_Lynel_Dark.sbactorpack").unwrap();
@@ -242,6 +278,6 @@ mod tests {
         let sarc = sarc::Sarc::read(&bytes).unwrap();
         let mut writer = sarc::SarcWriter::from(&sarc);
         assert_eq!(writer.len(), sarc.len());
-        assert_eq!(writer.to_binary(), sarc._decomp.unwrap());
+        assert_eq!(writer.to_binary(), sarc._data.as_ref());
     }
 }
