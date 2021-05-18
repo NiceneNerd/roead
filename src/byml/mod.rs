@@ -1,4 +1,58 @@
-/// Bindings for `oead::Byml` functionality
+//! Bindings for the `oead::byml` module.
+//! 
+//! A `Byml` type will usually be constructed from binary data or a YAML string,
+//! e.g.
+//! ```
+//! # use roead::byml::Byml;
+//! # use std::{fs::read, error::Error};
+//! # fn docttest() -> Result<(), Box<dyn Error>> {
+//! let buf: Vec<u8> = std::fs::read("A-1_Static.smubin")?;
+//! let map_unit = Byml::from_binary(&buf)?;
+//! let text: String = std::fs::read_to_string("A-1_Static.yml")?;
+//! let map_unit2 = Byml::from_text(&text)?;
+//! assert_eq!(map_unit, map_unit2);
+//! # Ok(())
+//! # }
+//! ```
+//! You can also easily serialize to binary or a YAML string.
+//! ```
+//! # use roead::{byml::Byml, Endian};
+//! # fn docttest() -> Result<(), Box<dyn std::error::Error>> {
+//! let buf: Vec<u8> = std::fs::read("A-1_Static.smubin")?;
+//! let map_unit = Byml::from_binary(&buf)?;
+//! std::fs::write("A-1_Static.yml", &map_unit.to_text())?;
+//! std::fs::write("A-1_Static.copy.mubin", &map_unit.to_binary(Endian::Big))?;
+//! # Ok(())
+//! # }
+//! ```
+//!
+//! A number of convenience getters are available which return a result for a variant value:
+//! ```
+//! # use roead::byml::Byml;
+//! # use std::collections::BTreeMap;
+//! # fn docttest() -> Result<(), Box<dyn std::error::Error>> {
+//! # let some_data = b"BYML";
+//! let doc = Byml::from_binary(some_data)?;
+//! let hash: &BTreeMap<String, Byml> = doc.as_hash()?;
+//! # Ok(())
+//! # }
+//! ```
+//!
+//! Most of the node types are fairly self-explanatory. Arrays are implemented as `Vec<Byml>`, and
+//! hash nodes as `BTreeMap<String, Byml>`.
+//!
+//! For convenience, a `Byml` *known* to be an array or hash node can be indexed. **Panics if the
+//! node has the wrong type, the index has the wrong type, or the index is not found**.
+//! ```
+//! # use roead::byml::Byml;
+//! # fn docttest() -> Result<(), Box<dyn std::error::Error>> {
+//! let buf: Vec<u8> = std::fs::read("ActorInfo.product.sbyml")?;
+//! let actor_info = Byml::from_binary(&buf)?;
+//! assert_eq!(actor_info["Actors"].as_array()?.len(), 7934);
+//! assert_eq!(actor_info["Hashes"][0].as_int()?, 31119);
+//! # Ok(())
+//! # }
+//! ```
 use crate::{ffi, Endian};
 use std::{
     collections::BTreeMap,
@@ -41,59 +95,7 @@ impl<'a> From<usize> for BymlIndex<'a> {
     }
 }
 
-/// Represents a Nintendo binary YAML (BYML) document or node. A `Byml` will usually be constructed
-/// from binary data or a YAML string, e.g.
-/// ```
-/// # use roead::byml::Byml;
-/// # use std::{fs::read, error::Error};
-/// # fn docttest() -> Result<(), Box<dyn Error>> {
-/// let buf: Vec<u8> = std::fs::read("A-1_Static.smubin")?;
-/// let map_unit = Byml::from_binary(&buf)?;
-/// let text: String = std::fs::read_to_string("A-1_Static.yml")?;
-/// let map_unit2 = Byml::from_text(&text)?;
-/// assert_eq!(map_unit, map_unit2);
-/// # Ok(())
-/// # }
-/// ```
-/// You can also easily serialize to binary or a YAML string.
-/// ```
-/// # use roead::{byml::Byml, Endian};
-/// # fn docttest() -> Result<(), Box<dyn std::error::Error>> {
-/// let buf: Vec<u8> = std::fs::read("A-1_Static.smubin")?;
-/// let map_unit = Byml::from_binary(&buf)?;
-/// std::fs::write("A-1_Static.yml", &map_unit.to_text())?;
-/// std::fs::write("A-1_Static.copy.mubin", &map_unit.to_binary(Endian::Big))?;
-/// # Ok(())
-/// # }
-/// ```
-///
-/// A number of convenience getters are available which return a result for a variant value:
-/// ```
-/// # use roead::byml::Byml;
-/// # use std::collections::BTreeMap;
-/// # fn docttest() -> Result<(), Box<dyn std::error::Error>> {
-/// # let some_data = b"BYML";
-/// let doc = Byml::from_binary(some_data)?;
-/// let hash: &BTreeMap<String, Byml> = doc.as_hash()?;
-/// # Ok(())
-/// # }
-/// ```
-///
-/// Most of the node types are fairly self-explanatory. Arrays are implemented as `Vec<Byml>`, and
-/// hash nodes as `BTreeMap<String, Byml>`.
-///
-/// For convenience, a `Byml` *known* to be an array or hash node can be indexed. **Panics if the
-/// node has the wrong type, the index has the wrong type, or the index is not found**.
-/// ```
-/// # use roead::byml::Byml;
-/// # fn docttest() -> Result<(), Box<dyn std::error::Error>> {
-/// let buf: Vec<u8> = std::fs::read("ActorInfo.product.sbyml")?;
-/// let actor_info = Byml::from_binary(&buf)?;
-/// assert_eq!(actor_info["Actors"].as_array()?.len(), 7934);
-/// assert_eq!(actor_info["Hashes"][0].as_int()?, 31119);
-/// # Ok(())
-/// # }
-/// ```
+/// Represents a Nintendo binary YAML (BYML) document or node.
 #[derive(Debug, Clone, PartialEq)]
 pub enum Byml {
     Null,
@@ -263,6 +265,7 @@ impl Byml {
         }
     }
 
+    /// Returns a result with the mutable inner string slice or a type error
     pub fn as_mut_string(&mut self) -> Result<&mut str> {
         if let Byml::String(v) = self {
             Ok(v.as_mut_str())
@@ -271,6 +274,7 @@ impl Byml {
         }
     }
 
+    /// Returns a result with the mutable inner byte slice or a type error
     pub fn as_mut_binary(&mut self) -> Result<&mut [u8]> {
         if let Byml::Binary(v) = self {
             Ok(v.as_mut_slice())
@@ -279,6 +283,7 @@ impl Byml {
         }
     }
 
+    /// Returns a result with the mutable inner Byml array slice or a type error
     pub fn as_mut_array(&mut self) -> Result<&mut [Byml]> {
         if let Byml::Array(v) = self {
             Ok(v.as_mut_slice())
@@ -287,6 +292,7 @@ impl Byml {
         }
     }
 
+    /// Returns a result with a mutable reference to the inner hash or a type error
     pub fn as_mut_hash(&self) -> Result<&Hash> {
         if let Byml::Hash(v) = self {
             Ok(v)
@@ -295,6 +301,8 @@ impl Byml {
         }
     }
 
+    
+    /// Load a document from binary data.
     pub fn from_binary(data: &[u8]) -> Result<Self> {
         let byml = ffi::BymlFromBinary(data)?;
         Ok(match byml.GetType() {
@@ -305,6 +313,7 @@ impl Byml {
         })
     }
 
+    /// Load a document from YAML text.
     pub fn from_text(text: &str) -> Result<Self> {
         let byml = ffi::BymlFromText(text)?;
         Ok(match byml.GetType() {
@@ -315,6 +324,7 @@ impl Byml {
         })
     }
 
+    /// Serialize the document to YAML. This can only be done for Null, Array or Hash nodes.
     pub fn to_text(&self) -> String {
         if matches!(self, Byml::Array(_) | Byml::Hash(_) | Byml::Null) {
             ffi::BymlToText(self)
@@ -323,6 +333,8 @@ impl Byml {
         }
     }
 
+    /// Serialize the document to BYML with the specified endianness and default version (2). 
+    /// This can only be done for Null, Array or Hash nodes.
     pub fn to_binary(&self, endian: Endian) -> Vec<u8> {
         if matches!(self, Byml::Array(_) | Byml::Hash(_) | Byml::Null) {
             ffi::BymlToBinary(self, matches!(endian, Endian::Big), 2)
@@ -331,6 +343,8 @@ impl Byml {
         }
     }
 
+    /// Serialize the document to BYML with the specified endianness and version number. 
+    /// This can only be done for Null, Array or Hash nodes.
     pub fn to_binary_with_version(&self, endian: Endian, version: u8) -> Vec<u8> {
         if version > 4 {
             panic!("Version must be <= 4")

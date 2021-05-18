@@ -1,4 +1,29 @@
-#[allow(dead_code)]
+//! Bindings for the `oead::aamp` module. 
+//! 
+//! Only version 2, little endian and UTF-8 binary parameter archives are supported.  
+//! All parameter types including buffers are supported.  
+//! The YAML output is compatible with the pure Python aamp library.
+//! 
+//! The main type is the `ParameterIO`, which will usually be constructed
+//! from binary data of a YAML document. Some sample usage:
+//! ```
+//! # use roead::aamp::*;
+//! # fn doctest() -> Result<(), Box<dyn std::error::Error>> {
+//! let data = std::fs::read("test/Chuchu_Middle.baiprog")?;
+//! let pio = ParameterIO::from_binary(&data)?; // Parse AAMP from binary data
+//! for (hash, list) in pio.lists().iter() {
+//!     // Do stuff with lists
+//! }
+//! if let Some(demo_obj) = pio.object("DemoAIActionIdx") { // Access a parameter object
+//!     for (hash, parameter) in demo_obj.params() {
+//!         // Do stuff with parameters
+//!     }
+//! }
+//! // Dumps YAML representation to a String
+//! let yaml_dump: String = pio.to_text();
+//! # Ok(())
+//! # }
+//! ```
 use crate::ffi;
 use crate::ffi::{Color, Curve, ParamType, Quat, Vector2f, Vector3f, Vector4f};
 use crc::crc32::checksum_ieee;
@@ -17,6 +42,7 @@ pub enum AampError {
     OeadError(#[from] cxx::Exception),
 }
 
+/// Represents a single AAMP parameter, with many possible types.
 #[derive(Debug, Clone, PartialEq, PartialOrd)]
 pub enum Parameter {
     Bool(bool),
@@ -72,6 +98,7 @@ impl From<&ffi::Parameter> for Parameter {
 }
 
 impl Parameter {
+    /// Check if the parameter is any string type
     #[inline]
     pub fn is_string(&self) -> bool {
         matches!(
@@ -83,6 +110,7 @@ impl Parameter {
         )
     }
 
+    /// Check if the parameter is any buffer type
     #[inline]
     pub fn is_buffer(&self) -> bool {
         matches!(
@@ -289,6 +317,7 @@ impl Parameter {
     }
 }
 
+/// Wraps a map of parameters and their name hashes
 #[derive(Debug, Clone)]
 #[repr(transparent)]
 pub struct ParameterObject(IndexMap<u32, Parameter>);
@@ -319,7 +348,7 @@ impl ParameterObject {
         self.0.get(&checksum_ieee(name.as_bytes()))
     }
 
-    /// Sets a parameter value
+    /// Set a parameter value
     pub fn set_param(&mut self, name: &str, value: Parameter) {
         self.0.insert(checksum_ieee(name.as_bytes()), value);
     }
@@ -333,7 +362,8 @@ impl ParameterObject {
         &mut self.0
     }
 
-    pub(crate) fn size(&self) -> usize {
+    /// Count the number of parameters
+    pub fn len(&self) -> usize {
         self.0.len()
     }
 
@@ -346,27 +376,39 @@ impl ParameterObject {
     }
 }
 
-trait ParamList {
+/// A trait representing any kind of parameter list, which can be used
+/// for both a proper ParameterList and a ParameterIO
+pub trait ParamList {
+    /// Get a map of child parameter lists and their name hashes
     fn lists(&self) -> &IndexMap<u32, ParameterList>;
+    /// Get a map of child parameter objects and their name hashes
     fn objects(&self) -> &IndexMap<u32, ParameterObject>;
+    /// Get a mutable map of child parameter lists and their name hashes
     fn lists_mut(&mut self) -> &mut IndexMap<u32, ParameterList>;
+    /// Get a mutable map of child parameter objects and their name hashes
     fn objects_mut(&mut self) -> &mut IndexMap<u32, ParameterObject>;
+    /// Get a child parameter list by name
     fn list(&self, name: &str) -> Option<&ParameterList> {
         self.lists().get(&checksum_ieee(name.as_bytes()))
     }
+    /// Get a child parameter object by name
     fn object(&self, name: &str) -> Option<&ParameterObject> {
         self.objects().get(&checksum_ieee(name.as_bytes()))
     }
+    /// Set a child parameter list by name
     fn set_list(&mut self, name: &str, plist: ParameterList) {
         self.lists_mut()
             .insert(checksum_ieee(name.as_bytes()), plist);
     }
+    /// Set a child parameter object by name
     fn set_object(&mut self, name: &str, pobj: ParameterObject) {
         self.objects_mut()
             .insert(checksum_ieee(name.as_bytes()), pobj);
     }
 }
 
+/// Represents a parameter list consisting of child parameter lists
+/// and parameter objects
 #[derive(Debug, Clone, PartialEq)]
 pub struct ParameterList {
     lists: IndexMap<u32, ParameterList>,
@@ -437,10 +479,15 @@ impl ParameterList {
     }
 }
 
+/// Represents a parameter IO document. This is the root parameter list and
+/// the only structure that can be serialized to or deserialized from a binary
+/// parameter archive.
 #[derive(Debug, Clone, PartialEq)]
 pub struct ParameterIO {
+    /// Data version (not the AAMP format version). Typically 0.
     pub version: u32,
-    pub r#type: String,
+    /// Data type identifier. Typically “xml”.
+    pub doc_type: String,
     lists: IndexMap<u32, ParameterList>,
     objects: IndexMap<u32, ParameterObject>,
 }
@@ -465,26 +512,10 @@ impl From<cxx::UniquePtr<ffi::ParameterIO>> for ParameterIO {
             .collect::<IndexMap<u32, ParameterObject>>();
         Self {
             version,
-            r#type,
+            doc_type: r#type,
             lists,
             objects,
         }
-    }
-}
-
-impl ParameterIO {
-    pub fn from_binary<B: AsRef<[u8]>>(data: B) -> Result<ParameterIO> {
-        let data = data.as_ref();
-        if &data[0..4] != b"AAMP" {
-            return Err(AampError::MagicError(
-                String::from_utf8_lossy(&data[0..4]).to_string(),
-            ));
-        }
-        Ok(ffi::AampFromBinary(data.as_ref())?.into())
-    }
-
-    pub fn from_text<S: AsRef<str>>(text: S) -> Result<ParameterIO> {
-        Ok(ffi::AampFromText(text.as_ref())?.into())
     }
 }
 
@@ -507,10 +538,28 @@ impl ParamList for ParameterIO {
 }
 
 impl ParameterIO {
+    /// Load a ParameterIO from a binary parameter archive.
+    pub fn from_binary<B: AsRef<[u8]>>(data: B) -> Result<ParameterIO> {
+        let data = data.as_ref();
+        if &data[0..4] != b"AAMP" {
+            return Err(AampError::MagicError(
+                String::from_utf8_lossy(&data[0..4]).to_string(),
+            ));
+        }
+        Ok(ffi::AampFromBinary(data.as_ref())?.into())
+    }
+
+    /// Load a ParameterIO from a YAML representation.
+    pub fn from_text<S: AsRef<str>>(text: S) -> Result<ParameterIO> {
+        Ok(ffi::AampFromText(text.as_ref())?.into())
+    }
+
+    /// Serialize the ParameterIO to a YAML representation.
     pub fn to_text(&self) -> String {
         ffi::AampToText(&self)
     }
 
+    /// Serialize the ParameterIO to a binary parameter archive.
     pub fn to_binary(&self) -> Vec<u8> {
         ffi::AampToBinary(&self)
     }
@@ -540,7 +589,7 @@ impl ParameterIO {
     }
 
     pub(crate) fn pio_type(&self) -> &str {
-        self.r#type.as_str()
+        self.doc_type.as_str()
     }
 
     pub(crate) fn version(&self) -> u32 {
@@ -571,7 +620,7 @@ mod tests {
     fn parse_aamp_text() {
         let text = std::fs::read_to_string("include/oead/test/aamp/test.yml").unwrap();
         let pio = ParameterIO::from_text(&text).unwrap();
-        assert_eq!(&pio.r#type, "oead_test");
+        assert_eq!(&pio.doc_type, "oead_test");
         let obj = pio.object("TestContent").unwrap();
         let (name, val) = obj.0.get_index(3).unwrap();
         assert_eq!(name, &checksum_ieee(b"F32_1"));

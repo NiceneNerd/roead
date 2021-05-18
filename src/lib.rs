@@ -1,15 +1,35 @@
+//! # Rust bindings for the oead C++ library
+//! **oead** is a C++ library for common file formats that are used in modern
+//! first-party Nintendo EAD (now EPD) titles.
+//! 
+//! Currently, oead only handles very common formats that are extensively used
+//! in recent games such as *Breath of the Wild* and *Super Mario Odyssey*.
+//! 
+//! * [AAMP](https://zeldamods.org/wiki/AAMP) (binary parameter archive): Only version 2 is supported.
+//! * [BYML](https://zeldamods.org/wiki/BYML) (binary YAML): Versions 2, 3, and 4 are supported.
+//! * [SARC](https://zeldamods.org/wiki/SARC) (archive)
+//! * [Yaz0](https://zeldamods.org/wiki/Yaz0) (compression algorithm)
+//! 
+//! The roead project attempts to provide safe and relatively idiomatic Rust
+//! bindings to oead's core functionality. The Grezzo datasheets are not supported.
+//! For more info on oead itself, visit [its GitHub repo](https://github.com/zeldamods/oead/).
+//! 
+//! For API documentation, see the docs for each module.
+
 pub mod aamp;
 pub mod byml;
 pub mod sarc;
 pub mod types;
 pub mod yaz0;
 
-use crate::byml::Byml as RByml;
 use crate::aamp::Parameter as RsParameter;
 use crate::aamp::ParameterIO as RsParameterIO;
 use crate::aamp::ParameterList as RsParameterList;
 use crate::aamp::ParameterObject as RsParameterObject;
+use crate::byml::Byml as RByml;
 
+/// Represents endianness where applicable. Generally, big endian is used for 
+/// Wii U and little endian is used for Switch.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Endian {
     Big,
@@ -21,46 +41,46 @@ pub(crate) mod ffi {
     #[derive(Debug, Default, Clone, Copy, PartialEq, PartialOrd)]
     pub struct Vector2f {
         pub x: f32,
-        pub y: f32
+        pub y: f32,
     }
-    
+
     #[derive(Debug, Default, Clone, Copy, PartialEq, PartialOrd)]
     pub struct Vector3f {
         pub x: f32,
         pub y: f32,
-        pub z: f32
+        pub z: f32,
     }
-    
+
     #[derive(Debug, Default, Clone, Copy, PartialEq, PartialOrd)]
     pub struct Vector4f {
         pub x: f32,
         pub y: f32,
         pub z: f32,
-        pub t: f32
+        pub t: f32,
     }
     #[derive(Debug, Default, Clone, Copy, PartialEq, PartialOrd)]
     pub struct Quat {
         pub a: f32,
         pub b: f32,
         pub c: f32,
-        pub d: f32
+        pub d: f32,
     }
-    
+
     #[derive(Debug, Default, Clone, Copy, PartialEq, PartialOrd)]
     pub struct Color {
         pub r: f32,
         pub g: f32,
         pub b: f32,
-        pub a: f32
+        pub a: f32,
     }
-    
+
     #[derive(Debug, Default, Clone, Copy, PartialEq, PartialOrd)]
     pub struct Curve {
         pub a: u32,
         pub b: u32,
-        pub floats: [f32; 30]
+        pub floats: [f32; 30],
     }
-    
+
     struct SarcWriteResult {
         alignment: usize,
         data: Vec<u8>,
@@ -68,17 +88,17 @@ pub(crate) mod ffi {
 
     struct ParamPair<'a> {
         hash: u32,
-        param: &'a Parameter
+        param: &'a Parameter,
     }
 
     struct ParamObjPair {
         hash: u32,
-        param: UniquePtr<ParameterObject>
+        param: UniquePtr<ParameterObject>,
     }
 
     struct ParamListPair<'a> {
         hash: u32,
-        param: &'a ParameterList
+        param: &'a ParameterList,
     }
 
     #[repr(u32)]
@@ -120,7 +140,7 @@ pub(crate) mod ffi {
         BufferU32,
         BufferBinary,
         StringRef,
-      }
+    }
 
     struct U8 {
         value: u8,
@@ -203,7 +223,7 @@ pub(crate) mod ffi {
         fn list_at(self: &RsParameterList, i: usize) -> &RsParameterList;
         fn obj_at(self: &RsParameterList, i: usize) -> &RsParameterObject;
         type RsParameterObject;
-        fn size(self: &RsParameterObject) -> usize;
+        fn len(self: &RsParameterObject) -> usize;
         fn hash_at(self: &RsParameterObject, idx: usize) -> u32;
         fn val_at(self: &RsParameterObject, idx: usize) -> &RsParameter;
     }

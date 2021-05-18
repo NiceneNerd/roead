@@ -1,7 +1,14 @@
 [package]
 name = "roead"
+description = "Rust bindings for oead C++ library for common Nintendo formats"
 version = "0.1.0"
-authors = ["Caleb Smith <macadamiadaze@gmail.com>"]
+authors = ["Caleb Smith <email@calebdixonsmith.top>"]
+license = "GPL-3.0-or-later"
+readme = "README.md"
+repository = "https://github.com/NiceneNerd/roead"
+documentation = "https://docs.rs/roead"
+keywords = ["Nintendo", "aamp", "byml", "sarc", "Zelda", "gamedev"]
+categories = ["game-development", "parsing"]
 edition = "2018"
 
 [dependencies]

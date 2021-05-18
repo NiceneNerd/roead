@@ -318,7 +318,7 @@ Parameter ParamFromFfi(const RsParameter &param)
 
 ParameterObject PobjFromFfi(const RsParameterObject &pobj)
 {
-  const auto size = pobj.size();
+  const auto size = pobj.len();
   auto map = ParameterMap(size);
   for (size_t i = 0; i < size; i++)
   {
