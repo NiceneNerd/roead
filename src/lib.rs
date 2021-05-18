@@ -86,9 +86,9 @@ pub(crate) mod ffi {
         data: Vec<u8>,
     }
 
-    struct ParamPair<'a> {
+    struct ParamPair {
         hash: u32,
-        param: &'a Parameter,
+        param: UniquePtr<Parameter>,
     }
 
     struct ParamObjPair {
@@ -96,9 +96,9 @@ pub(crate) mod ffi {
         param: UniquePtr<ParameterObject>,
     }
 
-    struct ParamListPair<'a> {
+    struct ParamListPair {
         hash: u32,
-        param: &'a ParameterList,
+        param: UniquePtr<ParameterList>,
     }
 
     #[repr(u32)]
@@ -335,11 +335,11 @@ pub(crate) mod ffi {
         pub(crate) fn GetParamBufF32(param: &Parameter) -> Vec<f32>;
         pub(crate) fn GetParamBufU32(param: &Parameter) -> Vec<u32>;
         pub(crate) fn GetParamBufBin(param: &Parameter) -> Vec<u8>;
-        pub(crate) fn GetParams(pobj: &ParameterObject) -> &ParameterMap;
-        pub(crate) fn GetParamObjs(plist: &ParameterList) -> &ParameterObjectMap;
-        pub(crate) fn GetParamLists(plist: &ParameterList) -> &ParameterListMap;
-        pub(crate) fn GetParamObjsFromPio(pio: &ParameterIO) -> &ParameterObjectMap;
-        pub(crate) fn GetParamListsFromPio(pio: &ParameterIO) -> &ParameterListMap;
+        pub(crate) fn GetParams(pobj: &ParameterObject) -> UniquePtr<ParameterMap>;
+        pub(crate) fn GetParamObjs(plist: &ParameterList) -> UniquePtr<ParameterObjectMap>;
+        pub(crate) fn GetParamLists(plist: &ParameterList) -> UniquePtr<ParameterListMap>;
+        pub(crate) fn GetParamObjsFromPio(pio: &ParameterIO) -> UniquePtr<ParameterObjectMap>;
+        pub(crate) fn GetParamListsFromPio(pio: &ParameterIO) -> UniquePtr<ParameterListMap>;
         pub(crate) fn GetParamAt(pmap: &ParameterMap, idx: usize) -> ParamPair;
         pub(crate) fn GetParamObjAt(pmap: &ParameterObjectMap, idx: usize) -> ParamObjPair;
         pub(crate) fn GetParamListAt(pmap: &ParameterListMap, idx: usize) -> ParamListPair;

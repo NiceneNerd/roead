@@ -68,30 +68,30 @@ pub enum Parameter {
     StringRef(String),
 }
 
-impl From<&ffi::Parameter> for Parameter {
-    fn from(fparam: &ffi::Parameter) -> Self {
+impl From<cxx::UniquePtr<ffi::Parameter>> for Parameter {
+    fn from(fparam: cxx::UniquePtr<ffi::Parameter>) -> Self {
         match fparam.GetType() {
-            ParamType::Bool => Self::Bool(ffi::GetParamBool(fparam)),
-            ParamType::F32 => Self::F32(ffi::GetParamF32(fparam)),
-            ParamType::U32 => Self::U32(ffi::GetParamU32(fparam)),
-            ParamType::Int => Self::Int(ffi::GetParamInt(fparam)),
-            ParamType::Vec2 => Self::Vec2(ffi::GetParamVec2(fparam)),
-            ParamType::Vec3 => Self::Vec3(ffi::GetParamVec3(fparam)),
-            ParamType::Vec4 => Self::Vec4(ffi::GetParamVec4(fparam)),
-            ParamType::Color => Self::Color(ffi::GetParamColor(fparam)),
-            ParamType::Quat => Self::Quat(ffi::GetParamQuat(fparam)),
-            ParamType::Curve1 => Self::Curve1(ffi::GetParamCurve1(fparam)),
-            ParamType::Curve2 => Self::Curve2(ffi::GetParamCurve2(fparam)),
-            ParamType::Curve3 => Self::Curve3(ffi::GetParamCurve3(fparam)),
-            ParamType::Curve4 => Self::Curve4(ffi::GetParamCurve4(fparam)),
-            ParamType::String32 => Self::String32(ffi::GetParamString(fparam)),
-            ParamType::String64 => Self::String64(ffi::GetParamString(fparam)),
-            ParamType::String256 => Self::String256(ffi::GetParamString(fparam)),
-            ParamType::StringRef => Self::StringRef(ffi::GetParamString(fparam)),
-            ParamType::BufferInt => Self::BufferInt(ffi::GetParamBufInt(fparam)),
-            ParamType::BufferF32 => Self::BufferF32(ffi::GetParamBufF32(fparam)),
-            ParamType::BufferU32 => Self::BufferU32(ffi::GetParamBufU32(fparam)),
-            ParamType::BufferBinary => Self::BufferBinary(ffi::GetParamBufBin(fparam)),
+            ParamType::Bool => Self::Bool(ffi::GetParamBool(&fparam)),
+            ParamType::F32 => Self::F32(ffi::GetParamF32(&fparam)),
+            ParamType::U32 => Self::U32(ffi::GetParamU32(&fparam)),
+            ParamType::Int => Self::Int(ffi::GetParamInt(&fparam)),
+            ParamType::Vec2 => Self::Vec2(ffi::GetParamVec2(&fparam)),
+            ParamType::Vec3 => Self::Vec3(ffi::GetParamVec3(&fparam)),
+            ParamType::Vec4 => Self::Vec4(ffi::GetParamVec4(&fparam)),
+            ParamType::Color => Self::Color(ffi::GetParamColor(&fparam)),
+            ParamType::Quat => Self::Quat(ffi::GetParamQuat(&fparam)),
+            ParamType::Curve1 => Self::Curve1(ffi::GetParamCurve1(&fparam)),
+            ParamType::Curve2 => Self::Curve2(ffi::GetParamCurve2(&fparam)),
+            ParamType::Curve3 => Self::Curve3(ffi::GetParamCurve3(&fparam)),
+            ParamType::Curve4 => Self::Curve4(ffi::GetParamCurve4(&fparam)),
+            ParamType::String32 => Self::String32(ffi::GetParamString(&fparam)),
+            ParamType::String64 => Self::String64(ffi::GetParamString(&fparam)),
+            ParamType::String256 => Self::String256(ffi::GetParamString(&fparam)),
+            ParamType::StringRef => Self::StringRef(ffi::GetParamString(&fparam)),
+            ParamType::BufferInt => Self::BufferInt(ffi::GetParamBufInt(&fparam)),
+            ParamType::BufferF32 => Self::BufferF32(ffi::GetParamBufF32(&fparam)),
+            ParamType::BufferU32 => Self::BufferU32(ffi::GetParamBufU32(&fparam)),
+            ParamType::BufferBinary => Self::BufferBinary(ffi::GetParamBufBin(&fparam)),
             _ => unreachable!(),
         }
     }
@@ -415,19 +415,19 @@ pub struct ParameterList {
     objects: IndexMap<u32, ParameterObject>,
 }
 
-impl From<&ffi::ParameterList> for ParameterList {
-    fn from(plist: &ffi::ParameterList) -> Self {
-        let list_map = ffi::GetParamLists(plist);
+impl From<cxx::UniquePtr<ffi::ParameterList>> for ParameterList {
+    fn from(plist: cxx::UniquePtr<ffi::ParameterList>) -> Self {
+        let list_map = ffi::GetParamLists(&plist);
         let lists = (0usize..list_map.size())
             .map(|i| {
-                let pair = ffi::GetParamListAt(list_map, i);
+                let pair = ffi::GetParamListAt(&list_map, i);
                 (pair.hash, pair.param.into())
             })
             .collect::<IndexMap<u32, ParameterList>>();
-        let obj_map = ffi::GetParamObjs(plist);
+        let obj_map = ffi::GetParamObjs(&plist);
         let objects = (0usize..obj_map.size())
             .map(|i| {
-                let pair = ffi::GetParamObjAt(obj_map, i);
+                let pair = ffi::GetParamObjAt(&obj_map, i);
                 (pair.hash, pair.param.into())
             })
             .collect::<IndexMap<u32, ParameterObject>>();
@@ -499,14 +499,14 @@ impl From<cxx::UniquePtr<ffi::ParameterIO>> for ParameterIO {
         let list_map = ffi::GetParamListsFromPio(&pio);
         let lists = (0usize..list_map.size())
             .map(|i| {
-                let pair = ffi::GetParamListAt(list_map, i);
+                let pair = ffi::GetParamListAt(&list_map, i);
                 (pair.hash, pair.param.into())
             })
             .collect::<IndexMap<u32, ParameterList>>();
         let obj_map = ffi::GetParamObjsFromPio(&pio);
         let objects = (0usize..obj_map.size())
             .map(|i| {
-                let pair = ffi::GetParamObjAt(obj_map, i);
+                let pair = ffi::GetParamObjAt(&obj_map, i);
                 (pair.hash, pair.param.into())
             })
             .collect::<IndexMap<u32, ParameterObject>>();

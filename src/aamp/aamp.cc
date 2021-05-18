@@ -17,7 +17,7 @@ std::unique_ptr<ParameterIO> AampFromBinary(rust::Slice<const uint8_t> data)
 std::unique_ptr<ParameterIO> AampFromText(rust::Str text)
 {
   return std::make_unique<ParameterIO>(
-      ParameterIO::FromText({text.data(), text.size()}));
+      ParameterIO::FromText({ text.data(), text.size() }));
 }
 
 bool GetParamBool(const Parameter &param)
@@ -138,35 +138,35 @@ rust::Vec<u8> GetParamBufBin(const Parameter &param)
   return vec;
 }
 
-const ParameterMap &GetParams(const ParameterObject &pobj)
+std::unique_ptr<ParameterMap> GetParams(const ParameterObject &pobj)
 {
-  return pobj.params;
+  return std::make_unique<ParameterMap>(pobj.params);
 }
 
-const ParameterListMap &GetParamLists(const ParameterList &plist)
+std::unique_ptr<ParameterListMap> GetParamLists(const ParameterList &plist)
 {
-  return plist.lists;
+  return std::make_unique<ParameterListMap>(plist.lists);
 }
 
-const ParameterObjectMap &GetParamObjs(const ParameterList &plist)
+std::unique_ptr<ParameterObjectMap> GetParamObjs(const ParameterList &plist)
 {
-  return plist.objects;
+  return std::make_unique<ParameterObjectMap>(plist.objects);
 }
 
-const ParameterListMap &GetParamListsFromPio(const ParameterIO &pio)
+std::unique_ptr<ParameterListMap> GetParamListsFromPio(const ParameterIO &pio)
 {
-  return pio.lists;
+  return std::make_unique<ParameterListMap>(pio.lists);
 }
 
-const ParameterObjectMap &GetParamObjsFromPio(const ParameterIO &plist)
+std::unique_ptr<ParameterObjectMap> GetParamObjsFromPio(const ParameterIO &plist)
 {
-  return plist.objects;
+  return std::make_unique<ParameterObjectMap>(plist.objects);
 }
 
 ParamPair GetParamAt(const ParameterMap &pmap, size_t idx)
 {
   const auto [hash, val] = pmap.values_container().at(idx);
-  return {hash.hash, val};
+  return {hash.hash, std::make_unique<Parameter>(val)};
 }
 
 ParamObjPair GetParamObjAt(const ParameterObjectMap &pobjmap, size_t idx)
@@ -178,7 +178,7 @@ ParamObjPair GetParamObjAt(const ParameterObjectMap &pobjmap, size_t idx)
 ParamListPair GetParamListAt(const ParameterListMap &plmap, size_t idx)
 {
   const auto [hash, val] = plmap.values_container().at(idx);
-  return {hash.hash, val};
+  return {hash.hash, std::make_unique<ParameterList>(val)};
 }
 
 u32 GetPioVersion(const ParameterIO &pio)
