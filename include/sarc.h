@@ -30,6 +30,7 @@ public:
     void SetMode(bool legacy);
     void SetFile(rust::Str name, rust::Vec<uint8_t> data);
     bool DelFile(rust::Str name);
+    bool FilesEqual(const SarcWriter &other) const;
     size_t NumFiles() const;
     SarcWriteResult Write();
 };

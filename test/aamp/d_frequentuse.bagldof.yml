@@ -1,0 +1,46 @@
+!io
+version: 0
+type: agldof
+param_root: !list
+  objects:
+    dof: !obj
+      level: 0.699999988
+      start: 4000.0
+      end: 6000.0
+      near_enable: false
+      far_enable: true
+      depth_blur: true
+      enable_vignetting_color: false
+      enable_vignetting_blur: false
+      enable_vignetting_2_shape: false
+      enable_color_control: false
+      enable_color_reverse: true
+      indirect_enable: false
+      indirect_depth_cancelenable: false
+      enable_reduce_draw: false
+      far_start: -70713.375
+      far_end: 3000.0
+      depth_blur_add: 3.0
+      saturate_min: 1.0
+      color_ctrl_depth: !vec4 [1000.0, 2000.0, 3000.0, 4000.0]
+      indirect_tex_trans: !vec2 [0.0, 0.0]
+      indirect_tex_rotate: 0.0
+      indirect_tex_scale: !vec2 [1.0, 1.0]
+      indirect_scale: 0.200000003
+      vignetting_blur: 1.0
+      vignetting_blend: 0
+      vignetting_color: !color [0.0, 0.0, 0.0, 0.75]
+      far_mul_color: !color [1.0, 1.0, 1.0, 1.0]
+      1814605794: 0
+      2681321353: !vec2 [0.25, 1.0]
+      3759196228: !vec2 [1.0, 1.0]
+      2088235901: !vec2 [0.0, 0.0]
+      2809429063: 0
+      967228477: !vec2 [0.25, 1.0]
+      1181205488: !vec2 [1.0, 1.0]
+      3657496777: !vec2 [0.0, 0.0]
+      enable_dof_far_max: true
+      dof_far_max: 200.0
+      enable_indirect_from_full: false
+      enable: true
+  lists: {}

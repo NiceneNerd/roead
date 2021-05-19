@@ -1,0 +1,28 @@
+!io
+version: 0
+type: ksky
+param_root: !list
+  objects:
+    sky: !obj
+      sun_color: !color [1.0, 0.860000014, 0.680000007, 18.0]
+      ground_color: !color [0.5, 0.400000006, 0.300000012, 1.0]
+      rayleigh_base_height: 24.0
+      mie_base_height: 2.0
+      mie_scattering_coeff: 0.00182999996
+      mie_symmetrical_prop: 0.800000012
+      rayleigh_amplifier_rendering: 1.0
+      mie_symmetrical_prop_rendering: 0.850000024
+      mie_amplifier_rendering: 8.0
+      scatter_fog_near: -1000.0
+      scatter_fog_far: 20000.0
+      scatter_fog_density: 0.899999976
+      scatter_fog_atten: 12.0
+      scatter_fog_horz: 2.0
+      adhoc_fog_near: -500.0
+      adhoc_fog_far: 4640.0
+      adhoc_fog_atten_grd: 4.0
+      adhoc_fog_atten_sky: 0.409999996
+      adhoc_fog_color: !color [0.50999999, 0.398999989, 0.284999996, 0.0]
+      amplifier_for_envmap: 2.0
+      flg: !u 100
+  lists: {}

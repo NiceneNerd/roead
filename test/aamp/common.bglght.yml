@@ -1,0 +1,22 @@
+!io
+version: 0
+type: glght
+param_root: !list
+  objects:
+    model_scene_light: !obj
+      2917850621: 1.0
+      3610448576: 2.0
+      2558669630: 1.0
+      2326526906: 0.970000029
+      736044634: 0.280000001
+      4233405068: 1.0
+      light_pre_pass_diffuse_intensity: 1.0
+      light_pre_pass_specular_intensity: 1.0
+      1855868256: 0.600000024
+      emission_intensity: 1.0
+      4194338764: 1.0
+      mii_hair_light_name: !str32 ''
+      mii_hair_light_ss_name: !str32 ''
+      sky_light_sun_name: !str32 dir_main
+      sky_light_fog_name: !str32 fog_scatter
+  lists: {}

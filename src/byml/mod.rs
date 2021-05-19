@@ -293,7 +293,7 @@ impl Byml {
     }
 
     /// Returns a result with a mutable reference to the inner hash or a type error
-    pub fn as_mut_hash(&self) -> Result<&Hash> {
+    pub fn as_mut_hash(&mut self) -> Result<&mut Hash> {
         if let Byml::Hash(v) = self {
             Ok(v)
         } else {
@@ -314,8 +314,8 @@ impl Byml {
     }
 
     /// Load a document from YAML text.
-    pub fn from_text(text: &str) -> Result<Self> {
-        let byml = ffi::BymlFromText(text)?;
+    pub fn from_text<S: AsRef<str>>(text: S) -> Result<Self> {
+        let byml = ffi::BymlFromText(text.as_ref())?;
         Ok(match byml.GetType() {
             ffi::BymlType::Hash | ffi::BymlType::Array | ffi::BymlType::Null => {
                 Self::from_ffi(byml.as_ref().unwrap())

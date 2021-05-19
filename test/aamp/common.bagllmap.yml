@@ -1,0 +1,795 @@
+!io
+version: 2
+type: agllmap
+param_root: !list
+  objects:
+    config: !obj
+      type: !str32 lightmap_array
+    lut_param: !obj
+      name0: !str32 Lambert
+      intensity0: !curve [9, 7, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0,
+        1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0]
+      name1: !str32 Half-Lambert
+      intensity1: !curve [9, 7, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0,
+        1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0]
+      name2: !str32 Hemisphere
+      intensity2: !curve [9, 7, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0,
+        1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0]
+      name3: !str32 toon_skin_1114
+      intensity3: !curve [15, 7, 0.0, 0.0, -0.0156500004, 0.600000024, 0.0, 0.00124100002, 0.600000024, 1.0, 0.00150899997,
+        1.0, 1.0, 0.00121699995, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0]
+      name4: !str32 toon_HL
+      intensity4: !curve [6, 6, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 1.0, 0.5, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0,
+        1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0]
+      name5: !str32 WaterSplash
+      intensity5: !curve [4, 6, 0.349999994, 0.300000012, 0.349999994, 0.800000012, 0.5, 0.5, 1.0, 1.0, 0.5, 1.0, 1.0, 1.0,
+        1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0]
+      name6: !str32 UserData3
+      intensity6: !curve [12, 6, 0.0, 0.0, 0.550000012, 0.0, 0.699999988, 0.699999988, 0.899999976, 0.699999988, 0.949999988,
+        1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0]
+      name7: !str32 UserData4
+      intensity7: !curve [18, 7, 0.0, 0.0, -0.0349700004, 0.699999988, 0.0, -0.0198410004, 0.699999988, 0.600000024, 0.001667,
+        0.850000024, 0.600000024, -0.0186529998, 0.850000024, 1.0, 0.00159100001, 1.0, 1.0, 0.0207049996, 1.0, 1.0, 1.0, 1.0,
+        1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0]
+      name8: !str32 UserData5
+      intensity8: !curve [30, 6, 0.0, 0.0, 0.200000003, 0.0, 0.600000024, 0.0, 0.600000024, 0.400000006, 0.699999988, 0.400000006,
+        0.699999988, 0.400000006, 0.75, 0.400000006, 0.75, 0.400000006, 0.824999988, 0.400000006, 0.824999988, 0.699999988,
+        0.925000012, 0.699999988, 0.925000012, 1.0, 0.975000024, 1.0, 0.975000024, 0.699999988, 1.0, 0.699999988]
+      name9: !str32 toon_1114
+      intensity9: !curve [9, 7, 0.0, 0.0, 0.0, 0.550000012, 0.0, 0.0, 0.550000012, 1.0, 0.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0,
+        1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0]
+      name10: !str32 Effect_flat
+      intensity10: !curve [6, 7, 0.0, 1.0, 0.0, 1.0, 1.0, 0.0, 1.0, 1.0, 0.5, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0,
+        1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0]
+      name11: !str32 toon_sub
+      intensity11: !curve [9, 7, 0.0, 0.0, 0.0, 0.75, 0.0, 0.0, 0.850000024, 1.0, 0.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0,
+        1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0]
+      name12: !str32 EffectLeafCurve
+      intensity12: !curve [6, 7, 0.0, 0.300000012, 0.0458640009, 1.0, 1.0, 0.0219730008, 1.0, 1.0, 0.5, 1.0, 1.0, 1.0, 1.0,
+        1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0]
+      name13: !str32 UserData10
+      intensity13: !curve [9, 7, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0,
+        1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0]
+      name14: !str32 UserData11
+      intensity14: !curve [9, 7, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0,
+        1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0]
+      name15: !str32 UserData12
+      intensity15: !curve [9, 7, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0,
+        1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0]
+      name16: !str32 UserData13
+      intensity16: !curve [9, 7, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0,
+        1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0]
+      name17: !str32 UserData14
+      intensity17: !curve [9, 7, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0,
+        1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0]
+      name18: !str32 UserData15
+      intensity18: !curve [9, 7, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0,
+        1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0]
+      name19: !str32 UserData16
+      intensity19: !curve [9, 7, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0,
+        1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0]
+      name20: !str32 UserData17
+      intensity20: !curve [9, 7, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0,
+        1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0]
+      name21: !str32 UserData18
+      intensity21: !curve [9, 7, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0,
+        1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0]
+      name22: !str32 UserData19
+      intensity22: !curve [9, 7, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0,
+        1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0]
+      name23: !str32 UserData20
+      intensity23: !curve [9, 7, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0,
+        1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0]
+      name24: !str32 UserData21
+      intensity24: !curve [9, 7, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0,
+        1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0]
+      name25: !str32 UserData22
+      intensity25: !curve [9, 7, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0,
+        1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0]
+      name26: !str32 UserData23
+      intensity26: !curve [9, 7, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0,
+        1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0]
+      name27: !str32 UserData24
+      intensity27: !curve [9, 7, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0,
+        1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0]
+      name28: !str32 UserData25
+      intensity28: !curve [9, 7, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0,
+        1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0]
+      name29: !str32 UserData26
+      intensity29: !curve [9, 7, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0,
+        1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0]
+      name30: !str32 UserData27
+      intensity30: !curve [9, 7, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0,
+        1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0]
+      name31: !str32 UserData28
+      intensity31: !curve [9, 7, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0,
+        1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0]
+  lists:
+    '0': !list
+      objects:
+        setting: !obj
+          name: !str32 Effect_Smoke
+          lighting_hint: 0
+          hdr_enable: true
+          rim_light_ref: !str32 main_dir
+          rim_enable: true
+          rim_effect: 1.08399999
+          rim_width: 0.879999995
+          rim_angle: 0.200000003
+          rim_pow: 0.896000028
+          parent_map: !str32 ''
+          copy_map: !str32 ''
+          mapping_type: 2
+          priority: 0
+      lists:
+        env_obj_ref_array: !list
+          objects:
+            '0': !obj
+              type: !str32 AmbientLight
+              name: !str32 ''
+              calc_type: 0
+              lut_name: !str32 Lambert
+              lut_name_mip1: !str32 Lambert
+              effect: 1.0
+              pow: 50.0
+              pow_mip_max: 2.0
+              enable_mip0: true
+              enable_mip1: true
+            '1': !obj
+              type: !str32 DirectionalLight
+              name: !str32 dir_main
+              calc_type: 0
+              lut_name: !str32 Hemisphere
+              lut_name_mip1: !str32 Hemisphere
+              effect: 0.800000012
+              pow: 50.0
+              pow_mip_max: 2.0
+              enable_mip0: true
+              enable_mip1: false
+            '2': !obj
+              type: !str32 DirectionalLight
+              name: !str32 dir_main
+              calc_type: 0
+              lut_name: !str32 Hemisphere
+              lut_name_mip1: !str32 Effect_flat
+              effect: 0.300000012
+              pow: 50.0
+              pow_mip_max: 2.0
+              enable_mip0: false
+              enable_mip1: true
+            '3': !obj
+              type: !str32 DirectionalLight
+              name: !str32 ''
+              calc_type: 0
+              lut_name: !str32 Lambert
+              lut_name_mip1: !str32 Lambert
+              effect: 1.0
+              pow: 50.0
+              pow_mip_max: 2.0
+              enable_mip0: true
+              enable_mip1: false
+            '4': !obj
+              type: !str32 DirectionalLight
+              name: !str32 ''
+              calc_type: 0
+              lut_name: !str32 Lambert
+              lut_name_mip1: !str32 Lambert
+              effect: 1.0
+              pow: 50.0
+              pow_mip_max: 2.0
+              enable_mip0: true
+              enable_mip1: false
+            '5': !obj
+              type: !str32 HemisphereLight
+              name: !str32 ''
+              calc_type: 0
+              lut_name: !str32 Lambert
+              lut_name_mip1: !str32 Lambert
+              effect: 1.0
+              pow: 1.0
+              pow_mip_max: 1.0
+              enable_mip0: true
+              enable_mip1: true
+          lists: {}
+    '1': !list
+      objects:
+        setting: !obj
+          name: !str32 Effect_Flat
+          lighting_hint: 0
+          hdr_enable: true
+          rim_light_ref: !str32 main_dir
+          rim_enable: true
+          rim_effect: 0.677999973
+          rim_width: 1.34000003
+          rim_angle: 0.600000024
+          rim_pow: 2.00399995
+          parent_map: !str32 ''
+          copy_map: !str32 ''
+          mapping_type: 2
+          priority: 512
+      lists:
+        env_obj_ref_array: !list
+          objects:
+            '0': !obj
+              type: !str32 AmbientLight
+              name: !str32 ''
+              calc_type: 0
+              lut_name: !str32 Lambert
+              lut_name_mip1: !str32 Lambert
+              effect: 1.0
+              pow: 50.0
+              pow_mip_max: 2.0
+              enable_mip0: true
+              enable_mip1: true
+            '1': !obj
+              type: !str32 DirectionalLight
+              name: !str32 dir_main
+              calc_type: 1
+              lut_name: !str32 Effect_flat
+              lut_name_mip1: !str32 Effect_flat
+              effect: 0.800000012
+              pow: 2.0
+              pow_mip_max: 2.0
+              enable_mip0: true
+              enable_mip1: false
+            '2': !obj
+              type: !str32 DirectionalLight
+              name: !str32 dir_main
+              calc_type: 0
+              lut_name: !str32 Effect_flat
+              lut_name_mip1: !str32 Effect_flat
+              effect: 0.800000012
+              pow: 50.0
+              pow_mip_max: 2.0
+              enable_mip0: false
+              enable_mip1: true
+            '3': !obj
+              type: !str32 DirectionalLight
+              name: !str32 ''
+              calc_type: 0
+              lut_name: !str32 Lambert
+              lut_name_mip1: !str32 Lambert
+              effect: 1.0
+              pow: 50.0
+              pow_mip_max: 2.0
+              enable_mip0: true
+              enable_mip1: false
+            '4': !obj
+              type: !str32 DirectionalLight
+              name: !str32 ''
+              calc_type: 0
+              lut_name: !str32 Lambert
+              lut_name_mip1: !str32 Lambert
+              effect: 1.0
+              pow: 50.0
+              pow_mip_max: 2.0
+              enable_mip0: true
+              enable_mip1: false
+            '5': !obj
+              type: !str32 HemisphereLight
+              name: !str32 ''
+              calc_type: 0
+              lut_name: !str32 Lambert
+              lut_name_mip1: !str32 Lambert
+              effect: 1.0
+              pow: 2.0
+              pow_mip_max: 2.0
+              enable_mip0: true
+              enable_mip1: true
+          lists: {}
+    '2': !list
+      objects:
+        setting: !obj
+          name: !str32 Effect_Leaf
+          lighting_hint: 0
+          hdr_enable: true
+          rim_light_ref: !str32 main_dir
+          rim_enable: true
+          rim_effect: 0.5
+          rim_width: 0.5
+          rim_angle: 0.600000024
+          rim_pow: 3.0
+          parent_map: !str32 ''
+          copy_map: !str32 ''
+          mapping_type: 2
+          priority: 1536
+      lists:
+        env_obj_ref_array: !list
+          objects:
+            '0': !obj
+              type: !str32 AmbientLight
+              name: !str32 ''
+              calc_type: 0
+              lut_name: !str32 Lambert
+              lut_name_mip1: !str32 Lambert
+              effect: 1.0
+              pow: 50.0
+              pow_mip_max: 2.0
+              enable_mip0: true
+              enable_mip1: true
+            '1': !obj
+              type: !str32 DirectionalLight
+              name: !str32 dir_main
+              calc_type: 0
+              lut_name: !str32 EffectLeafCurve
+              lut_name_mip1: !str32 Hemisphere
+              effect: 0.850000024
+              pow: 1.0
+              pow_mip_max: 1.0
+              enable_mip0: true
+              enable_mip1: false
+            '2': !obj
+              type: !str32 DirectionalLight
+              name: !str32 dir_main
+              calc_type: 0
+              lut_name: !str32 EffectLeafCurve
+              lut_name_mip1: !str32 Effect_flat
+              effect: 0.400000006
+              pow: 50.0
+              pow_mip_max: 2.0
+              enable_mip0: false
+              enable_mip1: true
+            '3': !obj
+              type: !str32 DirectionalLight
+              name: !str32 ''
+              calc_type: 0
+              lut_name: !str32 Lambert
+              lut_name_mip1: !str32 Lambert
+              effect: 1.0
+              pow: 50.0
+              pow_mip_max: 2.0
+              enable_mip0: true
+              enable_mip1: false
+            '4': !obj
+              type: !str32 DirectionalLight
+              name: !str32 ''
+              calc_type: 0
+              lut_name: !str32 Lambert
+              lut_name_mip1: !str32 Lambert
+              effect: 1.0
+              pow: 50.0
+              pow_mip_max: 2.0
+              enable_mip0: true
+              enable_mip1: false
+            '5': !obj
+              type: !str32 HemisphereLight
+              name: !str32 ''
+              calc_type: 0
+              lut_name: !str32 Lambert
+              lut_name_mip1: !str32 Lambert
+              effect: 1.0
+              pow: 1.0
+              pow_mip_max: 1.0
+              enable_mip0: true
+              enable_mip1: true
+          lists: {}
+    '3': !list
+      objects:
+        setting: !obj
+          name: !str32 Effect_Diffuse
+          lighting_hint: 0
+          hdr_enable: true
+          rim_light_ref: !str32 main_dir
+          rim_enable: true
+          rim_effect: 1.0
+          rim_width: 1.5
+          rim_angle: 0.400000006
+          rim_pow: 3.0
+          parent_map: !str32 ''
+          copy_map: !str32 ''
+          mapping_type: 2
+          priority: 1024
+      lists:
+        env_obj_ref_array: !list
+          objects:
+            '0': !obj
+              type: !str32 AmbientLight
+              name: !str32 ''
+              calc_type: 0
+              lut_name: !str32 Lambert
+              lut_name_mip1: !str32 Lambert
+              effect: 1.0
+              pow: 50.0
+              pow_mip_max: 2.0
+              enable_mip0: true
+              enable_mip1: true
+            '1': !obj
+              type: !str32 DirectionalLight
+              name: !str32 dir_main
+              calc_type: 1
+              lut_name: !str32 Lambert
+              lut_name_mip1: !str32 Lambert
+              effect: 1.0
+              pow: 0.819999993
+              pow_mip_max: 0.819999993
+              enable_mip0: true
+              enable_mip1: false
+            '2': !obj
+              type: !str32 DirectionalLight
+              name: !str32 dir_main
+              calc_type: 0
+              lut_name: !str32 Lambert
+              lut_name_mip1: !str32 Effect_flat
+              effect: 0.200000003
+              pow: 50.0
+              pow_mip_max: 2.0
+              enable_mip0: false
+              enable_mip1: true
+            '3': !obj
+              type: !str32 DirectionalLight
+              name: !str32 ''
+              calc_type: 0
+              lut_name: !str32 Lambert
+              lut_name_mip1: !str32 Lambert
+              effect: 1.0
+              pow: 50.0
+              pow_mip_max: 2.0
+              enable_mip0: true
+              enable_mip1: false
+            '4': !obj
+              type: !str32 DirectionalLight
+              name: !str32 ''
+              calc_type: 0
+              lut_name: !str32 Lambert
+              lut_name_mip1: !str32 Lambert
+              effect: 1.0
+              pow: 50.0
+              pow_mip_max: 2.0
+              enable_mip0: true
+              enable_mip1: false
+            '5': !obj
+              type: !str32 HemisphereLight
+              name: !str32 ''
+              calc_type: 0
+              lut_name: !str32 Lambert
+              lut_name_mip1: !str32 Lambert
+              effect: 1.0
+              pow: 50.0
+              pow_mip_max: 2.0
+              enable_mip0: true
+              enable_mip1: true
+          lists: {}
+    '4': !list
+      objects:
+        setting: !obj
+          name: !str32 Effect_Actor
+          lighting_hint: 0
+          hdr_enable: true
+          rim_light_ref: !str32 ''
+          rim_enable: false
+          rim_effect: 1.0
+          rim_width: 1.0
+          rim_angle: 1.0
+          rim_pow: 2.0
+          parent_map: !str32 ''
+          copy_map: !str32 ''
+          mapping_type: 2
+          priority: 2560
+      lists:
+        env_obj_ref_array: !list
+          objects:
+            '0': !obj
+              type: !str32 AmbientLight
+              name: !str32 ''
+              calc_type: 0
+              lut_name: !str32 Lambert
+              lut_name_mip1: !str32 Lambert
+              effect: 1.0
+              pow: 50.0
+              pow_mip_max: 2.0
+              enable_mip0: true
+              enable_mip1: true
+            '1': !obj
+              type: !str32 DirectionalLight
+              name: !str32 dir_main
+              calc_type: 1
+              lut_name: !str32 toon_1114
+              lut_name_mip1: !str32 toon_1114
+              effect: 1.0
+              pow: 0.819999993
+              pow_mip_max: 0.819999993
+              enable_mip0: true
+              enable_mip1: false
+            '2': !obj
+              type: !str32 DirectionalLight
+              name: !str32 dir_main
+              calc_type: 0
+              lut_name: !str32 toon_1114
+              lut_name_mip1: !str32 Effect_flat
+              effect: 0.200000003
+              pow: 50.0
+              pow_mip_max: 2.0
+              enable_mip0: false
+              enable_mip1: true
+            '3': !obj
+              type: !str32 DirectionalLight
+              name: !str32 ''
+              calc_type: 0
+              lut_name: !str32 Lambert
+              lut_name_mip1: !str32 Lambert
+              effect: 1.0
+              pow: 50.0
+              pow_mip_max: 2.0
+              enable_mip0: true
+              enable_mip1: false
+            '4': !obj
+              type: !str32 DirectionalLight
+              name: !str32 ''
+              calc_type: 0
+              lut_name: !str32 Lambert
+              lut_name_mip1: !str32 Lambert
+              effect: 1.0
+              pow: 50.0
+              pow_mip_max: 2.0
+              enable_mip0: true
+              enable_mip1: false
+            '5': !obj
+              type: !str32 HemisphereLight
+              name: !str32 ''
+              calc_type: 0
+              lut_name: !str32 Lambert
+              lut_name_mip1: !str32 Lambert
+              effect: 1.0
+              pow: 50.0
+              pow_mip_max: 2.0
+              enable_mip0: true
+              enable_mip1: true
+          lists: {}
+    '5': !list
+      objects:
+        setting: !obj
+          name: !str32 Effect_WaterSplash
+          lighting_hint: 0
+          hdr_enable: true
+          rim_light_ref: !str32 ''
+          rim_enable: false
+          rim_effect: 1.0
+          rim_width: 1.0
+          rim_angle: 1.0
+          rim_pow: 2.0
+          parent_map: !str32 ''
+          copy_map: !str32 ''
+          mapping_type: 2
+          priority: 2048
+      lists:
+        env_obj_ref_array: !list
+          objects:
+            '0': !obj
+              type: !str32 AmbientLight
+              name: !str32 ''
+              calc_type: 0
+              lut_name: !str32 Lambert
+              lut_name_mip1: !str32 Lambert
+              effect: 1.0
+              pow: 50.0
+              pow_mip_max: 2.0
+              enable_mip0: true
+              enable_mip1: true
+            '1': !obj
+              type: !str32 DirectionalLight
+              name: !str32 dir_main
+              calc_type: 0
+              lut_name: !str32 WaterSplash
+              lut_name_mip1: !str32 WaterSplash
+              effect: 1.0
+              pow: 50.0
+              pow_mip_max: 2.0
+              enable_mip0: true
+              enable_mip1: false
+            '2': !obj
+              type: !str32 DirectionalLight
+              name: !str32 dir_main
+              calc_type: 0
+              lut_name: !str32 WaterSplash
+              lut_name_mip1: !str32 Effect_flat
+              effect: 0.300000012
+              pow: 50.0
+              pow_mip_max: 2.0
+              enable_mip0: false
+              enable_mip1: true
+            '3': !obj
+              type: !str32 DirectionalLight
+              name: !str32 ''
+              calc_type: 0
+              lut_name: !str32 Lambert
+              lut_name_mip1: !str32 Lambert
+              effect: 1.0
+              pow: 50.0
+              pow_mip_max: 2.0
+              enable_mip0: true
+              enable_mip1: false
+            '4': !obj
+              type: !str32 DirectionalLight
+              name: !str32 ''
+              calc_type: 0
+              lut_name: !str32 Lambert
+              lut_name_mip1: !str32 Lambert
+              effect: 1.0
+              pow: 50.0
+              pow_mip_max: 2.0
+              enable_mip0: true
+              enable_mip1: false
+            '5': !obj
+              type: !str32 HemisphereLight
+              name: !str32 ''
+              calc_type: 0
+              lut_name: !str32 Lambert
+              lut_name_mip1: !str32 Lambert
+              effect: 1.0
+              pow: 50.0
+              pow_mip_max: 2.0
+              enable_mip0: true
+              enable_mip1: true
+          lists: {}
+    '6': !list
+      objects:
+        setting: !obj
+          name: !str32 LightMap6
+          lighting_hint: 0
+          hdr_enable: true
+          rim_light_ref: !str32 ''
+          rim_enable: false
+          rim_effect: 1.0
+          rim_width: 1.0
+          rim_angle: 1.0
+          rim_pow: 2.0
+          parent_map: !str32 ''
+          copy_map: !str32 ''
+          mapping_type: 1
+          priority: 3072
+      lists:
+        env_obj_ref_array: !list
+          objects:
+            '0': !obj
+              type: !str32 AmbientLight
+              name: !str32 ''
+              calc_type: 0
+              lut_name: !str32 Lambert
+              lut_name_mip1: !str32 Lambert
+              effect: 1.0
+              pow: 50.0
+              pow_mip_max: 2.0
+              enable_mip0: true
+              enable_mip1: true
+            '1': !obj
+              type: !str32 DirectionalLight
+              name: !str32 ''
+              calc_type: 0
+              lut_name: !str32 Lambert
+              lut_name_mip1: !str32 Lambert
+              effect: 1.0
+              pow: 50.0
+              pow_mip_max: 2.0
+              enable_mip0: true
+              enable_mip1: false
+            '2': !obj
+              type: !str32 DirectionalLight
+              name: !str32 ''
+              calc_type: 0
+              lut_name: !str32 Lambert
+              lut_name_mip1: !str32 Lambert
+              effect: 1.0
+              pow: 50.0
+              pow_mip_max: 2.0
+              enable_mip0: true
+              enable_mip1: false
+            '3': !obj
+              type: !str32 DirectionalLight
+              name: !str32 ''
+              calc_type: 0
+              lut_name: !str32 Lambert
+              lut_name_mip1: !str32 Lambert
+              effect: 1.0
+              pow: 50.0
+              pow_mip_max: 2.0
+              enable_mip0: true
+              enable_mip1: false
+            '4': !obj
+              type: !str32 DirectionalLight
+              name: !str32 ''
+              calc_type: 0
+              lut_name: !str32 Lambert
+              lut_name_mip1: !str32 Lambert
+              effect: 1.0
+              pow: 50.0
+              pow_mip_max: 2.0
+              enable_mip0: true
+              enable_mip1: false
+            '5': !obj
+              type: !str32 HemisphereLight
+              name: !str32 ''
+              calc_type: 0
+              lut_name: !str32 Lambert
+              lut_name_mip1: !str32 Lambert
+              effect: 1.0
+              pow: 50.0
+              pow_mip_max: 2.0
+              enable_mip0: true
+              enable_mip1: true
+          lists: {}
+    '7': !list
+      objects:
+        setting: !obj
+          name: !str32 LightMap7
+          lighting_hint: 0
+          hdr_enable: true
+          rim_light_ref: !str32 ''
+          rim_enable: false
+          rim_effect: 1.0
+          rim_width: 1.0
+          rim_angle: 1.0
+          rim_pow: 2.0
+          parent_map: !str32 ''
+          copy_map: !str32 ''
+          mapping_type: 1
+          priority: 3584
+      lists:
+        env_obj_ref_array: !list
+          objects:
+            '0': !obj
+              type: !str32 AmbientLight
+              name: !str32 ''
+              calc_type: 0
+              lut_name: !str32 Lambert
+              lut_name_mip1: !str32 Lambert
+              effect: 1.0
+              pow: 50.0
+              pow_mip_max: 2.0
+              enable_mip0: true
+              enable_mip1: true
+            '1': !obj
+              type: !str32 DirectionalLight
+              name: !str32 ''
+              calc_type: 0
+              lut_name: !str32 Lambert
+              lut_name_mip1: !str32 Lambert
+              effect: 1.0
+              pow: 50.0
+              pow_mip_max: 2.0
+              enable_mip0: true
+              enable_mip1: false
+            '2': !obj
+              type: !str32 DirectionalLight
+              name: !str32 ''
+              calc_type: 0
+              lut_name: !str32 Lambert
+              lut_name_mip1: !str32 Lambert
+              effect: 1.0
+              pow: 50.0
+              pow_mip_max: 2.0
+              enable_mip0: true
+              enable_mip1: false
+            '3': !obj
+              type: !str32 DirectionalLight
+              name: !str32 ''
+              calc_type: 0
+              lut_name: !str32 Lambert
+              lut_name_mip1: !str32 Lambert
+              effect: 1.0
+              pow: 50.0
+              pow_mip_max: 2.0
+              enable_mip0: true
+              enable_mip1: false
+            '4': !obj
+              type: !str32 DirectionalLight
+              name: !str32 ''
+              calc_type: 0
+              lut_name: !str32 Lambert
+              lut_name_mip1: !str32 Lambert
+              effect: 1.0
+              pow: 50.0
+              pow_mip_max: 2.0
+              enable_mip0: true
+              enable_mip1: false
+            '5': !obj
+              type: !str32 HemisphereLight
+              name: !str32 ''
+              calc_type: 0
+              lut_name: !str32 Lambert
+              lut_name_mip1: !str32 Lambert
+              effect: 1.0
+              pow: 50.0
+              pow_mip_max: 2.0
+              enable_mip0: true
+              enable_mip1: true
+          lists: {}

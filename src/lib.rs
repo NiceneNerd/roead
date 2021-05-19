@@ -250,6 +250,7 @@ pub(crate) mod ffi {
         fn SetFile(self: Pin<&mut SarcWriter>, name: &str, data: Vec<u8>);
         fn DelFile(self: Pin<&mut SarcWriter>, name: &str) -> bool;
         fn NumFiles(self: &SarcWriter) -> usize;
+        fn FilesEqual(self: &SarcWriter, other: &SarcWriter) -> bool;
         fn Write(self: Pin<&mut SarcWriter>) -> SarcWriteResult;
         fn WriterFromSarc(archive: &Sarc) -> UniquePtr<SarcWriter>;
 

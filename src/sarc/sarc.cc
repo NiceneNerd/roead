@@ -75,6 +75,11 @@ bool SarcWriter::DelFile(rust::Str name) {
   return m_files.erase(std::string(name.data(), name.size())) > 0;
 }
 
+bool SarcWriter::FilesEqual(const SarcWriter &other) const
+{
+  return m_files == other.m_files;
+}
+
 size_t SarcWriter::NumFiles() const {
   return m_files.size();
 }

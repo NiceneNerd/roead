@@ -1,0 +1,48 @@
+!io
+version: 1
+type: aglblm
+param_root: !list
+  objects:
+    bloom: !obj
+      edit_type: 0
+      aspect: 1.0
+      threshhold_balance: !color [1.0, 1.0, 1.0, 1.0]
+      finalblend: 1
+      enable_depth_clamp: false
+      enable_luminance_offset: false
+      enable_clamped_luminance: true
+      luminance_intensity: 1.0
+      clamped_luminance: 64.0
+      ex_type: 0
+      ex_iteration: 2
+      3591506559: 2.0
+      4173597591: 0.100000001
+      intensity: 0.100000001
+      2404998417: !color [0.200000003, 0.677999973, 0.777999997, 1.0]
+      expand: 1.0
+      3522453350: 2.0
+      2345220897: 0.100000001
+      1646508182: 0.100000001
+      3946124164: !color [1.0, 0.935000002, 0.833000004, 1.0]
+      752723014: 1.0
+      color1: !color [1.0, 1.0, 1.0, 1.0]
+      color2: !color [1.0, 1.0, 1.0, 1.0]
+      color3: !color [1.0, 1.0, 1.0, 1.0]
+      color4: !color [1.0, 1.0, 1.0, 1.0]
+      3679819707: false
+      3989174536: 0.0
+      3233412612: 1000.0
+      1875637427: 1.0
+      3597454159: 1.0
+      1972366577: false
+      500462182: 9999.0
+      3647016598: 10000.0
+      2681896925: 0.600000024
+      2143643596: 1.0
+      1619662201: false
+      2441376260: 0.0
+      1987417985: 1000.0
+      327843775: 1.0
+      433792219: 1.0
+      enable: true
+  lists: {}

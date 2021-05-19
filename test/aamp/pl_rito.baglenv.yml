@@ -1,0 +1,214 @@
+!io
+version: 0
+type: aglenv
+param_root: !list
+  objects: {}
+  lists:
+    AmbientLight: !list
+      objects: {}
+      lists: {}
+    DirectionalLight: !list
+      objects: {}
+      lists: {}
+    HemisphereLight: !list
+      objects: {}
+      lists: {}
+    LocationalLightRig: !list
+      objects:
+        671352416: !obj
+          enable: true
+          name: !str32 RI_Po_LightYelloRamp_A
+          group: !str32 リトの村
+          ModelName: !str64 ''
+          BonePrefix: !str64 RI_Po_LightYelloRamp_A
+          MaterialPrefix: !str64 ''
+          LightType: 0
+          Color: !color [1.0, 0.779999971, 0.400000006, 1.0]
+          Intensity: 8.0
+          InnerRadius: 0.0500000007
+          EnableEffectMoth: true
+          FlickeringIntensityRate: 0.0199999996
+          FlickeringSpeed: 0.5
+        3099270129: !obj
+          enable: true
+          name: !str32 RI_Po_LightYelloRamp_C
+          group: !str32 リトの村
+          ModelName: !str64 ''
+          BonePrefix: !str64 RI_Po_LightYelloRamp_C
+          MaterialPrefix: !str64 ''
+          LightType: 0
+          Color: !color [1.0, 0.779999971, 0.400000006, 1.0]
+          Intensity: 23.0
+          InnerRadius: 0.0500000007
+          EnableEffectMoth: true
+          FlickeringIntensityRate: 0.0199999996
+          FlickeringSpeed: 0.5
+        3485215591: !obj
+          enable: true
+          name: !str32 RI_Po_LightYelloRamp_B
+          group: !str32 リトの村
+          ModelName: !str64 ''
+          BonePrefix: !str64 RI_Po_LightYelloRamp_B
+          MaterialPrefix: !str64 ''
+          LightType: 0
+          Color: !color [1.0, 0.779999971, 0.400000006, 1.0]
+          Intensity: 10.0
+          InnerRadius: 0.0500000007
+          EnableEffectMoth: true
+          FlickeringIntensityRate: 0.0199999996
+          FlickeringSpeed: 1.0
+        4011531769: !obj
+          enable: true
+          name: !str32 RI_Po_LightYelloRamp_F
+          group: !str32 リトの村
+          ModelName: !str64 ''
+          BonePrefix: !str64 RI_Po_LightYelloRamp_F
+          MaterialPrefix: !str64 ''
+          LightType: 0
+          Color: !color [1.0, 0.779999971, 0.400000006, 1.0]
+          Intensity: 6.5
+          InnerRadius: 0.0500000007
+          EnableEffectMoth: true
+          FlickeringIntensityRate: 0.0199999996
+          FlickeringSpeed: 0.5
+        2551983471: !obj
+          enable: true
+          name: !str32 RI_Po_LightYelloRamp_E
+          group: !str32 リトの村
+          ModelName: !str64 ''
+          BonePrefix: !str64 RI_Po_LightYelloRamp_E
+          MaterialPrefix: !str64 ''
+          LightType: 0
+          Color: !color [1.0, 0.779999971, 0.400000006, 1.0]
+          Intensity: 18.0
+          InnerRadius: 0.0500000007
+          EnableEffectMoth: true
+          FlickeringIntensityRate: 0.0199999996
+          FlickeringSpeed: 0.5
+        18185429: !obj
+          enable: true
+          name: !str32 RI_Po_LightYelloRamp_D
+          group: !str32 リトの村
+          ModelName: !str64 ''
+          BonePrefix: !str64 RI_Po_LightYelloRamp_D
+          MaterialPrefix: !str64 ''
+          LightType: 0
+          Color: !color [1.0, 0.779999971, 0.400000006, 1.0]
+          Intensity: 20.0
+          InnerRadius: 0.0500000007
+          EnableEffectMoth: true
+          FlickeringIntensityRate: 0.0199999996
+          FlickeringSpeed: 0.5
+        1980910659: !obj
+          enable: true
+          name: !str32 RI_Po_LightYelloRamp_G
+          group: !str32 リトの村
+          ModelName: !str64 ''
+          BonePrefix: !str64 RI_Po_LightYelloRamp_G
+          MaterialPrefix: !str64 ''
+          LightType: 0
+          Color: !color [1.0, 0.779999971, 0.400000006, 1.0]
+          Intensity: 5.0
+          InnerRadius: 0.0500000007
+          EnableEffectMoth: true
+          FlickeringIntensityRate: 0.0199999996
+          FlickeringSpeed: 0.5
+        3900103136: !obj
+          enable: true
+          name: !str32 RI_Po_LightYelloRamp_H
+          group: !str32 リトの村
+          ModelName: !str64 ''
+          BonePrefix: !str64 RI_Po_LightYelloRamp_H
+          MaterialPrefix: !str64 ''
+          LightType: 0
+          Color: !color [1.0, 0.779999971, 0.400000006, 1.0]
+          Intensity: 16.0
+          InnerRadius: 0.0500000007
+          EnableEffectMoth: true
+          FlickeringIntensityRate: 0.0199999996
+          FlickeringSpeed: 0.5
+        2675042678: !obj
+          enable: true
+          name: !str32 RI_Po_LightYelloRamp_I
+          group: !str32 リトの村
+          ModelName: !str64 ''
+          BonePrefix: !str64 RI_Po_LightYelloRamp_I
+          MaterialPrefix: !str64 ''
+          LightType: 0
+          Color: !color [1.0, 0.779999971, 0.400000006, 1.0]
+          Intensity: 6.0
+          InnerRadius: 0.0500000007
+          EnableEffectMoth: true
+          FlickeringIntensityRate: 0.0199999996
+          FlickeringSpeed: 0.5
+        108574924: !obj
+          enable: true
+          name: !str32 RI_Po_LightYelloRamp_J
+          group: !str32 リトの村
+          ModelName: !str64 ''
+          BonePrefix: !str64 RI_Po_LightYelloRamp_J
+          MaterialPrefix: !str64 ''
+          LightType: 0
+          Color: !color [1.0, 0.779999971, 0.400000006, 1.0]
+          Intensity: 8.0
+          InnerRadius: 0.0500000007
+          EnableEffectMoth: true
+          FlickeringIntensityRate: 0.0199999996
+          FlickeringSpeed: 0.5
+        3201025611: !obj
+          enable: true
+          name: !str32 RI_Po_LightYelloRamp_K
+          group: !str32 リトの村
+          ModelName: !str64 ''
+          BonePrefix: !str64 RI_Po_LightYelloRamp_K
+          MaterialPrefix: !str64 ''
+          LightType: 0
+          Color: !color [1.0, 0.779999971, 0.400000006, 1.0]
+          Intensity: 15.0
+          InnerRadius: 0.0500000007
+          EnableEffectMoth: true
+          FlickeringIntensityRate: 0.0199999996
+          FlickeringSpeed: 1.0
+      lists: {}
+    MaskedProjLight: !list
+      objects: {}
+      lists: {}
+    MaskedSpotLight: !list
+      objects: {}
+      lists: {}
+    MaskedSpotLightRig: !list
+      objects: {}
+      lists: {}
+    MaskedSpotLightRig::Obj: !list
+      objects: {}
+      lists: {}
+    PointLightRig: !list
+      objects: {}
+      lists: {}
+    PointLightRig::Obj: !list
+      objects: {}
+      lists: {}
+    SpotLightRig: !list
+      objects: {}
+      lists: {}
+    SpotLightRig::Obj: !list
+      objects: {}
+      lists: {}
+    Fog: !list
+      objects: {}
+      lists: {}
+    Projector: !list
+      objects: {}
+      lists: {}
+    BloomObj: !list
+      objects: {}
+      lists: {}
+    DepthOfFieldObj: !list
+      objects: {}
+      lists: {}
+    OfxLensFlare: !list
+      objects: {}
+      lists: {}
+    OfxLensFlare::Preset: !list
+      objects: {}
+      lists: {}

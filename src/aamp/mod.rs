@@ -1,9 +1,9 @@
-//! Bindings for the `oead::aamp` module. 
-//! 
+//! Bindings for the `oead::aamp` module.
+//!
 //! Only version 2, little endian and UTF-8 binary parameter archives are supported.  
 //! All parameter types including buffers are supported.  
 //! The YAML output is compatible with the pure Python aamp library.
-//! 
+//!
 //! The main type is the `ParameterIO`, which will usually be constructed
 //! from binary data of a YAML document. Some sample usage:
 //! ```
@@ -27,6 +27,7 @@
 use crate::ffi;
 use crate::ffi::{Color, Curve, ParamType, Quat, Vector2f, Vector3f, Vector4f};
 use crc::crc32::checksum_ieee;
+use cxx::UniquePtr;
 use indexmap::IndexMap;
 use thiserror::Error;
 
@@ -68,8 +69,8 @@ pub enum Parameter {
     StringRef(String),
 }
 
-impl From<cxx::UniquePtr<ffi::Parameter>> for Parameter {
-    fn from(fparam: cxx::UniquePtr<ffi::Parameter>) -> Self {
+impl From<UniquePtr<ffi::Parameter>> for Parameter {
+    fn from(fparam: UniquePtr<ffi::Parameter>) -> Self {
         match fparam.GetType() {
             ParamType::Bool => Self::Bool(ffi::GetParamBool(&fparam)),
             ParamType::F32 => Self::F32(ffi::GetParamF32(&fparam)),
@@ -328,8 +329,8 @@ impl PartialEq for ParameterObject {
     }
 }
 
-impl From<cxx::UniquePtr<ffi::ParameterObject>> for ParameterObject {
-    fn from(pobj: cxx::UniquePtr<ffi::ParameterObject>) -> Self {
+impl From<UniquePtr<ffi::ParameterObject>> for ParameterObject {
+    fn from(pobj: UniquePtr<ffi::ParameterObject>) -> Self {
         let map = ffi::GetParams(&pobj);
         Self(
             (0usize..map.size())
@@ -415,8 +416,8 @@ pub struct ParameterList {
     objects: IndexMap<u32, ParameterObject>,
 }
 
-impl From<cxx::UniquePtr<ffi::ParameterList>> for ParameterList {
-    fn from(plist: cxx::UniquePtr<ffi::ParameterList>) -> Self {
+impl From<UniquePtr<ffi::ParameterList>> for ParameterList {
+    fn from(plist: UniquePtr<ffi::ParameterList>) -> Self {
         let list_map = ffi::GetParamLists(&plist);
         let lists = (0usize..list_map.size())
             .map(|i| {
@@ -492,8 +493,8 @@ pub struct ParameterIO {
     objects: IndexMap<u32, ParameterObject>,
 }
 
-impl From<cxx::UniquePtr<ffi::ParameterIO>> for ParameterIO {
-    fn from(pio: cxx::UniquePtr<ffi::ParameterIO>) -> Self {
+impl From<UniquePtr<ffi::ParameterIO>> for ParameterIO {
+    fn from(pio: UniquePtr<ffi::ParameterIO>) -> Self {
         let version = ffi::GetPioVersion(&pio);
         let r#type = ffi::GetPioType(&pio);
         let list_map = ffi::GetParamListsFromPio(&pio);
@@ -599,21 +600,35 @@ impl ParameterIO {
 
 #[cfg(test)]
 mod tests {
-    use crc::crc32::checksum_ieee;
-
-    use crate::aamp::ParamList;
-
     use super::{Parameter, ParameterIO};
+    use crate::aamp::ParamList;
+    use crc::crc32::checksum_ieee;
+    use std::path::PathBuf;
+    use rayon::prelude::*;
 
     #[test]
     fn parse_aamps_binary() {
         for file in glob::glob("include/oead/test/aamp/files/**/*.b*")
             .unwrap()
             .filter_map(|f| f.ok())
+            .take(300)
         {
             let data = std::fs::read(&file).unwrap();
             ParameterIO::from_binary(&data).unwrap();
         }
+    }
+
+    #[test]
+    fn multithread_aamps() {
+        let files: Vec<PathBuf> = glob::glob("include/oead/test/aamp/files/**/*.b*")
+            .unwrap()
+            .filter_map(|f| f.ok())
+            .take(300)
+            .collect();
+        files.into_par_iter().for_each(|file| {
+            let data = std::fs::read(&file).unwrap();
+            ParameterIO::from_binary(&data).unwrap();
+        }) ;
     }
 
     #[test]
@@ -632,23 +647,24 @@ mod tests {
 
     #[test]
     fn aamp_text_roundtrip() {
-        for file in glob::glob("include/oead/test/aamp/files/**/*.b*")
+        let files: Vec<PathBuf> = glob::glob("test/aamp/*.yml")
             .unwrap()
             .filter_map(|f| f.ok())
-            .take(50)
-        {
-            let data = std::fs::read(&file).unwrap();
-            let pio = ParameterIO::from_binary(&data).unwrap();
+            .collect();
+        files.into_par_iter().for_each(|file| {
+            let data = std::fs::read_to_string(&file).unwrap();
+            let pio = ParameterIO::from_text(&data).unwrap();
             let text = pio.to_text();
             let pio2 = ParameterIO::from_text(&text).unwrap();
             assert_eq!(pio, pio2);
-        }
+        });
     }
 
     #[test]
     fn aamp_binary_roundtrip() {
         for file in glob::glob("include/oead/test/aamp/files/**/*.b*")
             .unwrap()
+            .take(300)
             .filter_map(|f| f.ok())
         {
             let data = std::fs::read(&file).unwrap();

@@ -1,0 +1,186 @@
+!io
+version: 0
+type: aglclwd
+param_root: !list
+  objects:
+    Cloud: !obj
+      IsEnable: false
+      mIsDrawReduceBuffer: true
+      mIsDisableFarClip: true
+      mIsDisableDepthTest: false
+      3715420875: true
+      mDrawOrder: 0
+      mCloudColorScale: 2.0
+      mFogColor: !color [0.391436994, 0.489064008, 0.372882009, 0.0]
+      mFogNear: 0.0
+      mFogFar: 150.0
+      mAttenuationForSky: 0.5
+    CloudParam0: !obj
+      mIsEnable: true
+      mBaseTextureNo: 0
+      mNoiseTextureNo: 3
+      mbCloudTexBlend: false
+      mCloudTexBlendRate: 0.0
+      mBaseTextureNo_Blend: 2
+      mNoiseTextureNo_Blend: 3
+      mDistotion: 2.20000005
+      mDensity: 0.200000003
+      mNoiseSpeedMaster: 2.0
+      mNoiseSpeed1X: -0.0611109994
+      mNoiseSpeed1Y: -0.229166999
+      mNoiseSpeed2X: -0.0916669965
+      mNoiseSpeed2Y: -0.152778
+      mNoiseScale1: 2.0
+      mNoiseScale2: 3.0
+      mNoiseDensity1: 1.0
+      mNoiseDensity2: 0.300000012
+      mEmbossWidth: 1.0
+      mEmbossDensity: 1.0
+      mHilightPower: 1.0
+      mShadowPower: 0.248999998
+      mHighlightRange: 0.800000012
+      mHighlightAmbient: 0.100000001
+      mAlphaMul: 0.300000012
+      mAlphaThreshold: 0.300000012
+      mBacklightColor: !color [1.0, 0.949999988, 0.644999981, 1.0]
+      mBacklightPower: 0.0
+      mBacklightRange: 0.474000007
+      mBacklightParam0: 1.89999998
+      mBacklightParam1: 1.0
+      mBaseColor: !color [0.340517014, 0.229078993, 0.0, 0.834999979]
+      mHilightColor: !color [0.800000012, 0.920000017, 0.556999981, 1.0]
+      mShadowColor: !color [0.156722993, 0.205521002, 0.217276007, 1.0]
+      mBaseColorIntensity: 0.133927003
+      mHilightColorIntensity: 4.18878794
+      mShadowColorIntensity: 0.356189013
+      mBaseTexScale: 0.0432780012
+      mBaseTexScrollSpdX: 0.0
+      mBaseTexScrollSpdY: -0.000107
+      mSkyScale: 40000.0
+      mSkyHeight: 12000.0
+      mSunPosX: 0.592599988
+      mSunPosY: 0.502600014
+      mFarUVPow: 0.226592004
+      mFarUVMul: 2.85548401
+      mFarDensityChgStart: 0.479999989
+      mFarDensityChgEnd: 0.474000007
+      mFarDensityChgPower: -0.0900000036
+      mFarAlphaChgStart: 0.984000027
+      mFarAlphaChgEnd: 1.0
+      mFarAlphaChgPower: 1.0
+      mUseProcedualTexture: false
+      1590321994: false
+      mUseDebugDispSun: false
+    CloudParam1: !obj
+      mIsEnable: false
+      mBaseTextureNo: 0
+      mNoiseTextureNo: 3
+      mbCloudTexBlend: false
+      mCloudTexBlendRate: 0.0
+      mBaseTextureNo_Blend: 2
+      mNoiseTextureNo_Blend: 3
+      mDistotion: 1.20000005
+      mDensity: 0.25999999
+      mNoiseSpeedMaster: 4.19999981
+      mNoiseSpeed1X: -0.0611109994
+      mNoiseSpeed1Y: -0.0763889998
+      mNoiseSpeed2X: -0.0916669965
+      mNoiseSpeed2Y: -0.244443998
+      mNoiseScale1: 1.0
+      mNoiseScale2: 3.0
+      mNoiseDensity1: 2.0
+      mNoiseDensity2: 0.300000012
+      mEmbossWidth: 1.0
+      mEmbossDensity: 1.0
+      mHilightPower: 1.0
+      mShadowPower: 0.248999998
+      mHighlightRange: 0.800000012
+      mHighlightAmbient: 0.100000001
+      mAlphaMul: 1.0
+      mAlphaThreshold: 0.600000024
+      mBacklightColor: !color [1.0, 1.0, 1.0, 1.0]
+      mBacklightPower: 0.0
+      mBacklightRange: 0.0
+      mBacklightParam0: 1.88639998
+      mBacklightParam1: 0.5
+      mBaseColor: !color [1.0, 1.0, 1.0, 1.0]
+      mHilightColor: !color [1.0, 1.0, 1.0, 1.0]
+      mShadowColor: !color [1.0, 1.0, 1.0, 1.0]
+      mBaseColorIntensity: 0.0
+      mHilightColorIntensity: 0.0
+      mShadowColorIntensity: 0.0
+      mBaseTexScale: 1.30999994
+      mBaseTexScrollSpdX: 0.0
+      mBaseTexScrollSpdY: -0.000153000001
+      mSkyScale: 16000.0
+      mSkyHeight: 7000.0
+      mSunPosX: -2.0
+      mSunPosY: 0.180319995
+      mFarUVPow: 1.0
+      mFarUVMul: 3.0
+      mFarDensityChgStart: 0.0
+      mFarDensityChgEnd: 0.5
+      mFarDensityChgPower: 0.0
+      mFarAlphaChgStart: 0.665000021
+      mFarAlphaChgEnd: 0.541000009
+      mFarAlphaChgPower: -0.228
+      mUseProcedualTexture: false
+      1590321994: false
+      mUseDebugDispSun: true
+    CloudParam2: !obj
+      mIsEnable: true
+      mBaseTextureNo: 2
+      mNoiseTextureNo: 3
+      mbCloudTexBlend: false
+      mCloudTexBlendRate: 0.0
+      mBaseTextureNo_Blend: 2
+      mNoiseTextureNo_Blend: 3
+      mDistotion: 1.0
+      mDensity: 0.200000003
+      mNoiseSpeedMaster: 10.0
+      mNoiseSpeed1X: -0.0611109994
+      mNoiseSpeed1Y: -0.0763889998
+      mNoiseSpeed2X: -0.0916669965
+      mNoiseSpeed2Y: -0.244443998
+      mNoiseScale1: 4.0
+      mNoiseScale2: 6.0
+      mNoiseDensity1: 1.33200002
+      mNoiseDensity2: 1.33200002
+      mEmbossWidth: 0.00100000005
+      mEmbossDensity: 0.0
+      mHilightPower: 20.0
+      mShadowPower: 0.75
+      mHighlightRange: 1.70000005
+      mHighlightAmbient: 0.5
+      mAlphaMul: 1.0
+      mAlphaThreshold: 0.600000024
+      mBacklightColor: !color [1.0, 0.855794013, 0.462231994, 1.0]
+      mBacklightPower: 16.0
+      mBacklightRange: 0.600000024
+      mBacklightParam0: 0.453999996
+      mBacklightParam1: 0.126000002
+      mBaseColor: !color [0.693545997, 0.620202005, 0.400348008, 1.0]
+      mHilightColor: !color [1.0, 0.78561902, 0.54657203, 1.0]
+      mShadowColor: !color [0.363258988, 0.323722988, 0.246759996, 0.997862995]
+      mBaseColorIntensity: 1.0
+      mHilightColorIntensity: 1.413715
+      mShadowColorIntensity: 1.0
+      mBaseTexScale: 2.0
+      mBaseTexScrollSpdX: 0.0
+      mBaseTexScrollSpdY: -0.000153000001
+      mSkyScale: 50000.0
+      mSkyHeight: 12000.0
+      mSunPosX: 0.592691004
+      mSunPosY: 0.502011001
+      mFarUVPow: 7.22399998
+      mFarUVMul: 2.0
+      mFarDensityChgStart: 0.584999979
+      mFarDensityChgEnd: 0.456
+      mFarDensityChgPower: 0.156000003
+      mFarAlphaChgStart: 0.699999988
+      mFarAlphaChgEnd: 1.46000004
+      mFarAlphaChgPower: -1.43840003
+      mUseProcedualTexture: false
+      1590321994: false
+      mUseDebugDispSun: false
+  lists: {}

@@ -1,5 +1,5 @@
 //! Bindings for the oead SARC types.
-//! 
+//!
 //! Sample usage, just reading a SARC:
 //! ```
 //! # use roead::sarc::*;
@@ -55,7 +55,7 @@ type Result<T> = std::result::Result<T, SarcError>;
 /// A simple SARC archive reader.
 pub struct Sarc<'a> {
     inner: cxx::UniquePtr<ffi::Sarc>,
-    _data: Cow<'a, [u8]>
+    _data: Cow<'a, [u8]>,
 }
 
 impl std::fmt::Debug for Sarc<'_> {
@@ -69,17 +69,22 @@ impl std::fmt::Debug for Sarc<'_> {
     }
 }
 
+unsafe impl Send for Sarc<'_> {}
+unsafe impl Sync for Sarc<'_> {}
+
 impl Hash for Sarc<'_> {
     fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
         self._data.hash(state)
     }
 }
 
+impl Eq for Sarc<'_> {}
+
 impl Clone for Sarc<'_> {
     fn clone(&self) -> Self {
         match &self._data {
             Cow::Borrowed(data) => Self::read(*data).unwrap(),
-            Cow::Owned(data) => Self::read(data.clone()).unwrap()
+            Cow::Owned(data) => Self::read(data.clone()).unwrap(),
         }
     }
 }
@@ -116,7 +121,7 @@ impl Sarc<'_> {
             .collect()
     }
 
-    /// Get an option containing the data belonging to a file 
+    /// Get an option containing the data belonging to a file
     /// if it exists in the SARC, otherwise None.
     pub fn get_file_data(&self, name: &str) -> Option<&[u8]> {
         self.inner.get_file_data(name).ok()
@@ -168,7 +173,7 @@ impl Sarc<'_> {
             let data = crate::yaz0::decompress(data)?;
             Ok(Sarc {
                 inner: ffi::sarc_from_binary(&data)?,
-                _data: Cow::Owned(data)
+                _data: Cow::Owned(data),
             })
         } else if data.len() < 40 {
             Err(SarcError::InsufficientDataError(data.len()))
@@ -177,13 +182,13 @@ impl Sarc<'_> {
         } else {
             Ok(Sarc {
                 inner: ffi::sarc_from_binary(data.as_ref())?,
-                _data: data
+                _data: data,
             })
         }
     }
 }
 
-/// A simple SARC archive reader.
+/// A simple SARC archive writer.
 ///
 /// *Note about the two modes:*
 /// Legacy mode is used for games with an old-style resource system that requires
@@ -192,6 +197,24 @@ impl Sarc<'_> {
 /// automatically takes care of data alignment and does not require manual
 /// alignment nor nested SARC alignment.
 pub struct SarcWriter(cxx::UniquePtr<ffi::SarcWriter>);
+
+impl std::fmt::Debug for SarcWriter {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("SarcWriter")
+            .field("len", &self.len())
+            .finish()
+    }
+}
+
+impl PartialEq for SarcWriter {
+    fn eq(&self, other: &Self) -> bool {
+        self.0.FilesEqual(&other.0)
+    }
+}
+
+impl Eq for SarcWriter {}
+unsafe impl Send for SarcWriter {}
+unsafe impl Sync for SarcWriter {}
 
 impl From<&Sarc<'_>> for SarcWriter {
     fn from(sarc: &Sarc) -> Self {
@@ -280,7 +303,10 @@ impl SarcWriter {
 
 #[cfg(test)]
 mod tests {
-    use crate::{sarc, Endian};
+    use crate::{
+        sarc::{self, SarcWriter},
+        Endian,
+    };
 
     #[test]
     fn read_sarc() {
@@ -353,5 +379,32 @@ mod tests {
         let mut writer = sarc::SarcWriter::from(&sarc);
         assert_eq!(writer.len(), sarc.len());
         assert_eq!(writer.to_binary(), sarc._data.as_ref());
+    }
+
+    #[test]
+    fn multithread_sarcs() {
+        use rayon::prelude::*;
+        use std::sync::{Arc, Mutex};
+        let bytes = std::fs::read("test/Enemy_Lynel_Dark.sbactorpack").unwrap();
+        let sarc = Arc::new(sarc::Sarc::read(&bytes).unwrap());
+        (0..sarc.len()).into_par_iter().for_each(|i| {
+            let (name, data) = sarc.get_file_by_index(i).unwrap();
+            println!("{} is {} bytes long", name, data.len());
+        });
+        let sarc_writer = Arc::new(Mutex::new(SarcWriter::from(sarc.as_ref())));
+        (0..100).into_par_iter().for_each(|i| {
+            sarc_writer.lock().unwrap().add_file(
+                &format!("File/{}.txt", i),
+                format!("Contents for file # {}", i).as_bytes(),
+            );
+        });
+        assert_eq!(
+            Arc::try_unwrap(sarc_writer)
+                .unwrap()
+                .into_inner()
+                .unwrap()
+                .len(),
+            225
+        );
     }
 }

@@ -20,6 +20,7 @@ thiserror = "1.0.22"
 
 [dev-dependencies]
 glob = "*"
+rayon = "1.5.0"
 
 [build-dependencies]
 cxx-build = "1.0.49"
