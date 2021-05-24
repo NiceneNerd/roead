@@ -413,7 +413,6 @@ pub trait ParamList {
             .insert(checksum_ieee(name.as_bytes()), pobj);
     }
 }
-}
 
 /// Represents a parameter list consisting of child parameter lists
 /// and parameter objects
