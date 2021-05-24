@@ -15,7 +15,6 @@
 //! For more info on oead itself, visit [its GitHub repo](https://github.com/zeldamods/oead/).
 //! 
 //! For API documentation, see the docs for each module.
-
 pub mod aamp;
 pub mod byml;
 pub mod sarc;

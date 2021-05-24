@@ -344,6 +344,11 @@ impl From<UniquePtr<ffi::ParameterObject>> for ParameterObject {
 }
 
 impl ParameterObject {
+    /// Create an empty ParameterObject
+    pub fn new() -> Self {
+        Self(IndexMap::new())
+    }
+
     /// Attempt to get a `Parameter` by name, returns None if not found
     pub fn param(&self, name: &str) -> Option<&Parameter> {
         self.0.get(&checksum_ieee(name.as_bytes()))
@@ -380,6 +385,7 @@ impl ParameterObject {
 /// A trait representing any kind of parameter list, which can be used
 /// for both a proper ParameterList and a ParameterIO
 pub trait ParamList {
+    fn new() -> Self;
     /// Get a map of child parameter lists and their name hashes
     fn lists(&self) -> &IndexMap<u32, ParameterList>;
     /// Get a map of child parameter objects and their name hashes
@@ -406,6 +412,7 @@ pub trait ParamList {
         self.objects_mut()
             .insert(checksum_ieee(name.as_bytes()), pobj);
     }
+}
 }
 
 /// Represents a parameter list consisting of child parameter lists
@@ -436,6 +443,15 @@ impl From<UniquePtr<ffi::ParameterList>> for ParameterList {
     }
 }
 
+impl From<ParameterIO> for ParameterList {
+    fn from(pio: ParameterIO) -> Self {
+        Self {
+            lists: pio.lists,
+            objects: pio.objects
+        }
+    }
+}
+
 impl ParamList for ParameterList {
     fn lists(&self) -> &IndexMap<u32, ParameterList> {
         &self.lists
@@ -455,6 +471,14 @@ impl ParamList for ParameterList {
 }
 
 impl ParameterList {
+    /// Create an empty ParameterIO
+    pub fn new() -> Self {
+        ParameterList {
+            lists: IndexMap::new(),
+            objects: IndexMap::new()
+        }
+    }
+    
     pub(crate) fn list_count(&self) -> usize {
         self.lists.len()
     }
@@ -520,6 +544,17 @@ impl From<UniquePtr<ffi::ParameterIO>> for ParameterIO {
     }
 }
 
+impl From<ParameterList> for ParameterIO {
+    fn from(plist: ParameterList) -> Self {
+        Self {
+            doc_type: "xml".to_owned(),
+            version: 0,
+            lists: pio.lists,
+            objects: pio.objects
+        }
+    }
+}
+
 impl ParamList for ParameterIO {
     fn lists(&self) -> &IndexMap<u32, ParameterList> {
         &self.lists
@@ -539,6 +574,16 @@ impl ParamList for ParameterIO {
 }
 
 impl ParameterIO {
+    /// Create an empty ParameterIO
+    pub fn new() -> Self {
+        ParameterIO {
+            doc_type: "xml".to_owned(),
+            version: 0,
+            lists: IndexMap::new(),
+            objects: IndexMap::new()
+        }
+    }
+
     /// Load a ParameterIO from a binary parameter archive.
     pub fn from_binary<B: AsRef<[u8]>>(data: B) -> Result<ParameterIO> {
         let data = data.as_ref();
