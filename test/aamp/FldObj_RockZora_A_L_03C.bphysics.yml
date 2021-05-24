@@ -44,7 +44,7 @@ param_root: !list
                       bounding_center: !vec3 [0.0, 0.319700986, -0.0109369997]
                       bounding_extents: !vec3 [2.93658996, 1.15978003, 2.91385007]
                       max_linear_velocity: 200.0
-                      bone: !str64 ''
+                      bone: !str64 
                       water_buoyancy_scale: 1.0
                       water_flow_effective_rate: 1.0
                       link_matrix: ''
