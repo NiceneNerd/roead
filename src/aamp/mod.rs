@@ -31,7 +31,7 @@ use cxx::UniquePtr;
 use indexmap::IndexMap;
 use thiserror::Error;
 
-type Result<T> = std::result::Result<T, AampError>;
+pub type Result<T> = std::result::Result<T, AampError>;
 
 /// An error when serializing/deserializing AAMP documents
 #[derive(Error, Debug)]
@@ -385,7 +385,6 @@ impl ParameterObject {
 /// A trait representing any kind of parameter list, which can be used
 /// for both a proper ParameterList and a ParameterIO
 pub trait ParamList {
-    fn new() -> Self;
     /// Get a map of child parameter lists and their name hashes
     fn lists(&self) -> &IndexMap<u32, ParameterList>;
     /// Get a map of child parameter objects and their name hashes
@@ -446,7 +445,7 @@ impl From<ParameterIO> for ParameterList {
     fn from(pio: ParameterIO) -> Self {
         Self {
             lists: pio.lists,
-            objects: pio.objects
+            objects: pio.objects,
         }
     }
 }
@@ -474,10 +473,10 @@ impl ParameterList {
     pub fn new() -> Self {
         ParameterList {
             lists: IndexMap::new(),
-            objects: IndexMap::new()
+            objects: IndexMap::new(),
         }
     }
-    
+
     pub(crate) fn list_count(&self) -> usize {
         self.lists.len()
     }
@@ -548,8 +547,8 @@ impl From<ParameterList> for ParameterIO {
         Self {
             doc_type: "xml".to_owned(),
             version: 0,
-            lists: pio.lists,
-            objects: pio.objects
+            lists: plist.lists,
+            objects: plist.objects,
         }
     }
 }
@@ -579,7 +578,7 @@ impl ParameterIO {
             doc_type: "xml".to_owned(),
             version: 0,
             lists: IndexMap::new(),
-            objects: IndexMap::new()
+            objects: IndexMap::new(),
         }
     }
 
@@ -647,8 +646,8 @@ mod tests {
     use super::{Parameter, ParameterIO};
     use crate::aamp::ParamList;
     use crc::crc32::checksum_ieee;
-    use std::path::PathBuf;
     use rayon::prelude::*;
+    use std::path::PathBuf;
 
     #[test]
     fn parse_aamps_binary() {
@@ -672,7 +671,7 @@ mod tests {
         files.into_par_iter().for_each(|file| {
             let data = std::fs::read(&file).unwrap();
             ParameterIO::from_binary(&data).unwrap();
-        }) ;
+        });
     }
 
     #[test]

@@ -74,7 +74,7 @@ pub enum BymlError {
     OeadError(#[from] cxx::Exception),
 }
 
-type Result<T> = std::result::Result<T, BymlError>;
+pub type Result<T> = std::result::Result<T, BymlError>;
 pub type Hash = BTreeMap<String, Byml>;
 
 /// Convenience type used for indexing into `Byml`s

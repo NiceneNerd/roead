@@ -9,9 +9,9 @@
 //! let sarc: Sarc = Sarc::read(&data)?; // In this case we borrow data, but we can also own
 //! assert_eq!(sarc.len(), 125); // Get the number of files
 //! assert_eq!(sarc.guess_min_alignment(), 4);
-//! for (name, data) in sarc.files() {
-//!     println!("File name: {}", name);
-//!     do_stuff_with_data(data);
+//! for file in sarc.files() {
+//!     println!("File name: {}", file.name().unwrap());
+//!     do_stuff_with_data(file.data());
 //! }
 //! # Ok(())
 //! # }
@@ -33,8 +33,8 @@
 //! # Ok(())
 //! # }
 //! ```
-use crate::{ffi, Endian};
-use std::{borrow::Cow, hash::Hash, io};
+use crate::{aamp, byml, ffi, yaz0, Endian};
+use std::{borrow::Cow, collections::HashMap, hash::Hash, io};
 use thiserror::Error;
 
 /// Error type for SARC parsing and writing.
@@ -51,6 +51,77 @@ pub enum SarcError {
 }
 
 type Result<T> = std::result::Result<T, SarcError>;
+
+/// Provides readonly access to a file in a SARC
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct File<'a> {
+    name: Option<&'a str>,
+    data: &'a [u8],
+}
+
+impl File<'_> {
+    /// The path of the file in the SARC, if present.
+    pub fn name(&self) -> Option<&str> {
+        self.name
+    }
+
+    /// The path of the file in the SARC. Panics if the file has no path.
+    pub fn name_or_panic(&self) -> &str {
+        self.name.unwrap()
+    }
+
+    /// Reference to the file data.
+    pub fn data(&self) -> &[u8] {
+        self.data
+    }
+
+    /// Decompress the file data.
+    pub fn decompress_data(&self) -> yaz0::Result<Vec<u8>> {
+        yaz0::decompress(self.data)
+    }
+
+    /// Check if the file is a SARC.
+    #[inline]
+    pub fn is_sarc(&self) -> bool {
+        &self.data[0..4] == b"SARC" || &self.data[0x11..0x15] == b"SARC"
+    }
+
+    /// Attempt to parse file as SARC.
+    pub fn parse_as_sarc(&self) -> Result<Sarc> {
+        Sarc::read(self.data)
+    }
+
+    /// Check if the file is yaz0 compressed.
+    #[inline]
+    pub fn is_compressed(&self) -> bool {
+        &self.data[0..4] == b"Yaz0"
+    }
+
+    /// Check if the file is an AAMP.
+    #[inline]
+    pub fn is_aamp(&self) -> bool {
+        &self.data[0..4] == b"AAMP"
+    }
+
+    /// Attempt to parse file as AAMP.
+    pub fn parse_as_aamp(&self) -> aamp::Result<aamp::ParameterIO> {
+        aamp::ParameterIO::from_binary(self.data)
+    }
+
+    /// Check if the file is BYML.
+    #[inline]
+    pub fn is_byml(&self) -> bool {
+        &self.data[0..2] == b"BY"
+            || &self.data[0..2] == b"YB"
+            || &self.data[0x11..0x13] == b"BY"
+            || &self.data[0x11..0x13] == b"YB"
+    }
+
+    /// Attempt to parse file as BYML.
+    pub fn parse_as_byml(&self) -> byml::Result<byml::Byml> {
+        byml::Byml::from_binary(self.data)
+    }
+}
 
 /// A simple SARC archive reader.
 pub struct Sarc<'a> {
@@ -107,10 +178,26 @@ impl Sarc<'_> {
     }
 
     /// Get an iterator over the contained files.
-    pub fn files(&self) -> impl Iterator<Item = (&str, &[u8])> {
+    pub fn files(&self) -> impl Iterator<Item = File> {
         (0..self.len())
             .into_iter()
             .filter_map(move |i| self.get_file_by_index(i))
+    }
+
+    /// Extracts owned filenames and data from the SARC.
+    pub fn into_files(self) -> Vec<(Option<String>, Vec<u8>)> {
+        self.files().map(|f| (
+            f.name.map(|n| n.to_owned()),
+            f.data.to_vec()
+        ))
+        .collect()
+    }
+
+    /// Create a hash map of files and their data.
+    pub fn to_file_map(&self) -> HashMap<Option<String>, Vec<u8>> {
+        self.files()
+            .map(|f| (f.name.map(|n| n.to_owned()), f.data.to_vec()))
+            .collect()
     }
 
     /// Get a vector of file names.
@@ -128,14 +215,17 @@ impl Sarc<'_> {
     }
 
     /// Get a file name and data by its index.
-    pub fn get_file_by_index(&self, idx: usize) -> Option<(&str, &[u8])> {
+    pub fn get_file_by_index(&self, idx: usize) -> Option<File> {
         if idx >= self.len() {
             return None;
         }
         let name = self.inner.idx_file_name(idx as u16);
         let data = self.inner.idx_file_data(idx as u16);
-        if let Ok(name) = name {
-            Some((name, data.unwrap()))
+        if let Ok(data) = data {
+            Some(File {
+                name: name.ok(),
+                data,
+            })
         } else {
             None
         }
@@ -161,20 +251,19 @@ impl Sarc<'_> {
     }
 
     /// Compare the contents of two SARCs.
-    pub fn files_are_equal(&self, other: &Sarc) -> bool {
+    pub fn has_equal_files(&self, other: &Sarc) -> bool {
         self.inner.files_eq(&other.inner)
     }
 
     /// Read a SARC from binary data. The data can be owned (so the SARC
-    /// can be freely moved) or passed as a reference.
+    /// can be freely moved) or passed as a reference. Note that if the data
+    /// is compressed it will be decompressed first and the resulting Sarc
+    /// will own the decompressed data.
     pub fn read<'a, D: Into<Cow<'a, [u8]>>>(data: D) -> Result<Sarc<'a>> {
         let data = data.into();
         if &data[0..4] == b"Yaz0" {
             let data = crate::yaz0::decompress(data)?;
-            Ok(Sarc {
-                inner: ffi::sarc_from_binary(&data)?,
-                _data: Cow::Owned(data),
-            })
+            Self::read(data)
         } else if data.len() < 40 {
             Err(SarcError::InsufficientDataError(data.len()))
         } else if &data[0..4] != b"SARC" {
@@ -238,6 +327,11 @@ impl SarcWriter {
     /// (for manual alignment).
     pub fn new_legacy_mode(endian: Endian) -> SarcWriter {
         SarcWriter(ffi::NewSarcWriter(endian == Endian::Big, true))
+    }
+
+    /// Shortcut to construct a new SARC from existing data.
+    pub fn from_binary<B: AsRef<[u8]>>(data: B) -> Result<Self> {
+        Sarc::read(data.as_ref()).map(Self::from)
     }
 
     /// Get the number of files that are stored in the archive.
@@ -382,14 +476,24 @@ mod tests {
     }
 
     #[test]
+    fn destructure() {
+        let bytes = std::fs::read("test/Enemy_Lynel_Dark.sbactorpack").unwrap();
+        let sarc = sarc::Sarc::read(&bytes).unwrap();
+        let files = sarc.into_files();
+        for (name, data) in files {
+            println!("{:?} is {} bytes long", name, data.len())
+        }
+    }
+
+    #[test]
     fn multithread_sarcs() {
         use rayon::prelude::*;
         use std::sync::{Arc, Mutex};
         let bytes = std::fs::read("test/Enemy_Lynel_Dark.sbactorpack").unwrap();
         let sarc = Arc::new(sarc::Sarc::read(&bytes).unwrap());
         (0..sarc.len()).into_par_iter().for_each(|i| {
-            let (name, data) = sarc.get_file_by_index(i).unwrap();
-            println!("{} is {} bytes long", name, data.len());
+            let file = sarc.get_file_by_index(i).unwrap();
+            println!("{} is {} bytes long", file.name_or_panic(), file.data.len());
         });
         let sarc_writer = Arc::new(Mutex::new(SarcWriter::from(sarc.as_ref())));
         (0..100).into_par_iter().for_each(|i| {
