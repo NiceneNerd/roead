@@ -8,7 +8,7 @@
 //! from binary data of a YAML document. Some sample usage:
 //! ```
 //! # use roead::aamp::*;
-//! # fn doctest() -> Result<(), Box<dyn std::error::Error>> {
+//! # fn doctest() -> std::result::Result<(), Box<dyn std::error::Error>> {
 //! let data = std::fs::read("test/Chuchu_Middle.baiprog")?;
 //! let pio = ParameterIO::from_binary(&data)?; // Parse AAMP from binary data
 //! for (hash, list) in pio.lists().iter() {
@@ -31,6 +31,7 @@ use cxx::UniquePtr;
 use indexmap::IndexMap;
 use thiserror::Error;
 
+pub mod names;
 pub type Result<T> = std::result::Result<T, AampError>;
 
 /// An error when serializing/deserializing AAMP documents
