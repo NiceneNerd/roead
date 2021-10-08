@@ -39,6 +39,8 @@ pub type Result<T> = std::result::Result<T, AampError>;
 pub enum AampError {
     #[error("Invalid AAMP magic, expected \"AAMP\", found {0}")]
     MagicError(String),
+    #[error("Parameter value is not of expected type")]
+    TypeError,
     /// Wraps any other error returned by `oead` in C++
     #[error("Failed to parse AAMP: {0}")]
     OeadError(#[from] cxx::Exception),
@@ -150,7 +152,7 @@ impl Parameter {
         }
     }
 
-    pub(crate) fn as_bool(&self) -> bool {
+    pub(crate) fn get_bool(&self) -> bool {
         if let Self::Bool(v) = self {
             *v
         } else {
@@ -158,7 +160,7 @@ impl Parameter {
         }
     }
 
-    pub(crate) fn as_f32(&self) -> f32 {
+    pub(crate) fn get_f32(&self) -> f32 {
         if let Self::F32(v) = self {
             *v
         } else {
@@ -166,7 +168,7 @@ impl Parameter {
         }
     }
 
-    pub(crate) fn as_int(&self) -> i32 {
+    pub(crate) fn get_int(&self) -> i32 {
         if let Self::Int(v) = self {
             *v
         } else {
@@ -174,7 +176,7 @@ impl Parameter {
         }
     }
 
-    pub(crate) fn as_vec2(&self) -> &Vector2f {
+    pub(crate) fn get_vec2(&self) -> &Vector2f {
         if let Self::Vec2(v) = self {
             v
         } else {
@@ -182,7 +184,7 @@ impl Parameter {
         }
     }
 
-    pub(crate) fn as_vec3(&self) -> &Vector3f {
+    pub(crate) fn get_vec3(&self) -> &Vector3f {
         if let Self::Vec3(v) = self {
             v
         } else {
@@ -190,7 +192,7 @@ impl Parameter {
         }
     }
 
-    pub(crate) fn as_vec4(&self) -> &Vector4f {
+    pub(crate) fn get_vec4(&self) -> &Vector4f {
         if let Self::Vec4(v) = self {
             v
         } else {
@@ -198,7 +200,7 @@ impl Parameter {
         }
     }
 
-    pub(crate) fn as_color(&self) -> &Color {
+    pub(crate) fn get_color(&self) -> &Color {
         if let Self::Color(v) = self {
             v
         } else {
@@ -206,7 +208,7 @@ impl Parameter {
         }
     }
 
-    pub(crate) fn as_string32(&self) -> &str {
+    pub(crate) fn get_string32(&self) -> &str {
         if let Self::String32(v) = self {
             v.as_str()
         } else {
@@ -214,7 +216,7 @@ impl Parameter {
         }
     }
 
-    pub(crate) fn as_string64(&self) -> &str {
+    pub(crate) fn get_string64(&self) -> &str {
         if let Self::String64(v) = self {
             v.as_str()
         } else {
@@ -222,7 +224,7 @@ impl Parameter {
         }
     }
 
-    pub(crate) fn as_curve1(&self) -> &[Curve; 1] {
+    pub(crate) fn get_curve1(&self) -> &[Curve; 1] {
         if let Self::Curve1(v) = self {
             v
         } else {
@@ -230,7 +232,7 @@ impl Parameter {
         }
     }
 
-    pub(crate) fn as_curve2(&self) -> &[Curve; 2] {
+    pub(crate) fn get_curve2(&self) -> &[Curve; 2] {
         if let Self::Curve2(v) = self {
             v
         } else {
@@ -238,7 +240,7 @@ impl Parameter {
         }
     }
 
-    pub(crate) fn as_curve3(&self) -> &[Curve; 3] {
+    pub(crate) fn get_curve3(&self) -> &[Curve; 3] {
         if let Self::Curve3(v) = self {
             v
         } else {
@@ -246,7 +248,7 @@ impl Parameter {
         }
     }
 
-    pub(crate) fn as_curve4(&self) -> &[Curve; 4] {
+    pub(crate) fn get_curve4(&self) -> &[Curve; 4] {
         if let Self::Curve4(v) = self {
             v
         } else {
@@ -254,7 +256,7 @@ impl Parameter {
         }
     }
 
-    pub(crate) fn as_buf_int(&self) -> &[i32] {
+    pub(crate) fn get_buf_int(&self) -> &[i32] {
         if let Self::BufferInt(v) = self {
             v.as_slice()
         } else {
@@ -262,7 +264,7 @@ impl Parameter {
         }
     }
 
-    pub(crate) fn as_buf_f32(&self) -> &[f32] {
+    pub(crate) fn get_buf_f32(&self) -> &[f32] {
         if let Self::BufferF32(v) = self {
             v
         } else {
@@ -270,7 +272,7 @@ impl Parameter {
         }
     }
 
-    pub(crate) fn as_string_256(&self) -> &str {
+    pub(crate) fn get_string_256(&self) -> &str {
         if let Self::String256(v) = self {
             v.as_str()
         } else {
@@ -278,7 +280,7 @@ impl Parameter {
         }
     }
 
-    pub(crate) fn as_quat(&self) -> &Quat {
+    pub(crate) fn get_quat(&self) -> &Quat {
         if let Self::Quat(v) = self {
             v
         } else {
@@ -286,7 +288,7 @@ impl Parameter {
         }
     }
 
-    pub(crate) fn as_u32(&self) -> u32 {
+    pub(crate) fn get_u32(&self) -> u32 {
         if let Self::U32(v) = self {
             *v
         } else {
@@ -294,7 +296,7 @@ impl Parameter {
         }
     }
 
-    pub(crate) fn as_buf_u32(&self) -> &[u32] {
+    pub(crate) fn get_buf_u32(&self) -> &[u32] {
         if let Self::BufferU32(v) = self {
             v
         } else {
@@ -302,7 +304,7 @@ impl Parameter {
         }
     }
 
-    pub(crate) fn as_buf_bin(&self) -> &[u8] {
+    pub(crate) fn get_buf_bin(&self) -> &[u8] {
         if let Self::BufferBinary(v) = self {
             v
         } else {
@@ -310,11 +312,179 @@ impl Parameter {
         }
     }
 
-    pub(crate) fn as_str_ref(&self) -> &str {
+    pub(crate) fn get_str_ref(&self) -> &str {
         if let Self::StringRef(v) = self {
             v.as_str()
         } else {
             unreachable!()
+        }
+    }
+
+    pub fn as_bool(&self) -> Result<bool> {
+        if let Self::Bool(v) = self {
+            Ok(*v)
+        } else {
+            Err(AampError::TypeError)
+        }
+    }
+
+    pub fn as_f32(&self) -> Result<f32> {
+        if let Self::F32(v) = self {
+            Ok(*v)
+        } else {
+            Err(AampError::TypeError)
+        }
+    }
+
+    pub fn as_int(&self) -> Result<i32> {
+        if let Self::Int(v) = self {
+            Ok(*v)
+        } else {
+            Err(AampError::TypeError)
+        }
+    }
+
+    pub fn as_vec2(&self) -> Result<&Vector2f> {
+        if let Self::Vec2(v) = self {
+            Ok(v)
+        } else {
+            Err(AampError::TypeError)
+        }
+    }
+
+    pub fn as_vec3(&self) -> Result<&Vector3f> {
+        if let Self::Vec3(v) = self {
+            Ok(v)
+        } else {
+            Err(AampError::TypeError)
+        }
+    }
+
+    pub fn as_vec4(&self) -> Result<&Vector4f> {
+        if let Self::Vec4(v) = self {
+            Ok(v)
+        } else {
+            Err(AampError::TypeError)
+        }
+    }
+
+    pub fn as_color(&self) -> Result<&Color> {
+        if let Self::Color(v) = self {
+            Ok(v)
+        } else {
+            Err(AampError::TypeError)
+        }
+    }
+
+    pub fn as_string32(&self) -> Result<&str> {
+        if let Self::String32(v) = self {
+            Ok(v.as_str())
+        } else {
+            Err(AampError::TypeError)
+        }
+    }
+
+    pub fn as_string64(&self) -> Result<&str> {
+        if let Self::String64(v) = self {
+            Ok(v.as_str())
+        } else {
+            Err(AampError::TypeError)
+        }
+    }
+
+    pub fn as_curve1(&self) -> Result<&[Curve; 1]> {
+        if let Self::Curve1(v) = self {
+            Ok(v)
+        } else {
+            Err(AampError::TypeError)
+        }
+    }
+
+    pub fn as_curve2(&self) -> Result<&[Curve; 2]> {
+        if let Self::Curve2(v) = self {
+            Ok(v)
+        } else {
+            Err(AampError::TypeError)
+        }
+    }
+
+    pub fn as_curve3(&self) -> Result<&[Curve; 3]> {
+        if let Self::Curve3(v) = self {
+            Ok(v)
+        } else {
+            Err(AampError::TypeError)
+        }
+    }
+
+    pub fn as_curve4(&self) -> Result<&[Curve; 4]> {
+        if let Self::Curve4(v) = self {
+            Ok(v)
+        } else {
+            Err(AampError::TypeError)
+        }
+    }
+
+    pub fn as_buf_int(&self) -> Result<&[i32]> {
+        if let Self::BufferInt(v) = self {
+            Ok(v.as_slice())
+        } else {
+            Err(AampError::TypeError)
+        }
+    }
+
+    pub fn as_buf_f32(&self) -> Result<&[f32]> {
+        if let Self::BufferF32(v) = self {
+            Ok(v)
+        } else {
+            Err(AampError::TypeError)
+        }
+    }
+
+    pub fn as_string_256(&self) -> Result<&str> {
+        if let Self::String256(v) = self {
+            Ok(v.as_str())
+        } else {
+            Err(AampError::TypeError)
+        }
+    }
+
+    pub fn as_quat(&self) -> Result<&Quat> {
+        if let Self::Quat(v) = self {
+            Ok(v)
+        } else {
+            Err(AampError::TypeError)
+        }
+    }
+
+    pub fn as_u32(&self) -> Result<u32> {
+        if let Self::U32(v) = self {
+            Ok(*v)
+        } else {
+            Err(AampError::TypeError)
+        }
+    }
+
+    pub fn as_buf_u32(&self) -> Result<&[u32]> {
+        if let Self::BufferU32(v) = self {
+            Ok(v)
+        } else {
+            Err(AampError::TypeError)
+        }
+    }
+
+    pub fn as_buf_bin(&self) -> Result<&[u8]> {
+        if let Self::BufferBinary(v) = self {
+            Ok(v)
+        } else {
+            Err(AampError::TypeError)
+        }
+    }
+
+    pub fn as_str_ref(&self) -> Result<&str> {
+        if let Self::StringRef(v) = self {
+            Ok(v.as_str())
+        } else {
+            Err(AampError::TypeError)
         }
     }
 }

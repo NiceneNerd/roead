@@ -202,61 +202,61 @@ Parameter ParamFromFfi(const RsParameter &param)
   switch (param.get_ffi_type())
   {
   case ParamType::Bool:
-    return Parameter(param.as_bool());
+    return Parameter(param.get_bool());
   case ParamType::F32:
-    return Parameter(oead::F32(param.as_f32()));
+    return Parameter(oead::F32(param.get_f32()));
   case ParamType::Int:
-    return Parameter(param.as_int());
+    return Parameter(param.get_int());
   case ParamType::Vec2:
   {
-    const auto vec = param.as_vec2();
+    const auto vec = param.get_vec2();
     return Parameter(oead::Vector2f{vec.x, vec.y});
   }
   case ParamType::Vec3:
   {
-    const auto vec = param.as_vec3();
+    const auto vec = param.get_vec3();
     return Parameter(oead::Vector3f{vec.x, vec.y, vec.z});
   }
   case ParamType::Vec4:
   {
-    const auto vec = param.as_vec4();
+    const auto vec = param.get_vec4();
     return Parameter(oead::Vector4f{vec.x, vec.y, vec.z, vec.t});
   }
   case ParamType::Color:
   {
-    const auto vec = param.as_color();
+    const auto vec = param.get_color();
     return Parameter(oead::Color4f{vec.r, vec.g, vec.b, vec.a});
   }
   case ParamType::String32:
   {
-    const auto str = param.as_string32();
+    const auto str = param.get_string32();
     return Parameter(oead::FixedSafeString<32>(std::string_view{str.data(), str.size()}));
   }
   case ParamType::String64:
   {
-    const auto str = param.as_string64();
+    const auto str = param.get_string64();
     return Parameter(oead::FixedSafeString<64>(std::string_view{str.data(), str.size()}));
   }
   case ParamType::Curve1:
-    return Parameter(std::array<oead::Curve, 1>{CurveFromFfi(param.as_curve1()[0])});
+    return Parameter(std::array<oead::Curve, 1>{CurveFromFfi(param.get_curve1()[0])});
   case ParamType::Curve2:
   {
-    const auto curves = param.as_curve2();
+    const auto curves = param.get_curve2();
     return Parameter(std::array<oead::Curve, 2>{CurveFromFfi(curves[0]), CurveFromFfi(curves[1])});
   }
   case ParamType::Curve3:
   {
-    const auto curves = param.as_curve3();
+    const auto curves = param.get_curve3();
     return Parameter(std::array<oead::Curve, 3>{CurveFromFfi(curves[0]), CurveFromFfi(curves[1]), CurveFromFfi(curves[2])});
   }
   case ParamType::Curve4:
   {
-    const auto curves = param.as_curve4();
+    const auto curves = param.get_curve4();
     return Parameter(std::array<oead::Curve, 4>{CurveFromFfi(curves[0]), CurveFromFfi(curves[1]), CurveFromFfi(curves[2]), CurveFromFfi(curves[3])});
   }
   case ParamType::BufferInt:
   {
-    const auto buf = param.as_buf_int();
+    const auto buf = param.get_buf_int();
     std::vector<int> vec(buf.size());
     for (auto v : buf)
     {
@@ -266,7 +266,7 @@ Parameter ParamFromFfi(const RsParameter &param)
   }
   case ParamType::BufferF32:
   {
-    const auto buf = param.as_buf_f32();
+    const auto buf = param.get_buf_f32();
     std::vector<float> vec(buf.size());
     for (auto v : buf)
     {
@@ -276,19 +276,19 @@ Parameter ParamFromFfi(const RsParameter &param)
   }
   case ParamType::String256:
   {
-    const auto str = param.as_string_256();
+    const auto str = param.get_string_256();
     return Parameter(oead::FixedSafeString<256>(std::string_view{str.data(), str.size()}));
   }
   case ParamType::Quat:
   {
-    const auto vec = param.as_quat();
+    const auto vec = param.get_quat();
     return Parameter(oead::Quatf{vec.a, vec.b, vec.c, vec.d});
   }
   case ParamType::U32:
-    return Parameter(oead::U32(param.as_u32()));
+    return Parameter(oead::U32(param.get_u32()));
   case ParamType::BufferU32:
   {
-    const auto buf = param.as_buf_u32();
+    const auto buf = param.get_buf_u32();
     std::vector<uint32_t> vec(buf.size());
     for (auto v : buf)
     {
@@ -298,7 +298,7 @@ Parameter ParamFromFfi(const RsParameter &param)
   }
   case ParamType::BufferBinary:
   {
-    const auto buf = param.as_buf_bin();
+    const auto buf = param.get_buf_bin();
     std::vector<uint8_t> vec(buf.size());
     for (auto v : buf)
     {
@@ -308,7 +308,7 @@ Parameter ParamFromFfi(const RsParameter &param)
   }
   case ParamType::StringRef:
   {
-    const auto str = param.as_str_ref();
+    const auto str = param.get_str_ref();
     return Parameter(std::string{str.data(), str.size()});
   }
   default:
