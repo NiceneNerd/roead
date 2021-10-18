@@ -1,8 +1,7 @@
+use crate::aamp::{hash_name, CRC32};
 use cached::proc_macro::cached;
-use crc::{crc32, Hasher32};
 use indexmap::IndexMap;
 use lazy_static::lazy_static;
-use std::sync::Mutex;
 
 const NAMES: &str = include_str!("../../include/oead/data/botw_hashed_names.txt");
 const NUMBERED_NAMES: &str = include_str!("../../include/oead/data/botw_numbered_names.txt");
@@ -23,12 +22,9 @@ impl NameTable {
     pub fn new(use_botw_strings: bool) -> NameTable {
         let mut m: IndexMap<u32, &'static str> = IndexMap::default();
         if use_botw_strings {
-            let mut dig = crc32::Digest::new(crc::crc32::IEEE);
             for name in NAMES.split('\n').map(|n| n.strip_suffix("\r").unwrap_or(n)) {
-                dig.write(name.as_bytes());
-                let val = dig.sum32();
+                let val = CRC32.checksum(name.as_bytes());
                 m.insert(val, name);
-                dig.reset();
             }
         }
         NameTable {
@@ -40,18 +36,12 @@ impl NameTable {
     /// Add a known string to the name table.
     pub fn add_name<S: Into<String>>(&mut self, name: S) {
         let name = name.into();
-        let mut digest = crc32::Digest::new(crc32::IEEE);
-        digest.write(name.as_bytes());
-        self.own_table.insert(digest.sum32(), name);
-        digest.reset();
+        self.own_table.insert(hash_name(&name), name);
     }
 
     /// Add a known string reference to the name table. Must be static to avoid lifetime nonsense.
     pub fn add_name_ref(&mut self, name: &'static str) {
-        let mut digest = crc32::Digest::new(crc32::IEEE);
-        digest.write(name.as_bytes());
-        self.table.insert(digest.sum32(), name);
-        digest.reset();
+        self.table.insert(hash_name(name), name);
     }
 
     /// Gets the string associated with a specific hash, if present in the table
@@ -108,12 +98,7 @@ impl NameTable {
     }
 }
 
-lazy_static::lazy_static! {
-    static ref DIGEST: Mutex<crc32::Digest> = Mutex::new(crc32::Digest::new(crc32::IEEE));
-}
-
 fn test_names(parent: &str, idx: usize, crc: u32) -> Option<String> {
-    let mut digest = DIGEST.lock().unwrap();
     for i in &[idx, idx + 1] {
         for name in &[
             [parent, i.to_string().as_str()].join(""),
@@ -123,11 +108,9 @@ fn test_names(parent: &str, idx: usize, crc: u32) -> Option<String> {
             [parent, format!("{:03}", i).as_str()].join(""),
             [parent, "_", format!("{:03}", i).as_str()].join(""),
         ] {
-            digest.write(name.as_bytes());
-            if digest.sum32() == crc {
+            if CRC32.checksum(name.as_bytes()) == crc {
                 return Some(name.to_owned());
             }
-            digest.reset();
         }
     }
     None
@@ -136,21 +119,20 @@ fn test_names(parent: &str, idx: usize, crc: u32) -> Option<String> {
 #[cached]
 fn try_numbered_name(idx: usize, crc: u32) -> Option<String> {
     let mut opt = Option::None;
-    let mut dig = crc32::Digest::new(crc32::IEEE);
-    for name in NUMBERED_NAME_LIST.iter().map(|n| n.strip_suffix("\r").unwrap_or(n)) {
+    for name in NUMBERED_NAME_LIST
+        .iter()
+        .map(|n| n.strip_suffix("\r").unwrap_or(n))
+    {
         for i in 0..idx + 2 {
             let maybe: String = if name.contains('{') {
                 rt_format(name, i)
             } else {
                 name.to_string()
             };
-            dig.write(maybe.as_bytes());
-            if dig.sum32() == crc as u32 {
+            if CRC32.checksum(maybe.as_bytes()) == crc as u32 {
                 opt = Some(maybe);
             }
-            dig.reset();
         }
-        dig.reset();
     }
     opt
 }
