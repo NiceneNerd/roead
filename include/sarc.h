@@ -32,6 +32,9 @@ public:
     bool DelFile(rust::Str name);
     bool FilesEqual(const SarcWriter &other) const;
     size_t NumFiles() const;
+    bool Contains(const rust::Str name) const;
+    rust::Vec<rust::String> FileKeys() const;
+    rust::Slice<const u8> GetFile(const rust::Str name) const;
     SarcWriteResult Write();
 };
 

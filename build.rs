@@ -60,7 +60,7 @@ fn main() {
                 .flag_if_supported("-std=c++17")
                 .flag_if_supported("-static")
                 .compile("roead");
-        
+
             for file in glob::glob("include/oead/build/**/*.a")
                 .unwrap()
                 .flat_map(|f| f.ok())
@@ -77,7 +77,7 @@ fn main() {
                     &file.file_stem().unwrap().to_str().unwrap()[3..]
                 );
             }
-        }        
+        }
         Ok("windows") => {
             Command::new("cmake")
                 .current_dir("include/oead/build")
@@ -132,7 +132,7 @@ fn main() {
                                 .to_str()
                                 .unwrap()
                                 .strip_prefix("lib")
-                                .unwrap_or(&file.file_stem().unwrap().to_str().unwrap())
+                                .unwrap_or_else(|| file.file_stem().unwrap().to_str().unwrap())
                                 .to_owned(),
                         ))
                     }

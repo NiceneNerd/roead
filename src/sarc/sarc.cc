@@ -84,6 +84,24 @@ size_t SarcWriter::NumFiles() const {
   return m_files.size();
 }
 
+rust::Vec<rust::String> SarcWriter::FileKeys() const {
+  rust::Vec<rust::String> vec;
+  for (auto const& [name, _] : m_files) {
+    vec.push_back(std::string(name));
+  }
+  return vec;
+}
+
+bool SarcWriter::Contains(const rust::Str name) const {
+  const auto key = std::string(name.data(), name.size());
+  return m_files.contains(key);
+}
+
+rust::Slice<const u8> SarcWriter::GetFile(const rust::Str name) const {
+  const auto& data = m_files.at(std::string(name));
+  return rust::Slice<const u8>(data.data(), data.size());
+}
+
 std::unique_ptr<SarcWriter> WriterFromSarc(const Sarc& archive) {
   SarcWriter writer = SarcWriter(archive.inner.GetEndianness(), oead::SarcWriter::Mode::New);
   writer.SetMinAlignment(archive.inner.GuessMinAlignment());

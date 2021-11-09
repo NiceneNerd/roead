@@ -66,7 +66,7 @@ impl File<'_> {
     }
 
     /// The path of the file in the SARC. Panics if the file has no path.
-    pub fn name_or_panic(&self) -> &str {
+    pub fn name_unchecked(&self) -> &str {
         self.name.unwrap()
     }
 
@@ -186,11 +186,9 @@ impl Sarc<'_> {
 
     /// Extracts owned filenames and data from the SARC.
     pub fn into_files(self) -> Vec<(Option<String>, Vec<u8>)> {
-        self.files().map(|f| (
-            f.name.map(|n| n.to_owned()),
-            f.data.to_vec()
-        ))
-        .collect()
+        self.files()
+            .map(|f| (f.name.map(|n| n.to_owned()), f.data.to_vec()))
+            .collect()
     }
 
     /// Create a hash map of files and their data.
@@ -329,6 +327,17 @@ impl SarcWriter {
         SarcWriter(ffi::NewSarcWriter(endian == Endian::Big, true))
     }
 
+    /// Construct a new SARC with the specified endianness, filling it with initial
+    /// file data from an iterator.
+    pub fn from_files<S: AsRef<str>, B: Into<Vec<u8>>, F: IntoIterator<Item = (S, B)>>(
+        endian: Endian,
+        files: F,
+    ) -> Self {
+        let mut sarc = Self::new(endian);
+        sarc.add_files(files);
+        sarc
+    }
+
     /// Shortcut to construct a new SARC from existing data.
     pub fn from_binary<B: AsRef<[u8]>>(data: B) -> Result<Self> {
         Sarc::read(data.as_ref()).map(Self::from)
@@ -339,6 +348,11 @@ impl SarcWriter {
         self.0.NumFiles()
     }
 
+    /// Returns true if the SARC writer contains the specified file name.
+    pub fn contains<B: std::borrow::Borrow<str>>(&self, name: B) -> bool {
+        self.0.Contains(name.borrow())
+    }
+
     /// Checks if the SARC contains no files.
     pub fn is_empty(&self) -> bool {
         self.0.NumFiles() == 0
@@ -347,6 +361,28 @@ impl SarcWriter {
     /// Add a file to the SARC.
     pub fn add_file<B: Into<Vec<u8>>>(&mut self, name: &str, data: B) {
         self.0.pin_mut().SetFile(name, data.into());
+    }
+
+    /// Add several files to a SARC from an iterator.
+    pub fn add_files<S: AsRef<str>, B: Into<Vec<u8>>, F: IntoIterator<Item = (S, B)>>(
+        &mut self,
+        files: F,
+    ) {
+        files.into_iter().for_each(|(file, data)| {
+            self.0.pin_mut().SetFile(file.as_ref(), data.into());
+        });
+    }
+
+    /// Get a list of filenames currently in this SARC writer. Due to some FFI
+    /// weirdness, this returns `Vec<String>` with all the undesired allocation
+    /// it entails. Avoid this if you can in favour of related methods.
+    pub fn get_files(&self) -> Vec<String> {
+        self.0.FileKeys()
+    }
+
+    /// Get the data of a file in the SARC writer.
+    pub fn get_file_data(&self, name: &str) -> Option<&[u8]> {
+        self.0.GetFile(name).ok()
     }
 
     /// Delete a file from the SARC.
@@ -370,14 +406,14 @@ impl SarcWriter {
     }
 
     /// Write a SARC archive to an in-memory buffer.
-    #[allow(clippy::clippy::wrong_self_convention)]
+    #[allow(clippy::wrong_self_convention)]
     pub fn to_binary(&mut self) -> Vec<u8> {
         self.0.pin_mut().Write().data
     }
 
     /// Write a SARC archive to an in-memory buffer, returning a tuple containing
     /// both the file data and the final alignment.
-    #[allow(clippy::clippy::wrong_self_convention)]
+    #[allow(clippy::wrong_self_convention)]
     pub fn to_binary_and_check_alignment(&mut self) -> (Vec<u8>, usize) {
         let result = self.0.pin_mut().Write();
         (result.data, result.alignment)
@@ -473,6 +509,9 @@ mod tests {
         let mut writer = sarc::SarcWriter::from(&sarc);
         assert_eq!(writer.len(), sarc.len());
         assert_eq!(writer.to_binary(), sarc._data.as_ref());
+        for name in writer.get_files() {
+            println!("{}", name);
+        }
     }
 
     #[test]
@@ -493,7 +532,11 @@ mod tests {
         let sarc = Arc::new(sarc::Sarc::read(&bytes).unwrap());
         (0..sarc.len()).into_par_iter().for_each(|i| {
             let file = sarc.get_file_by_index(i).unwrap();
-            println!("{} is {} bytes long", file.name_or_panic(), file.data.len());
+            println!(
+                "{} is {} bytes long",
+                file.name_unchecked(),
+                file.data.len()
+            );
         });
         let sarc_writer = Arc::new(Mutex::new(SarcWriter::from(sarc.as_ref())));
         (0..100).into_par_iter().for_each(|i| {
