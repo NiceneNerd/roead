@@ -1,6 +1,5 @@
 # roead
 
-[![crates.io](https://img.shields.io/crates/v/roead)](https://crates.io/crates/roead)
 [![api](https://img.shields.io/badge/api-rustdoc-558b2f)](https://docs.rs/roead/)
 [![license](https://img.shields.io/crates/l/roead)](https://spdx.org/licenses/GPL-3.0-or-later.html)
 
