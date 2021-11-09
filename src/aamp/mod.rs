@@ -720,7 +720,7 @@ impl Parameter {
 /// Wraps a map of parameters and their name hashes
 #[derive(Debug, Clone)]
 #[repr(transparent)]
-pub struct ParameterObject(IndexMap<u32, Parameter>);
+pub struct ParameterObject(pub IndexMap<u32, Parameter>);
 
 impl PartialEq for ParameterObject {
     fn eq(&self, other: &Self) -> bool {
@@ -842,7 +842,7 @@ pub trait ParamList {
 }
 
 #[derive(Debug, Clone, PartialEq, Default)]
-pub struct ParameterObjectMap(IndexMap<u32, ParameterObject>);
+pub struct ParameterObjectMap(pub IndexMap<u32, ParameterObject>);
 
 impl ParameterObjectMap {
     /// Returns a reference to the inner IndexMap of hashes and `ParameterObject` objects.
@@ -912,7 +912,7 @@ impl<'a> IndexMut<&'a str> for ParameterObjectMap {
 }
 
 #[derive(Debug, Clone, PartialEq, Default)]
-pub struct ParameterListMap(IndexMap<u32, ParameterList>);
+pub struct ParameterListMap(pub IndexMap<u32, ParameterList>);
 
 impl ParameterListMap {
     /// Returns a reference to the inner IndexMap of hashes and `ParameterList` objects.
@@ -985,8 +985,8 @@ impl<'a> IndexMut<&'a str> for ParameterListMap {
 /// and parameter objects
 #[derive(Debug, Clone, PartialEq)]
 pub struct ParameterList {
-    lists: ParameterListMap,
-    objects: ParameterObjectMap,
+    pub lists: ParameterListMap,
+    pub objects: ParameterObjectMap,
 }
 
 impl From<UniquePtr<ffi::ParameterList>> for ParameterList {
@@ -1081,8 +1081,8 @@ pub struct ParameterIO {
     pub version: u32,
     /// Data type identifier. Typically “xml”.
     pub doc_type: String,
-    lists: ParameterListMap,
-    objects: ParameterObjectMap,
+    pub lists: ParameterListMap,
+    pub objects: ParameterObjectMap,
 }
 
 impl From<UniquePtr<ffi::ParameterIO>> for ParameterIO {
