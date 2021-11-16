@@ -259,11 +259,11 @@ impl Sarc<'_> {
     /// will own the decompressed data.
     pub fn read<'a, D: Into<Cow<'a, [u8]>>>(data: D) -> Result<Sarc<'a>> {
         let data = data.into();
-        if &data[0..4] == b"Yaz0" {
+        if data.len() < 40 {
+            Err(SarcError::InsufficientDataError(data.len()))
+        } else if &data[0..4] == b"Yaz0" {
             let data = crate::yaz0::decompress(data)?;
             Self::read(data)
-        } else if data.len() < 40 {
-            Err(SarcError::InsufficientDataError(data.len()))
         } else if &data[0..4] != b"SARC" {
             Err(SarcError::MagicError)
         } else {
