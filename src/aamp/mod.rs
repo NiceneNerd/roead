@@ -718,7 +718,7 @@ impl Parameter {
 }
 
 /// Wraps a map of parameters and their name hashes
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Default)]
 #[repr(transparent)]
 pub struct ParameterObject(pub IndexMap<u32, Parameter>);
 
@@ -983,7 +983,7 @@ impl<'a> IndexMut<&'a str> for ParameterListMap {
 
 /// Represents a parameter list consisting of child parameter lists
 /// and parameter objects
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Default)]
 pub struct ParameterList {
     pub lists: ParameterListMap,
     pub objects: ParameterObjectMap,
@@ -1085,6 +1085,12 @@ pub struct ParameterIO {
     pub objects: ParameterObjectMap,
 }
 
+impl Default for ParameterIO {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl From<UniquePtr<ffi::ParameterIO>> for ParameterIO {
     fn from(pio: UniquePtr<ffi::ParameterIO>) -> Self {
         let version = ffi::GetPioVersion(&pio);
@@ -1162,7 +1168,7 @@ impl ParameterIO {
                 String::from_utf8_lossy(&data[0..4]).to_string(),
             ));
         }
-        Ok(ffi::AampFromBinary(data.as_ref())?.into())
+        Ok(ffi::AampFromBinary(data)?.into())
     }
 
     /// Load a ParameterIO from a YAML representation.
@@ -1172,12 +1178,12 @@ impl ParameterIO {
 
     /// Serialize the ParameterIO to a YAML representation.
     pub fn to_text(&self) -> String {
-        ffi::AampToText(&self)
+        ffi::AampToText(self)
     }
 
     /// Serialize the ParameterIO to a binary parameter archive.
     pub fn to_binary(&self) -> Vec<u8> {
-        ffi::AampToBinary(&self)
+        ffi::AampToBinary(self)
     }
 
     pub(crate) fn list_count(&self) -> usize {

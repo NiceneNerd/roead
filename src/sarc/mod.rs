@@ -323,7 +323,7 @@ impl From<Sarc<'_>> for SarcWriter {
             files: sarc
                 .into_files()
                 .into_iter()
-                .filter_map(|(f, d)| f.map(|n| (n.to_owned(), d)))
+                .filter_map(|(f, d)| f.map(|n| (n, d)))
                 .collect(),
         }
     }

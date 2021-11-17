@@ -22,7 +22,7 @@ impl NameTable {
     pub fn new(use_botw_strings: bool) -> NameTable {
         let mut m: IndexMap<u32, &'static str> = IndexMap::default();
         if use_botw_strings {
-            for name in NAMES.split('\n').map(|n| n.strip_suffix("\r").unwrap_or(n)) {
+            for name in NAMES.split('\n').map(|n| n.strip_suffix('\r').unwrap_or(n)) {
                 let val = CRC32.checksum(name.as_bytes());
                 m.insert(val, name);
             }
@@ -47,9 +47,8 @@ impl NameTable {
     /// Gets the string associated with a specific hash, if present in the table
     pub fn get_name(&self, crc: u32) -> Option<&str> {
         self.table
-            .get(&crc)
-            .map(|s| *s)
-            .or(self.own_table.get(&crc).map(|s| s.as_str()))
+            .get(&crc).copied()
+            .or_else(|| self.own_table.get(&crc).map(|s| s.as_str()))
     }
 
     /// Tries to guess the name that is associated with the given hash and index (of the parameter / object / list in its parent).
@@ -68,7 +67,7 @@ impl NameTable {
         let parent = self.get_name(parent_crc);
         match parent {
             Some(parent_name) => {
-                let mut matched = test_names(&parent_name, idx, crc);
+                let mut matched = test_names(parent_name, idx, crc);
                 if matched.is_none() {
                     if parent_name == "Children" {
                         matched = test_names("Child", idx, crc);
@@ -121,7 +120,7 @@ fn try_numbered_name(idx: usize, crc: u32) -> Option<String> {
     let mut opt = Option::None;
     for name in NUMBERED_NAME_LIST
         .iter()
-        .map(|n| n.strip_suffix("\r").unwrap_or(n))
+        .map(|n| n.strip_suffix('\r').unwrap_or(n))
     {
         for i in 0..idx + 2 {
             let maybe: String = if name.contains('{') {
