@@ -48,73 +48,20 @@ bool Sarc::files_eq(const Sarc &other) const {
   return this->inner.AreFilesEqual(other.inner);
 }
 
-std::unique_ptr<SarcWriter> NewSarcWriter(bool big_endian, bool legacy) {
-  return std::unique_ptr<SarcWriter>(new SarcWriter(
-      big_endian ? oead::util::Endianness::Big : oead::util::Endianness::Little,
-      legacy ? oead::SarcWriter::Mode::Legacy : oead::SarcWriter::Mode::New));
-}
-
-void SarcWriter::SetEndianness(bool big_endian) {
-  oead::SarcWriter::SetEndianness(big_endian ? oead::util::Endianness::Big
-                                             : oead::util::Endianness::Little);
-}
-
-void SarcWriter::SetMode(bool legacy) {
-  oead::SarcWriter::SetMode(legacy ? oead::SarcWriter::Mode::Legacy
-                                   : oead::SarcWriter::Mode::New);
-}
-
-void SarcWriter::SetFile(rust::Str name, rust::Vec<uint8_t> data) {
-  auto path = std::string(name.data(), name.size());
-  std::vector<uint8_t> vec;
-  std::move(data.begin(), data.end(), std::back_inserter(vec));
-  m_files[path] = vec;
-}
-
-bool SarcWriter::DelFile(rust::Str name) {
-  return m_files.erase(std::string(name.data(), name.size())) > 0;
-}
-
-bool SarcWriter::FilesEqual(const SarcWriter &other) const
-{
-  return m_files == other.m_files;
-}
-
-size_t SarcWriter::NumFiles() const {
-  return m_files.size();
-}
-
-rust::Vec<rust::String> SarcWriter::FileKeys() const {
-  rust::Vec<rust::String> vec;
-  for (auto const& [name, _] : m_files) {
-    vec.push_back(std::string(name));
+SarcWriteResult WriteSarc(const RsSarcWriter& rs_writer, bool big_endian, bool legacy, uint8_t align) {
+  auto writer = new oead::SarcWriter(
+    big_endian ? oead::util::Endianness::Big : oead::util::Endianness::Little,
+    legacy ? oead::SarcWriter::Mode::Legacy : oead::SarcWriter::Mode::New);
+  writer->SetMinAlignment(align);
+  for (size_t i = 0; i < rs_writer.len(); i++) {
+    auto name = rs_writer.get_file_by_index(i);
+    auto path = std::string(name.data(), name.size());
+    auto data = rs_writer.get_data_by_index(i);
+    std::vector<uint8_t> vec;
+    std::move(data.begin(), data.end(), std::back_inserter(vec));
+    writer->m_files[path] = vec;
   }
-  return vec;
-}
-
-bool SarcWriter::Contains(const rust::Str name) const {
-  const auto key = std::string(name.data(), name.size());
-  return m_files.contains(key);
-}
-
-rust::Slice<const u8> SarcWriter::GetFile(const rust::Str name) const {
-  const auto& data = m_files.at(std::string(name));
-  return rust::Slice<const u8>(data.data(), data.size());
-}
-
-std::unique_ptr<SarcWriter> WriterFromSarc(const Sarc& archive) {
-  SarcWriter writer = SarcWriter(archive.inner.GetEndianness(), oead::SarcWriter::Mode::New);
-  writer.SetMinAlignment(archive.inner.GuessMinAlignment());
-  writer.m_files.reserve(archive.inner.GetNumFiles());
-  for (const oead::Sarc::File& file : archive.inner.GetFiles()) {
-    writer.m_files.emplace(std::string(file.name),
-                           std::vector<u8>(file.data.begin(), file.data.end()));
-  }
-  return std::make_unique<SarcWriter>(writer);
-}
-
-SarcWriteResult SarcWriter::Write() {
-  auto result = oead::SarcWriter::Write();
+  auto result = writer->Write();
   rust::Vec<uint8_t> vec;
   std::move(result.second.begin(), result.second.end(),
             std::back_inserter(vec));

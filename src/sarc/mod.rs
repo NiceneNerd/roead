@@ -34,7 +34,12 @@
 //! # }
 //! ```
 use crate::{aamp, byml, ffi, yaz0, Endian};
-use std::{borrow::Cow, collections::HashMap, hash::Hash, io};
+use std::{
+    borrow::Cow,
+    collections::{BTreeMap, HashMap},
+    hash::Hash,
+    io,
+};
 use thiserror::Error;
 
 /// Error type for SARC parsing and writing.
@@ -275,6 +280,8 @@ impl Sarc<'_> {
     }
 }
 
+pub type FileMap = BTreeMap<String, Vec<u8>>;
+
 /// A simple SARC archive writer.
 ///
 /// *Note about the two modes:*
@@ -283,48 +290,65 @@ impl Sarc<'_> {
 /// Legacy mode is not needed for games with a new-style resource system that
 /// automatically takes care of data alignment and does not require manual
 /// alignment nor nested SARC alignment.
-pub struct SarcWriter(cxx::UniquePtr<ffi::SarcWriter>);
-
-impl std::fmt::Debug for SarcWriter {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.debug_struct("SarcWriter")
-            .field("len", &self.len())
-            .finish()
-    }
+#[derive(Debug, PartialEq)]
+pub struct SarcWriter {
+    pub files: FileMap,
+    pub endian: Endian,
+    pub alignment: u8,
+    pub legacy: bool,
 }
-
-impl PartialEq for SarcWriter {
-    fn eq(&self, other: &Self) -> bool {
-        self.0.FilesEqual(&other.0)
-    }
-}
-
-impl Eq for SarcWriter {}
-unsafe impl Send for SarcWriter {}
-unsafe impl Sync for SarcWriter {}
 
 impl From<&Sarc<'_>> for SarcWriter {
     fn from(sarc: &Sarc) -> Self {
-        SarcWriter(ffi::WriterFromSarc(&sarc.inner))
+        let alignment = sarc.guess_min_alignment() as u8;
+        Self {
+            alignment,
+            endian: sarc.endian(),
+            legacy: alignment != 4,
+            files: sarc
+                .files()
+                .filter_map(|file| file.name.map(|n| (n.to_owned(), file.data.to_vec())))
+                .collect(),
+        }
     }
 }
 
 impl From<Sarc<'_>> for SarcWriter {
     fn from(sarc: Sarc) -> Self {
-        SarcWriter(ffi::WriterFromSarc(&sarc.inner))
+        let alignment = sarc.guess_min_alignment() as u8;
+        Self {
+            alignment,
+            endian: sarc.endian(),
+            legacy: alignment != 4,
+            files: sarc
+                .into_files()
+                .into_iter()
+                .filter_map(|(f, d)| f.map(|n| (n.to_owned(), d)))
+                .collect(),
+        }
     }
 }
 
 impl SarcWriter {
     /// Construct a new SARC with the specified endianness.
     pub fn new(endian: Endian) -> SarcWriter {
-        SarcWriter(ffi::NewSarcWriter(endian == Endian::Big, false))
+        SarcWriter {
+            files: FileMap::new(),
+            endian,
+            alignment: 4,
+            legacy: false,
+        }
     }
 
     /// Construct a new SARC with the specified endianness in legacy mode
     /// (for manual alignment).
     pub fn new_legacy_mode(endian: Endian) -> SarcWriter {
-        SarcWriter(ffi::NewSarcWriter(endian == Endian::Big, true))
+        SarcWriter {
+            files: FileMap::new(),
+            endian,
+            alignment: 4,
+            legacy: true,
+        }
     }
 
     /// Construct a new SARC with the specified endianness, filling it with initial
@@ -333,9 +357,15 @@ impl SarcWriter {
         endian: Endian,
         files: F,
     ) -> Self {
-        let mut sarc = Self::new(endian);
-        sarc.add_files(files);
-        sarc
+        SarcWriter {
+            files: files
+                .into_iter()
+                .map(|(f, d)| (f.as_ref().to_owned(), d.into()))
+                .collect(),
+            endian,
+            alignment: 4,
+            legacy: false,
+        }
     }
 
     /// Shortcut to construct a new SARC from existing data.
@@ -345,22 +375,22 @@ impl SarcWriter {
 
     /// Get the number of files that are stored in the archive.
     pub fn len(&self) -> usize {
-        self.0.NumFiles()
+        self.files.len()
     }
 
     /// Returns true if the SARC writer contains the specified file name.
     pub fn contains<B: std::borrow::Borrow<str>>(&self, name: B) -> bool {
-        self.0.Contains(name.borrow())
+        self.files.contains_key(name.borrow())
     }
 
     /// Checks if the SARC contains no files.
     pub fn is_empty(&self) -> bool {
-        self.0.NumFiles() == 0
+        self.files.is_empty()
     }
 
     /// Add a file to the SARC.
     pub fn add_file<B: Into<Vec<u8>>>(&mut self, name: &str, data: B) {
-        self.0.pin_mut().SetFile(name, data.into());
+        self.files.insert(name.to_owned(), data.into());
     }
 
     /// Add several files to a SARC from an iterator.
@@ -368,54 +398,59 @@ impl SarcWriter {
         &mut self,
         files: F,
     ) {
-        files.into_iter().for_each(|(file, data)| {
-            self.0.pin_mut().SetFile(file.as_ref(), data.into());
-        });
-    }
-
-    /// Get a list of filenames currently in this SARC writer. Due to some FFI
-    /// weirdness, this returns `Vec<String>` with all the undesired allocation
-    /// it entails. Avoid this if you can in favour of related methods.
-    pub fn get_files(&self) -> Vec<String> {
-        self.0.FileKeys()
+        self.files.extend(
+            files
+                .into_iter()
+                .map(|(f, d)| (f.as_ref().to_owned(), d.into())),
+        )
     }
 
     /// Get the data of a file in the SARC writer.
     pub fn get_file_data(&self, name: &str) -> Option<&[u8]> {
-        self.0.GetFile(name).ok()
+        self.files.get(name).map(|d| d.as_slice())
     }
 
     /// Delete a file from the SARC.
     pub fn delete_file(&mut self, name: &str) -> bool {
-        self.0.pin_mut().DelFile(name)
+        self.files.remove(name).is_some()
     }
 
     /// Set the minimum data alignment for files that are stored in the archive.
     pub fn set_alignment(&mut self, alignment: u8) {
-        self.0.pin_mut().SetMinAlignment(alignment as usize)
+        self.alignment = alignment
     }
 
     /// Set the endianness of the SARC.
     pub fn set_endian(&mut self, endian: Endian) {
-        self.0.pin_mut().SetEndianness(endian == Endian::Big)
+        self.endian = endian
     }
 
     /// Set whether the SARC uses legacy alignment.
     pub fn set_legacy_mode(&mut self, legacy: bool) {
-        self.0.pin_mut().SetMode(legacy)
+        self.legacy = legacy
     }
 
     /// Write a SARC archive to an in-memory buffer.
-    #[allow(clippy::wrong_self_convention)]
-    pub fn to_binary(&mut self) -> Vec<u8> {
-        self.0.pin_mut().Write().data
+    pub fn to_binary(&self) -> Vec<u8> {
+        ffi::WriteSarc(
+            self,
+            matches!(self.endian, Endian::Big),
+            self.legacy,
+            self.alignment,
+        )
+        .data
     }
 
     /// Write a SARC archive to an in-memory buffer, returning a tuple containing
     /// both the file data and the final alignment.
     #[allow(clippy::wrong_self_convention)]
     pub fn to_binary_and_check_alignment(&mut self) -> (Vec<u8>, usize) {
-        let result = self.0.pin_mut().Write();
+        let result = ffi::WriteSarc(
+            self,
+            matches!(self.endian, Endian::Big),
+            self.legacy,
+            self.alignment,
+        );
         (result.data, result.alignment)
     }
 
@@ -428,6 +463,14 @@ impl SarcWriter {
     pub fn write_compressed<W: io::Write>(&mut self, writer: &mut W) -> io::Result<()> {
         let bytes = crate::yaz0::compress(self.to_binary());
         writer.write_all(&bytes)
+    }
+
+    pub(crate) fn get_file_by_index(&self, idx: usize) -> &str {
+        self.files.keys().nth(idx).unwrap()
+    }
+
+    pub(crate) fn get_data_by_index(&self, idx: usize) -> &[u8] {
+        self.files.values().nth(idx).unwrap()
     }
 }
 
@@ -506,12 +549,9 @@ mod tests {
     fn sarc_to_writer() {
         let bytes = std::fs::read("test/Enemy_Lynel_Dark.sbactorpack").unwrap();
         let sarc = sarc::Sarc::read(&bytes).unwrap();
-        let mut writer = sarc::SarcWriter::from(&sarc);
+        let writer = sarc::SarcWriter::from(&sarc);
         assert_eq!(writer.len(), sarc.len());
         assert_eq!(writer.to_binary(), sarc._data.as_ref());
-        for name in writer.get_files() {
-            println!("{}", name);
-        }
     }
 
     #[test]

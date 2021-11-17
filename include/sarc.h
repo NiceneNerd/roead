@@ -21,22 +21,6 @@ public:
 
 std::unique_ptr<Sarc> sarc_from_binary(rust::Slice<const uint8_t> data);
 
+struct RsSarcWriter;
 struct SarcWriteResult;
-class SarcWriter : public oead::SarcWriter
-{
-public:
-    using oead::SarcWriter::SarcWriter;
-    void SetEndianness(bool big_endian);
-    void SetMode(bool legacy);
-    void SetFile(rust::Str name, rust::Vec<uint8_t> data);
-    bool DelFile(rust::Str name);
-    bool FilesEqual(const SarcWriter &other) const;
-    size_t NumFiles() const;
-    bool Contains(const rust::Str name) const;
-    rust::Vec<rust::String> FileKeys() const;
-    rust::Slice<const u8> GetFile(const rust::Str name) const;
-    SarcWriteResult Write();
-};
-
-std::unique_ptr<SarcWriter> WriterFromSarc(const Sarc& archive);
-std::unique_ptr<SarcWriter> NewSarcWriter(bool big_endian, bool legacy);
+SarcWriteResult WriteSarc(const RsSarcWriter& writer, bool big_endian, bool legacy, uint8_t align);

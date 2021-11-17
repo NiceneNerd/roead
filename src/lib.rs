@@ -26,6 +26,7 @@ use crate::aamp::ParameterIO as RsParameterIO;
 use crate::aamp::ParameterList as RsParameterList;
 use crate::aamp::ParameterObject as RsParameterObject;
 use crate::byml::Byml as RByml;
+use crate::sarc::SarcWriter as RsSarcWriter;
 
 /// Represents endianness where applicable. Generally, big endian is used for
 /// Wii U and little endian is used for Switch.
@@ -225,6 +226,11 @@ pub(crate) mod ffi {
         fn len(self: &RsParameterObject) -> usize;
         fn hash_at(self: &RsParameterObject, idx: usize) -> u32;
         fn val_at(self: &RsParameterObject, idx: usize) -> &RsParameter;
+
+        type RsSarcWriter;
+        fn len(self: &RsSarcWriter) -> usize;
+        fn get_file_by_index(self: &RsSarcWriter, idx: usize) -> &str;
+        fn get_data_by_index(self: &RsSarcWriter, idx: usize) -> &[u8];
     }
 
     unsafe extern "C++" {
@@ -240,21 +246,7 @@ pub(crate) mod ffi {
         fn idx_file_data(self: &Sarc, idx: u16) -> Result<&[u8]>;
         fn idx_file_name(self: &Sarc, idx: u16) -> Result<&str>;
         pub(crate) fn sarc_from_binary(data: &[u8]) -> Result<UniquePtr<Sarc>>;
-
-        type SarcWriter;
-        fn NewSarcWriter(big_endian: bool, legacy: bool) -> UniquePtr<SarcWriter>;
-        fn SetMinAlignment(self: Pin<&mut SarcWriter>, alignment: usize);
-        fn SetEndianness(self: Pin<&mut SarcWriter>, big_endian: bool);
-        fn SetMode(self: Pin<&mut SarcWriter>, legacy: bool);
-        fn SetFile(self: Pin<&mut SarcWriter>, name: &str, data: Vec<u8>);
-        fn DelFile(self: Pin<&mut SarcWriter>, name: &str) -> bool;
-        fn NumFiles(self: &SarcWriter) -> usize;
-        fn FileKeys(self: &SarcWriter) -> Vec<String>;
-        fn Contains(self: &SarcWriter, name: &str) -> bool;
-        fn GetFile(self: &SarcWriter, name: &str) -> Result<&[u8]>;
-        fn FilesEqual(self: &SarcWriter, other: &SarcWriter) -> bool;
-        fn Write(self: Pin<&mut SarcWriter>) -> SarcWriteResult;
-        fn WriterFromSarc(archive: &Sarc) -> UniquePtr<SarcWriter>;
+        pub(crate) fn WriteSarc(rs_writer: &RsSarcWriter, big_endian: bool, legacy: bool, alignment: u8) -> SarcWriteResult;
 
         include!("roead/include/yaz0.h");
 
