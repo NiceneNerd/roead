@@ -21,3 +21,22 @@ bindings to oead's core functionality. The Grezzo datasheets are not supported.
 For more info on oead itself, visit [its GitHub repo](https://github.com/zeldamods/oead/).
 
 For API documentation, see the docs for each module.
+
+## Building from Source
+
+Since roead is a wrapper for a C++ library, you will need to be able to compile both Rust and C++ to use it.
+
+**Requirements**:
+- Cargo (MSRV 1.48.0)
+- CMake 3.12+
+- A compiler that supports C++17
+- Everything needed to build libyaml
+
+First, clone the repository then enter the roead directory and run `git submodule update --init --recursive`. 
+
+## Contributing
+
+Issue tracker: https://github.com/NiceneNerd/roead/oead/issues
+Source code: https://github.com/NiceneNerd/roead
+
+This project is licensed under the GPLv3+ license. oead is licensed under the GPLv2+ license.
