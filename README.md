@@ -2,7 +2,7 @@
 
 [![api](https://img.shields.io/badge/api-rustdoc-558b2f)](https://nicenenerd.github.io/roead/roead)
 [![license](https://img.shields.io/badge/license-GPL-blue)](https://spdx.org/licenses/GPL-3.0-or-later.html)
-[![build](https://img.shields.io/github/workflow/status/NiceneNerd/roead/Build%20and%20test)
+[![build](https://img.shields.io/github/workflow/status/NiceneNerd/roead/Build%20and%20test)](https://github.com/NiceneNerd/roead/actions/workflows/rust.yml)
 
 ## Rust bindings for the oead C++ library
 **oead** is a C++ library for common file formats that are used in modern
