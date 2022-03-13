@@ -1,5 +1,5 @@
 //! Bindings for the `oead::byml` module.
-//! 
+//!
 //! A `Byml` type will usually be constructed from binary data or a YAML string,
 //! e.g.
 //! ```
@@ -96,6 +96,7 @@ impl<'a> From<usize> for BymlIndex<'a> {
 }
 
 /// Represents a Nintendo binary YAML (BYML) document or node.
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 #[derive(Debug, Clone, PartialEq)]
 pub enum Byml {
     Null,
@@ -301,7 +302,6 @@ impl Byml {
         }
     }
 
-    
     /// Load a document from binary data.
     pub fn from_binary(data: &[u8]) -> Result<Self> {
         let byml = ffi::BymlFromBinary(data)?;
@@ -333,7 +333,7 @@ impl Byml {
         }
     }
 
-    /// Serialize the document to BYML with the specified endianness and default version (2). 
+    /// Serialize the document to BYML with the specified endianness and default version (2).
     /// This can only be done for Null, Array or Hash nodes.
     pub fn to_binary(&self, endian: Endian) -> Vec<u8> {
         if matches!(self, Byml::Array(_) | Byml::Hash(_) | Byml::Null) {
@@ -343,7 +343,7 @@ impl Byml {
         }
     }
 
-    /// Serialize the document to BYML with the specified endianness and version number. 
+    /// Serialize the document to BYML with the specified endianness and version number.
     /// This can only be done for Null, Array or Hash nodes.
     pub fn to_binary_with_version(&self, endian: Endian, version: u8) -> Vec<u8> {
         if version > 4 {

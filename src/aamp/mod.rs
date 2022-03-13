@@ -55,6 +55,7 @@ pub enum AampError {
 }
 
 /// Represents a single AAMP parameter, with many possible types.
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 #[derive(Debug, Clone, PartialEq, PartialOrd)]
 pub enum Parameter {
     Bool(bool),
@@ -718,6 +719,7 @@ impl Parameter {
 }
 
 /// Wraps a map of parameters and their name hashes
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 #[derive(Debug, Clone, Default)]
 #[repr(transparent)]
 pub struct ParameterObject(pub IndexMap<u32, Parameter>);
@@ -841,6 +843,7 @@ pub trait ParamList {
     }
 }
 
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 #[derive(Debug, Clone, PartialEq, Default)]
 pub struct ParameterObjectMap(pub IndexMap<u32, ParameterObject>);
 
@@ -911,6 +914,7 @@ impl<'a> IndexMut<&'a str> for ParameterObjectMap {
     }
 }
 
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 #[derive(Debug, Clone, PartialEq, Default)]
 pub struct ParameterListMap(pub IndexMap<u32, ParameterList>);
 
@@ -983,6 +987,7 @@ impl<'a> IndexMut<&'a str> for ParameterListMap {
 
 /// Represents a parameter list consisting of child parameter lists
 /// and parameter objects
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 #[derive(Debug, Clone, PartialEq, Default)]
 pub struct ParameterList {
     pub lists: ParameterListMap,
@@ -1075,6 +1080,7 @@ impl ParameterList {
 /// Represents a parameter IO document. This is the root parameter list and
 /// the only structure that can be serialized to or deserialized from a binary
 /// parameter archive.
+#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
 #[derive(Debug, Clone, PartialEq)]
 pub struct ParameterIO {
     /// Data version (not the AAMP format version). Typically 0.
