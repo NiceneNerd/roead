@@ -331,8 +331,8 @@ impl From<Sarc<'_>> for SarcWriter {
 
 impl SarcWriter {
     /// Construct a new SARC with the specified endianness.
-    pub fn new(endian: Endian) -> SarcWriter {
-        SarcWriter {
+    pub fn new(endian: Endian) -> Self {
+        Self {
             files: FileMap::new(),
             endian,
             alignment: 4,
@@ -342,13 +342,30 @@ impl SarcWriter {
 
     /// Construct a new SARC with the specified endianness in legacy mode
     /// (for manual alignment).
-    pub fn new_legacy_mode(endian: Endian) -> SarcWriter {
-        SarcWriter {
+    pub fn new_legacy_mode(endian: Endian) -> Self {
+        Self {
             files: FileMap::new(),
             endian,
             alignment: 4,
             legacy: true,
         }
+    }
+
+    /// Builder-style method to set alignment on a new SARC writer.
+    #[must_use]
+    pub fn with_alignment(mut self, alignment: u8) -> Self {
+        self.alignment = alignment;
+        self
+    }
+
+    /// Builder-style method to add files on a new SARC writer.
+    #[must_use]
+    pub fn with_files<S: AsRef<str>, B: Into<Vec<u8>>, F: IntoIterator<Item = (S, B)>>(
+        mut self,
+        files: F,
+    ) -> Self {
+        self.add_files(files);
+        self
     }
 
     /// Construct a new SARC with the specified endianness, filling it with initial
@@ -357,7 +374,7 @@ impl SarcWriter {
         endian: Endian,
         files: F,
     ) -> Self {
-        SarcWriter {
+        Self {
             files: files
                 .into_iter()
                 .map(|(f, d)| (f.as_ref().to_owned(), d.into()))
