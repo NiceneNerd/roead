@@ -11,6 +11,9 @@ keywords = ["Nintendo", "aamp", "byml", "sarc", "gamedev"]
 categories = ["game-development", "parsing"]
 edition = "2018"
 
+[features]
+with-serde = ["serde", "indexmap/serde"]
+
 [dependencies]
 cached = "0.26.2"
 cxx = "1.0.49"

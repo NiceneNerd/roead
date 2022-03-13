@@ -29,6 +29,8 @@ use crate::ffi;
 use crate::ffi::{Color, Curve, ParamType, Quat, Vector2f, Vector3f, Vector4f};
 use cxx::UniquePtr;
 use indexmap::IndexMap;
+#[cfg(feature = "serde")]
+use serde::{Deserialize, Serialize};
 use std::iter::FromIterator;
 use std::ops::{Index, IndexMut};
 use thiserror::Error;

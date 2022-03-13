@@ -246,7 +246,12 @@ pub(crate) mod ffi {
         fn idx_file_data(self: &Sarc, idx: u16) -> Result<&[u8]>;
         fn idx_file_name(self: &Sarc, idx: u16) -> Result<&str>;
         pub(crate) fn sarc_from_binary(data: &[u8]) -> Result<UniquePtr<Sarc>>;
-        pub(crate) fn WriteSarc(rs_writer: &RsSarcWriter, big_endian: bool, legacy: bool, alignment: u8) -> SarcWriteResult;
+        pub(crate) fn WriteSarc(
+            rs_writer: &RsSarcWriter,
+            big_endian: bool,
+            legacy: bool,
+            alignment: u8,
+        ) -> SarcWriteResult;
 
         include!("roead/include/yaz0.h");
 

@@ -96,7 +96,7 @@ impl<'a> From<usize> for BymlIndex<'a> {
 }
 
 /// Represents a Nintendo binary YAML (BYML) document or node.
-#[cfg_attr(feature = "serde", derive(Serialize, Deserialize))]
+#[cfg_attr(feature = "serde", derive(serde::Serialize, serde::Deserialize))]
 #[derive(Debug, Clone, PartialEq)]
 pub enum Byml {
     Null,
