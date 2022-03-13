@@ -4,7 +4,7 @@ fn main() {
     println!("cargo:rerun-if-changed=src/lib.rs");
     let root = std::env::var("CARGO_MANIFEST_DIR")
         .unwrap()
-        .replace("\\", "/");
+        .replace('\\', "/");
     for file in glob::glob(&format!("{}/src/**/*.cc", &root))
         .unwrap()
         .filter_map(|f| f.ok())
@@ -19,7 +19,7 @@ fn main() {
             file.strip_prefix(PathBuf::from(&root))
                 .unwrap()
                 .to_string_lossy()
-                .replace("\\", "/")
+                .replace('\\', "/")
         );
     }
     println!("cargo:rerun-if-changed=Cargo.toml");
