@@ -759,6 +759,20 @@ impl<'a> IndexMut<&'a str> for ParameterObject {
     }
 }
 
+impl FromIterator<(u32, Parameter)> for ParameterObject {
+    fn from_iter<T: IntoIterator<Item = (u32, Parameter)>>(iter: T) -> Self {
+        Self(IndexMap::from_iter(iter))
+    }
+}
+
+impl FromIterator<(String, Parameter)> for ParameterObject {
+    fn from_iter<T: IntoIterator<Item = (String, Parameter)>>(iter: T) -> Self {
+        Self(IndexMap::from_iter(
+            iter.into_iter().map(|(k, v)| (hash_name(k.as_str()), v)),
+        ))
+    }
+}
+
 impl ParameterObject {
     /// Create an empty ParameterObject
     pub fn new() -> Self {
@@ -897,6 +911,14 @@ impl FromIterator<(u32, ParameterObject)> for ParameterObjectMap {
     }
 }
 
+impl FromIterator<(String, ParameterObject)> for ParameterObjectMap {
+    fn from_iter<T: IntoIterator<Item = (String, ParameterObject)>>(iter: T) -> Self {
+        Self(IndexMap::from_iter(
+            iter.into_iter().map(|(k, v)| (hash_name(k.as_str()), v)),
+        ))
+    }
+}
+
 impl From<IndexMap<u32, ParameterObject>> for ParameterObjectMap {
     fn from(map: IndexMap<u32, ParameterObject>) -> Self {
         Self(map)
@@ -965,6 +987,14 @@ impl ParameterListMap {
 impl FromIterator<(u32, ParameterList)> for ParameterListMap {
     fn from_iter<T: IntoIterator<Item = (u32, ParameterList)>>(iter: T) -> Self {
         Self(IndexMap::from_iter(iter))
+    }
+}
+
+impl FromIterator<(String, ParameterList)> for ParameterListMap {
+    fn from_iter<T: IntoIterator<Item = (String, ParameterList)>>(iter: T) -> Self {
+        Self(IndexMap::from_iter(
+            iter.into_iter().map(|(k, v)| (hash_name(k.as_str()), v)),
+        ))
     }
 }
 
