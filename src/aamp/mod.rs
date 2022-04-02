@@ -40,6 +40,7 @@ pub type Result<T> = std::result::Result<T, AampError>;
 pub(crate) const CRC32: crc::Crc<u32> = crc::Crc::<u32>::new(&crc::CRC_32_ISO_HDLC);
 
 /// Gets the CRC32 hash of an AAMP key string
+#[inline]
 pub const fn hash_name(name: &str) -> u32 {
     CRC32.checksum(name.as_bytes())
 }
@@ -765,6 +766,14 @@ impl FromIterator<(u32, Parameter)> for ParameterObject {
     }
 }
 
+impl<'a> FromIterator<(&'a str, Parameter)> for ParameterObject {
+    fn from_iter<T: IntoIterator<Item = (&'a str, Parameter)>>(iter: T) -> Self {
+        Self(IndexMap::from_iter(
+            iter.into_iter().map(|(k, v)| (hash_name(k), v)),
+        ))
+    }
+}
+
 impl FromIterator<(String, Parameter)> for ParameterObject {
     fn from_iter<T: IntoIterator<Item = (String, Parameter)>>(iter: T) -> Self {
         Self(IndexMap::from_iter(
@@ -911,6 +920,14 @@ impl FromIterator<(u32, ParameterObject)> for ParameterObjectMap {
     }
 }
 
+impl<'a> FromIterator<(&'a str, ParameterObject)> for ParameterObjectMap {
+    fn from_iter<T: IntoIterator<Item = (&'a str, ParameterObject)>>(iter: T) -> Self {
+        Self(IndexMap::from_iter(
+            iter.into_iter().map(|(k, v)| (hash_name(k), v)),
+        ))
+    }
+}
+
 impl FromIterator<(String, ParameterObject)> for ParameterObjectMap {
     fn from_iter<T: IntoIterator<Item = (String, ParameterObject)>>(iter: T) -> Self {
         Self(IndexMap::from_iter(
@@ -987,6 +1004,14 @@ impl ParameterListMap {
 impl FromIterator<(u32, ParameterList)> for ParameterListMap {
     fn from_iter<T: IntoIterator<Item = (u32, ParameterList)>>(iter: T) -> Self {
         Self(IndexMap::from_iter(iter))
+    }
+}
+
+impl<'a> FromIterator<(&'a str, ParameterList)> for ParameterListMap {
+    fn from_iter<T: IntoIterator<Item = (&'a str, ParameterList)>>(iter: T) -> Self {
+        Self(IndexMap::from_iter(
+            iter.into_iter().map(|(k, v)| (hash_name(k), v)),
+        ))
     }
 }
 
