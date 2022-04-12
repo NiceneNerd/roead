@@ -822,6 +822,12 @@ impl ParameterObject {
         self.0.is_empty()
     }
 
+    /// Builder-like method to set a parameter and return the `ParameterObject`
+    pub fn with_param(mut self, name: &str, value: Parameter) -> Self {
+        self.0.insert(hash_name(name), value);
+        self
+    }
+
     pub(crate) fn hash_at(&self, i: usize) -> u32 {
         *self.0.keys().nth(i).unwrap()
     }
@@ -865,6 +871,24 @@ pub trait ParamList {
     /// Set a child parameter object by name
     fn set_object(&mut self, name: &str, pobj: ParameterObject) {
         self.objects_mut().0.insert(hash_name(name), pobj);
+    }
+
+    /// Builder-like method to set a parameter list
+    fn with_list(mut self, name: &str, plist: ParameterList) -> Self
+    where
+        Self: Sized,
+    {
+        self.set_list(name, plist);
+        self
+    }
+
+    /// Builder-like method to set a parameter object
+    fn with_object(mut self, name: &str, pobj: ParameterObject) -> Self
+    where
+        Self: Sized,
+    {
+        self.set_object(name, pobj);
+        self
     }
 }
 
