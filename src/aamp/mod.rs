@@ -882,12 +882,37 @@ pub trait ParamList {
         self
     }
 
+    /// Builder-like method to set parameter lists from an iterator
+    fn with_lists<'a, I: IntoIterator<Item = (&'a str, ParameterList)>>(mut self, lists: I) -> Self
+    where
+        Self: Sized,
+    {
+        self.lists_mut()
+            .0
+            .extend(lists.into_iter().map(|(n, l)| (hash_name(n), l)));
+        self
+    }
+
     /// Builder-like method to set a parameter object
     fn with_object(mut self, name: &str, pobj: ParameterObject) -> Self
     where
         Self: Sized,
     {
         self.set_object(name, pobj);
+        self
+    }
+
+    /// Builder-like method to set parameter objects from an iterator
+    fn with_objects<'a, I: IntoIterator<Item = (&'a str, ParameterObject)>>(
+        mut self,
+        objects: I,
+    ) -> Self
+    where
+        Self: Sized,
+    {
+        self.objects_mut()
+            .0
+            .extend(objects.into_iter().map(|(n, o)| (hash_name(n), o)));
         self
     }
 }
