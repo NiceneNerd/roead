@@ -883,13 +883,16 @@ pub trait ParamList {
     }
 
     /// Builder-like method to set parameter lists from an iterator
-    fn with_lists<'a, I: IntoIterator<Item = (&'a str, ParameterList)>>(mut self, lists: I) -> Self
+    fn with_lists<S: AsRef<str>, I: IntoIterator<Item = (S, ParameterList)>>(
+        mut self,
+        lists: I,
+    ) -> Self
     where
         Self: Sized,
     {
         self.lists_mut()
             .0
-            .extend(lists.into_iter().map(|(n, l)| (hash_name(n), l)));
+            .extend(lists.into_iter().map(|(n, l)| (hash_name(n.as_ref()), l)));
         self
     }
 
@@ -903,7 +906,7 @@ pub trait ParamList {
     }
 
     /// Builder-like method to set parameter objects from an iterator
-    fn with_objects<'a, I: IntoIterator<Item = (&'a str, ParameterObject)>>(
+    fn with_objects<S: AsRef<str>, I: IntoIterator<Item = (S, ParameterObject)>>(
         mut self,
         objects: I,
     ) -> Self
@@ -912,7 +915,7 @@ pub trait ParamList {
     {
         self.objects_mut()
             .0
-            .extend(objects.into_iter().map(|(n, o)| (hash_name(n), o)));
+            .extend(objects.into_iter().map(|(n, o)| (hash_name(n.as_ref()), o)));
         self
     }
 }
