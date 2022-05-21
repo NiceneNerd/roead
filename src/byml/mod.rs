@@ -56,6 +56,7 @@
 use crate::{ffi, Endian};
 use std::{
     collections::BTreeMap,
+    iter::FromIterator,
     ops::{Index, IndexMut},
 };
 use thiserror::Error;
@@ -163,6 +164,24 @@ impl<'a, I: Into<BymlIndex<'a>>> IndexMut<I> for Byml {
             }
             _ => panic!("Cannot index, Byml type is not Hash or Array"),
         }
+    }
+}
+
+impl FromIterator<Byml> for Byml {
+    fn from_iter<T: IntoIterator<Item = Byml>>(iter: T) -> Self {
+        Self::Array(iter.into_iter().collect())
+    }
+}
+
+impl<'a> FromIterator<(&'a str, Byml)> for Byml {
+    fn from_iter<T: IntoIterator<Item = (&'a str, Byml)>>(iter: T) -> Self {
+        Self::Hash(iter.into_iter().map(|(k, v)| (k.to_owned(), v)).collect())
+    }
+}
+
+impl FromIterator<(String, Byml)> for Byml {
+    fn from_iter<T: IntoIterator<Item = (String, Byml)>>(iter: T) -> Self {
+        Self::Hash(iter.into_iter().collect())
     }
 }
 
