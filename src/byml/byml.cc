@@ -83,5 +83,7 @@ Byml FromFfi(const RByml &node) {
     return Byml(oead::F32(node.as_float()));
   case BymlType::Double:
     return Byml(oead::F64(node.as_double()));
+  case BymlType::Null:
+    return Byml::Null();
   }
 }
