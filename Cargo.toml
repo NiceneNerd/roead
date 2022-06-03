@@ -10,6 +10,7 @@ documentation = "https://nicenenerd.github.io/roead/roead"
 keywords = ["Nintendo", "aamp", "byml", "sarc", "gamedev"]
 categories = ["game-development", "parsing"]
 edition = "2018"
+exclude = ["/include/oead/test"]
 
 [features]
 with-serde = ["serde", "indexmap/serde"]
