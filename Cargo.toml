@@ -1,7 +1,7 @@
 [package]
 name = "roead"
 description = "Rust bindings for oead C++ library for common Nintendo formats"
-version = "0.10.1"
+version = "0.10.2"
 authors = ["Caleb Smith <email@calebdixonsmith.top>"]
 license = "GPL-3.0-or-later"
 readme = "README.md"
@@ -9,7 +9,7 @@ repository = "https://github.com/NiceneNerd/roead"
 documentation = "https://nicenenerd.github.io/roead/roead"
 keywords = ["Nintendo", "aamp", "byml", "sarc", "gamedev"]
 categories = ["game-development", "parsing"]
-edition = "2018"
+edition = "2021"
 exclude = ["/include/oead/test"]
 
 [features]
@@ -17,7 +17,7 @@ with-serde = ["serde", "indexmap/serde"]
 
 [dependencies]
 cached = "0.26.2"
-cxx = "1.0.49"
+cxx = "1.0.68"
 crc = "2.0.0"
 derivative = "2.1.1"
 indexmap = "1.6.2"

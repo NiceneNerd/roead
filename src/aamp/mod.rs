@@ -84,6 +84,52 @@ pub enum Parameter {
     StringRef(String),
 }
 
+macro_rules! impl_convert {
+    ($variant:ident, $type:ty) => {
+        impl From<$type> for Parameter {
+            fn from(v: $type) -> Self {
+                Self::$variant(v)
+            }
+        }
+
+        impl TryFrom<Parameter> for $type {
+            type Error = AampError;
+
+            fn try_from(v: Parameter) -> Result<Self> {
+                match v {
+                    Parameter::$variant(v) => Ok(v),
+                    _ => Err(AampError::TypeError),
+                }
+            }
+        }
+    };
+}
+
+impl_convert!(Bool, bool);
+impl_convert!(F32, f32);
+impl_convert!(Int, i32);
+impl_convert!(Vec2, Vector2f);
+impl_convert!(Vec3, Vector3f);
+impl_convert!(Vec4, Vector4f);
+impl_convert!(Color, Color);
+impl_convert!(Curve1, [Curve; 1]);
+impl_convert!(Curve2, [Curve; 2]);
+impl_convert!(Curve3, [Curve; 3]);
+impl_convert!(Curve4, [Curve; 4]);
+impl_convert!(BufferInt, Vec<i32>);
+impl_convert!(BufferF32, Vec<f32>);
+impl_convert!(Quat, Quat);
+impl_convert!(U32, u32);
+impl_convert!(BufferU32, Vec<u32>);
+impl_convert!(BufferBinary, Vec<u8>);
+
+impl TryFrom<Parameter> for String {
+    type Error = AampError;
+    fn try_from(val: Parameter) -> Result<Self> {
+        val.as_string().map(|s| s.to_owned())
+    }
+}
+
 impl From<UniquePtr<ffi::Parameter>> for Parameter {
     fn from(fparam: UniquePtr<ffi::Parameter>) -> Self {
         match fparam.GetType() {

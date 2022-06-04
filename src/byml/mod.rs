@@ -114,6 +114,39 @@ pub enum Byml {
     Double(f64),
 }
 
+macro_rules! impl_convert {
+    ($variant:ident, $type:ty) => {
+        impl From<$type> for Byml {
+            fn from(v: $type) -> Self {
+                Self::$variant(v)
+            }
+        }
+
+        impl TryFrom<Byml> for $type {
+            type Error = BymlError;
+
+            fn try_from(v: Byml) -> Result<Self> {
+                match v {
+                    Byml::$variant(v) => Ok(v),
+                    _ => Err(BymlError::TypeError),
+                }
+            }
+        }
+    };
+}
+
+impl_convert!(String, String);
+impl_convert!(Binary, Vec<u8>);
+impl_convert!(Array, Vec<Byml>);
+impl_convert!(Hash, Hash);
+impl_convert!(Bool, bool);
+impl_convert!(Int, i32);
+impl_convert!(Float, f32);
+impl_convert!(UInt, u32);
+impl_convert!(Int64, i64);
+impl_convert!(UInt64, u64);
+impl_convert!(Double, f64);
+
 impl Default for Byml {
     fn default() -> Self {
         Self::Null
@@ -186,6 +219,11 @@ impl FromIterator<(String, Byml)> for Byml {
 }
 
 impl Byml {
+    /// Checks if the BYML node is a null node
+    pub fn is_null(&self) -> bool {
+        matches!(self, Self::Null)
+    }
+
     /// Returns a result with the inner boolean value or a type error
     pub fn as_bool(&self) -> Result<bool> {
         if let Byml::Bool(v) = self {
