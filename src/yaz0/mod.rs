@@ -20,6 +20,8 @@ pub enum Yaz0Error {
     MagicError(String),
     #[error("Invalid compression level, expected 6-9, found {0}")]
     InvalidLevelError(u8),
+    #[error("Not enough data to decompress, expected >16 bytes, found {0}")]
+    InsufficientDataError(usize),
     #[error("oead could not compress or decompress")]
     OeadError(#[from] cxx::Exception),
 }
@@ -28,18 +30,25 @@ pub type Result<T> = std::result::Result<T, Yaz0Error>;
 
 /// Decompress yaz0 compressed data.
 pub fn decompress<B: AsRef<[u8]>>(data: B) -> Result<Vec<u8>> {
-    if &data.as_ref()[0..4] != b"Yaz0" {
+    let data = data.as_ref();
+    if data.len() < 16 {
+        return Err(Yaz0Error::InsufficientDataError(data.len()));
+    }
+    if &data[0..4] != b"Yaz0" {
         return Err(Yaz0Error::MagicError(
-            String::from_utf8_lossy(&data.as_ref()[0..4]).to_string(),
+            String::from_utf8_lossy(&data[0..4]).to_string(),
         ));
     }
-    Ok(ffi::decompress(data.as_ref())?)
+    Ok(ffi::decompress(data)?)
 }
 
 /// Check if data is yaz0 compressed and decompress if needed.
 #[inline]
 pub fn decompress_if<'a, B: Into<Cow<'a, [u8]>>>(data: B) -> Result<Cow<'a, [u8]>> {
     let data = data.into();
+    if data.len() < 16 {
+        return Err(Yaz0Error::InsufficientDataError(data.len()));
+    }
     if &data[0..4] == b"Yaz0" {
         decompress(data).map(|d| d.into())
     } else {
