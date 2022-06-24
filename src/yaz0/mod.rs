@@ -39,7 +39,10 @@ pub fn decompress<B: AsRef<[u8]>>(data: B) -> Result<Vec<u8>> {
             String::from_utf8_lossy(&data[0..4]).to_string(),
         ));
     }
-    Ok(ffi::decompress(data)?)
+    let decompressed = ffi::decompress(data)?;
+    let vec = unsafe { Vec::from_raw_parts(decompressed.as_slice().as_ptr() as *mut u8, decompressed.len(), decompressed.len()) };
+    std::mem::forget(decompressed);
+    Ok(vec)
 }
 
 /// Check if data is yaz0 compressed and decompress if needed.
@@ -94,6 +97,14 @@ mod tests {
         let decomp = std::fs::read_to_string("test/Cargo.toml").unwrap();
         assert_eq!(&contents[0..9], "[package]");
         assert_eq!(&contents, &decomp);
+    }
+
+    #[test]
+    fn decompress_bench() {
+        for _ in 0..10000 {
+            let data = std::fs::read("test/Enemy_Lynel_Dark.sbactorpack").unwrap();
+            decompress(&data).unwrap();
+        }
     }
 
     #[test]

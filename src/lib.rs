@@ -255,7 +255,7 @@ pub(crate) mod ffi {
 
         include!("roead/include/yaz0.h");
 
-        fn decompress(data: &[u8]) -> Result<Vec<u8>>;
+        fn decompress(data: &[u8]) -> Result<UniquePtr<CxxVector<u8>>>;
         fn compress(data: &[u8], level: u8) -> Vec<u8>;
 
         include!("roead/include/types.h");

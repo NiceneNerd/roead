@@ -9,11 +9,12 @@
 using oead::yaz0::Compress;
 using oead::yaz0::Decompress;
 
-rust::Vec<uint8_t> decompress(const rust::Slice<const uint8_t> data) {
+std::unique_ptr<std::vector<uint8_t>> decompress(const rust::Slice<const uint8_t> data) {
     auto dec = Decompress(tcb::span(data.data(), data.size()));
-    rust::Vec<uint8_t> vec;
-    std::move(dec.begin(), dec.end(), std::back_inserter(vec));
-    return vec;
+    return std::make_unique<std::vector<uint8_t>>(dec);
+    // rust::Vec<uint8_t> vec;
+    // std::move(dec.begin(), dec.end(), std::back_inserter(vec));
+    // return vec;
 }
 
 rust::Vec<uint8_t> compress(const rust::Slice<const uint8_t> data, uint8_t level) {
