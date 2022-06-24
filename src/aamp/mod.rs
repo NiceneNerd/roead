@@ -25,8 +25,8 @@
 //! # }
 //! ```
 
-use crate::ffi;
 use crate::ffi::{Color, Curve, ParamType, Quat, Vector2f, Vector3f, Vector4f};
+use crate::{cvec_to_vec, ffi};
 use cxx::UniquePtr;
 use indexmap::IndexMap;
 #[cfg(feature = "serde")]
@@ -153,7 +153,9 @@ impl From<UniquePtr<ffi::Parameter>> for Parameter {
             ParamType::BufferInt => Self::BufferInt(ffi::GetParamBufInt(&fparam)),
             ParamType::BufferF32 => Self::BufferF32(ffi::GetParamBufF32(&fparam)),
             ParamType::BufferU32 => Self::BufferU32(ffi::GetParamBufU32(&fparam)),
-            ParamType::BufferBinary => Self::BufferBinary(ffi::GetParamBufBin(&fparam)),
+            ParamType::BufferBinary => {
+                Self::BufferBinary(cvec_to_vec(ffi::GetParamBufBin(&fparam)))
+            }
             _ => unreachable!(),
         }
     }
@@ -1344,7 +1346,7 @@ impl ParameterIO {
 
     /// Serialize the ParameterIO to a binary parameter archive.
     pub fn to_binary(&self) -> Vec<u8> {
-        ffi::AampToBinary(self)
+        cvec_to_vec(ffi::AampToBinary(self))
     }
 
     pub(crate) fn list_count(&self) -> usize {

@@ -53,7 +53,7 @@
 //! # Ok(())
 //! # }
 //! ```
-use crate::{ffi, Endian};
+use crate::{cvec_to_vec, ffi, Endian};
 use std::{
     collections::BTreeMap,
     iter::FromIterator,
@@ -394,7 +394,7 @@ impl Byml {
     /// This can only be done for Null, Array or Hash nodes.
     pub fn to_binary(&self, endian: Endian) -> Vec<u8> {
         if matches!(self, Byml::Array(_) | Byml::Hash(_) | Byml::Null) {
-            ffi::BymlToBinary(self, matches!(endian, Endian::Big), 2)
+            cvec_to_vec(ffi::BymlToBinary(self, matches!(endian, Endian::Big), 2))
         } else {
             panic!("Root node must be an array, hash, or null value")
         }
@@ -407,7 +407,11 @@ impl Byml {
             panic!("Version must be <= 4")
         }
         if matches!(self, Byml::Array(_) | Byml::Hash(_) | Byml::Null) {
-            ffi::BymlToBinary(self, matches!(endian, Endian::Big), version as usize)
+            cvec_to_vec(ffi::BymlToBinary(
+                self,
+                matches!(endian, Endian::Big),
+                version as usize,
+            ))
         } else {
             panic!("Root node must be an array, hash, or null value")
         }
@@ -417,9 +421,15 @@ impl Byml {
         match byml.GetType() {
             ffi::BymlType::Hash => Self::Hash({
                 let chash = byml.GetHash();
-                let keys = ffi::GetHashKeys(chash);
-                keys.iter()
-                    .map(|k| (k.to_str().unwrap().to_owned(), Self::from_ffi(chash.at(k))))
+                let size = ffi::GetHashSize(chash);
+                (0usize..size)
+                    .map(|i| {
+                        let key = ffi::GetHashKey(chash, i);
+                        (
+                            key.to_string_lossy().to_string(),
+                            Self::from_ffi(chash.at(key)),
+                        )
+                    })
                     .collect()
             }),
             ffi::BymlType::Bool => Byml::Bool(byml.GetBool()),

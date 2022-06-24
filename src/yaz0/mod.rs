@@ -10,7 +10,7 @@
 //! For detailed benchmarks, see the results files in the [test directory of the syaz0 project](https://github.com/zeldamods/syaz0/tree/master/test).
 use std::{borrow::Cow, path::Path};
 
-use crate::ffi;
+use crate::{cvec_to_vec, ffi};
 use thiserror::Error;
 use unicase::UniCase;
 
@@ -39,29 +39,23 @@ pub fn decompress<B: AsRef<[u8]>>(data: B) -> Result<Vec<u8>> {
             String::from_utf8_lossy(&data[0..4]).to_string(),
         ));
     }
-    let decompressed = ffi::decompress(data)?;
-    let vec = unsafe { Vec::from_raw_parts(decompressed.as_slice().as_ptr() as *mut u8, decompressed.len(), decompressed.len()) };
-    std::mem::forget(decompressed);
-    Ok(vec)
+    Ok(cvec_to_vec(ffi::decompress(data)?))
 }
 
 /// Check if data is yaz0 compressed and decompress if needed.
 #[inline]
 pub fn decompress_if<'a, B: Into<Cow<'a, [u8]>>>(data: B) -> Result<Cow<'a, [u8]>> {
     let data = data.into();
-    if data.len() < 16 {
-        return Err(Yaz0Error::InsufficientDataError(data.len()));
-    }
-    if &data[0..4] == b"Yaz0" {
-        decompress(data).map(|d| d.into())
-    } else {
+    if data.len() < 4 || &data[0..4] != b"Yaz0" {
         Ok(data)
+    } else {
+        decompress(data).map(|d| d.into())
     }
 }
 
 /// Compress data with default compression level (7).
 pub fn compress<B: AsRef<[u8]>>(data: B) -> Vec<u8> {
-    ffi::compress(data.as_ref(), 7)
+    cvec_to_vec(ffi::compress(data.as_ref(), 7))
 }
 
 /// Compress data with specified compression level. Available levels are 6-9, from
@@ -70,7 +64,7 @@ pub fn compress_with_level<B: AsRef<[u8]>>(data: B, level: u8) -> Result<Vec<u8>
     if !(6..=9).contains(&level) {
         return Err(Yaz0Error::InvalidLevelError(level));
     }
-    Ok(ffi::compress(data.as_ref(), level))
+    Ok(cvec_to_vec(ffi::compress(data.as_ref(), level)))
 }
 
 /// Compress data conditionally, if an associated path has a yaz0-associated
@@ -97,14 +91,6 @@ mod tests {
         let decomp = std::fs::read_to_string("test/Cargo.toml").unwrap();
         assert_eq!(&contents[0..9], "[package]");
         assert_eq!(&contents, &decomp);
-    }
-
-    #[test]
-    fn decompress_bench() {
-        for _ in 0..10000 {
-            let data = std::fs::read("test/Enemy_Lynel_Dark.sbactorpack").unwrap();
-            decompress(&data).unwrap();
-        }
     }
 
     #[test]

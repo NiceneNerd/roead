@@ -36,6 +36,14 @@ pub enum Endian {
     Little,
 }
 
+#[inline]
+pub(crate) fn cvec_to_vec(cvec: cxx::UniquePtr<cxx::CxxVector<u8>>) -> Vec<u8> {
+    let vec =
+        unsafe { Vec::from_raw_parts(cvec.as_slice().as_ptr() as *mut u8, cvec.len(), cvec.len()) };
+    std::mem::forget(cvec);
+    vec
+}
+
 #[cxx::bridge]
 pub(crate) mod ffi {
     #[derive(Debug, Default, Clone, Copy, PartialEq, PartialOrd)]
@@ -83,7 +91,7 @@ pub(crate) mod ffi {
 
     struct SarcWriteResult {
         alignment: usize,
-        data: Vec<u8>,
+        data: UniquePtr<CxxVector<u8>>,
     }
 
     struct ParamPair {
@@ -256,7 +264,7 @@ pub(crate) mod ffi {
         include!("roead/include/yaz0.h");
 
         fn decompress(data: &[u8]) -> Result<UniquePtr<CxxVector<u8>>>;
-        fn compress(data: &[u8], level: u8) -> Vec<u8>;
+        fn compress(data: &[u8], level: u8) -> UniquePtr<CxxVector<u8>>;
 
         include!("roead/include/types.h");
 
@@ -275,7 +283,8 @@ pub(crate) mod ffi {
 
         fn BymlFromBinary(data: &[u8]) -> Result<UniquePtr<Byml>>;
         fn BymlFromText(text: &str) -> Result<UniquePtr<Byml>>;
-        fn BymlToBinary(node: &RByml, big_endian: bool, version: usize) -> Vec<u8>;
+        fn BymlToBinary(node: &RByml, big_endian: bool, version: usize)
+            -> UniquePtr<CxxVector<u8>>;
         fn BymlToText(node: &RByml) -> String;
 
         type Byml;
@@ -294,7 +303,8 @@ pub(crate) mod ffi {
         fn GetArray(self: &Byml) -> &CxxVector<Byml>;
         fn GetHash(self: &Byml) -> &Hash;
 
-        fn GetHashKeys(hash: &Hash) -> UniquePtr<CxxVector<CxxString>>;
+        fn GetHashKey(hash: &Hash, index: usize) -> &CxxString;
+        fn GetHashSize(hash: &Hash) -> usize;
         fn at<'a, 'b>(self: &'a Hash, key: &'b CxxString) -> &'a Byml;
 
         include!("roead/include/aamp.h");
@@ -314,7 +324,7 @@ pub(crate) mod ffi {
         pub(crate) fn AampFromBinary(data: &[u8]) -> Result<UniquePtr<ParameterIO>>;
         pub(crate) fn AampFromText(text: &str) -> Result<UniquePtr<ParameterIO>>;
         pub(crate) fn AampToText(pio: &RsParameterIO) -> String;
-        pub(crate) fn AampToBinary(pio: &RsParameterIO) -> Vec<u8>;
+        pub(crate) fn AampToBinary(pio: &RsParameterIO) -> UniquePtr<CxxVector<u8>>;
 
         fn GetType(self: &Parameter) -> ParamType;
         pub(crate) fn GetParamBool(param: &Parameter) -> bool;
@@ -334,7 +344,7 @@ pub(crate) mod ffi {
         pub(crate) fn GetParamBufInt(param: &Parameter) -> Vec<i32>;
         pub(crate) fn GetParamBufF32(param: &Parameter) -> Vec<f32>;
         pub(crate) fn GetParamBufU32(param: &Parameter) -> Vec<u32>;
-        pub(crate) fn GetParamBufBin(param: &Parameter) -> Vec<u8>;
+        pub(crate) fn GetParamBufBin(param: &Parameter) -> UniquePtr<CxxVector<u8>>;
         pub(crate) fn GetParams(pobj: &ParameterObject) -> UniquePtr<ParameterMap>;
         pub(crate) fn GetParamObjs(plist: &ParameterList) -> UniquePtr<ParameterObjectMap>;
         pub(crate) fn GetParamLists(plist: &ParameterList) -> UniquePtr<ParameterListMap>;

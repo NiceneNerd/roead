@@ -19,13 +19,11 @@ std::unique_ptr<Byml> BymlFromText(rust::Str text) {
       oead::Byml::FromText({text.data(), text.size()}));
 }
 
-rust::Vec<uint8_t> BymlToBinary(const RByml &ffiNode, bool big_endian,
+std::unique_ptr<std::vector<uint8_t>> BymlToBinary(const RByml &ffiNode, bool big_endian,
                                 size_t version) {
   const auto node = FromFfi(ffiNode);
   std::vector<uint8_t> data = node.ToBinary(big_endian, version);
-  rust::Vec<uint8_t> vec;
-  std::move(data.begin(), data.end(), std::back_inserter(vec));
-  return vec;
+  return std::make_unique<std::vector<uint8_t>>(data);
 }
 
 rust::String BymlToText(const RByml &ffiNode) {
@@ -39,13 +37,18 @@ rust::String GetBymlString(Byml &byml) {
   return rust::String(str.data(), str.size());
 }
 
-std::unique_ptr<std::vector<std::string>> GetHashKeys(const Hash &hash) {
-  std::vector<std::string> keys;
-  keys.reserve(hash.size());
-  for (auto &[key, _] : hash) {
-    keys.push_back(key);
+size_t GetHashSize(const Hash &hash) {
+  return hash.size();
+}
+
+const std::string &GetHashKey(const Hash &hash, size_t index) {
+  auto i = 0;
+  for (auto &[key, _]: hash ) {
+    if (i == index) {
+      return key;
+    }
+    i++;
   }
-  return std::make_unique<std::vector<std::string>>(keys);
 }
 
 Byml FromFfi(const RByml &node) {

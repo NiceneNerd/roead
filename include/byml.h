@@ -14,9 +14,9 @@ std::unique_ptr<oead::Byml> BymlFromText(rust::Str text);
 struct RByml;
 
 Byml FromFfi(const RByml &node);
-rust::Vec<uint8_t> BymlToBinary(const RByml &node, bool big_endian,
+std::unique_ptr<std::vector<uint8_t>> BymlToBinary(const RByml &node, bool big_endian,
                                 size_t version);
 rust::String BymlToText(const RByml &node);
 
-
-std::unique_ptr<std::vector<std::string>> GetHashKeys(const Hash &hash);
+const std::string& GetHashKey(const Hash &hash, size_t index);
+size_t GetHashSize(const Hash &hash);

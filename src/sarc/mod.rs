@@ -33,7 +33,7 @@
 //! # Ok(())
 //! # }
 //! ```
-use crate::{aamp, byml, ffi, yaz0, Endian};
+use crate::{aamp, byml, cvec_to_vec, ffi, yaz0, Endian};
 use std::{
     borrow::Cow,
     collections::{BTreeMap, HashMap},
@@ -449,13 +449,15 @@ impl SarcWriter {
 
     /// Write a SARC archive to an in-memory buffer.
     pub fn to_binary(&self) -> Vec<u8> {
-        ffi::WriteSarc(
-            self,
-            matches!(self.endian, Endian::Big),
-            self.legacy,
-            self.alignment,
+        cvec_to_vec(
+            ffi::WriteSarc(
+                self,
+                matches!(self.endian, Endian::Big),
+                self.legacy,
+                self.alignment,
+            )
+            .data,
         )
-        .data
     }
 
     /// Write a SARC archive to an in-memory buffer, returning a tuple containing
@@ -468,7 +470,7 @@ impl SarcWriter {
             self.legacy,
             self.alignment,
         );
-        (result.data, result.alignment)
+        (cvec_to_vec(result.data), result.alignment)
     }
 
     /// Write a SARC archive to any writer.

@@ -57,16 +57,12 @@ SarcWriteResult WriteSarc(const RsSarcWriter& rs_writer, bool big_endian, bool l
     auto name = rs_writer.get_file_by_index(i);
     auto path = std::string(name.data(), name.size());
     auto data = rs_writer.get_data_by_index(i);
-    std::vector<uint8_t> vec;
-    std::move(data.begin(), data.end(), std::back_inserter(vec));
+    std::vector<uint8_t> vec(data.begin(), data.end());
     writer->m_files[path] = vec;
   }
   auto result = writer->Write();
-  rust::Vec<uint8_t> vec;
-  std::move(result.second.begin(), result.second.end(),
-            std::back_inserter(vec));
   SarcWriteResult res{};
   res.alignment = result.first;
-  res.data = vec;
+  res.data = std::make_unique<std::vector<uint8_t>>(result.second);
   return res;
 }

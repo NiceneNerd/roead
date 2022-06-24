@@ -47,7 +47,7 @@ rust::String GetParamString(const Parameter &param);
 rust::Vec<int> GetParamBufInt(const Parameter &param);
 rust::Vec<float> GetParamBufF32(const Parameter &param);
 rust::Vec<u32> GetParamBufU32(const Parameter &param);
-rust::Vec<u8> GetParamBufBin(const Parameter &param);
+std::unique_ptr<std::vector<uint8_t>> GetParamBufBin(const Parameter &param);
 std::unique_ptr<ParameterMap> GetParams(const ParameterObject &pobj);
 std::unique_ptr<ParameterObjectMap> GetParamObjs(const ParameterList &plist);
 std::unique_ptr<ParameterListMap> GetParamLists(const ParameterList &plist);
@@ -65,4 +65,4 @@ ParameterList PlistFromFfi(const RsParameterList &plist);
 ParameterIO PioFromFfi(const RsParameterIO &pio);
 
 rust::String AampToText(const RsParameterIO &pio);
-rust::Vec<uint8_t> AampToBinary(const RsParameterIO &pio);
+std::unique_ptr<std::vector<uint8_t>> AampToBinary(const RsParameterIO &pio);

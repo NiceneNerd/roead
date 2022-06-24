@@ -130,12 +130,10 @@ rust::Vec<u32> GetParamBufU32(const Parameter &param)
   return vec;
 }
 
-rust::Vec<u8> GetParamBufBin(const Parameter &param)
+std::unique_ptr<std::vector<uint8_t>> GetParamBufBin(const Parameter &param)
 {
   const auto buf = param.Get<ParamType::BufferBinary>();
-  rust::Vec<u8> vec;
-  std::move(buf.begin(), buf.end(), std::back_inserter(vec));
-  return vec;
+  return std::make_unique<std::vector<uint8_t>>(buf);
 }
 
 std::unique_ptr<ParameterMap> GetParams(const ParameterObject &pobj)
@@ -370,11 +368,9 @@ rust::String AampToText(const RsParameterIO &pio)
   return rust::String(text.data(), text.size());
 }
 
-rust::Vec<uint8_t> AampToBinary(const RsParameterIO &pio)
+std::unique_ptr<std::vector<uint8_t>> AampToBinary(const RsParameterIO &pio)
 {
   const auto oead_pio = PioFromFfi(pio);
   const auto data = oead_pio.ToBinary();
-  rust::Vec<uint8_t> vec;
-  std::move(data.begin(), data.end(), std::back_inserter(vec));
-  return vec;
+  return std::make_unique<std::vector<uint8_t>>(data);
 }
