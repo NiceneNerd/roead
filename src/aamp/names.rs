@@ -1,14 +1,12 @@
 use crate::aamp::{hash_name, CRC32};
 use cached::proc_macro::cached;
 use indexmap::IndexMap;
-use lazy_static::lazy_static;
+use once_cell::sync::Lazy;
 
 const NAMES: &str = include_str!("../../include/oead/data/botw_hashed_names.txt");
 const NUMBERED_NAMES: &str = include_str!("../../include/oead/data/botw_numbered_names.txt");
 
-lazy_static! {
-    static ref NUMBERED_NAME_LIST: Vec<&'static str> = NUMBERED_NAMES.split('\n').collect();
-}
+static NUMBERED_NAME_LIST: Lazy<Vec<&'static str>> = Lazy::new(|| NUMBERED_NAMES.split('\n').collect());
 
 /// A table of names that is used to recover original names in binary parameter archives which store only name hashes.
 #[derive(Clone, Default, Debug)]

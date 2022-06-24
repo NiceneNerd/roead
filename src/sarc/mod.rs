@@ -290,7 +290,7 @@ pub type FileMap = BTreeMap<String, Vec<u8>>;
 /// Legacy mode is not needed for games with a new-style resource system that
 /// automatically takes care of data alignment and does not require manual
 /// alignment nor nested SARC alignment.
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Eq)]
 pub struct SarcWriter {
     pub files: FileMap,
     pub endian: Endian,
