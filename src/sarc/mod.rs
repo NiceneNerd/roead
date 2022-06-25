@@ -449,15 +449,14 @@ impl SarcWriter {
 
     /// Write a SARC archive to an in-memory buffer.
     pub fn to_binary(&self) -> Vec<u8> {
-        cvec_to_vec(
-            ffi::WriteSarc(
-                self,
-                matches!(self.endian, Endian::Big),
-                self.legacy,
-                self.alignment,
-            )
-            .data,
-        )
+        let ffi::SarcWriteResult { alignment, data } = ffi::WriteSarc(
+            self,
+            matches!(self.endian, Endian::Big),
+            self.legacy,
+            self.alignment,
+        );
+        let data = cvec_to_vec(data);
+        data
     }
 
     /// Write a SARC archive to an in-memory buffer, returning a tuple containing
