@@ -53,7 +53,7 @@
 //! # Ok(())
 //! # }
 //! ```
-use crate::{cvec_to_vec, ffi, Endian};
+use crate::{ffi, Bytes, Endian};
 use std::{
     collections::BTreeMap,
     iter::FromIterator,
@@ -392,9 +392,9 @@ impl Byml {
 
     /// Serialize the document to BYML with the specified endianness and default version (2).
     /// This can only be done for Null, Array or Hash nodes.
-    pub fn to_binary(&self, endian: Endian) -> Vec<u8> {
+    pub fn to_binary(&self, endian: Endian) -> Bytes {
         if matches!(self, Byml::Array(_) | Byml::Hash(_) | Byml::Null) {
-            cvec_to_vec(ffi::BymlToBinary(self, matches!(endian, Endian::Big), 2))
+            Bytes(ffi::BymlToBinary(self, matches!(endian, Endian::Big), 2))
         } else {
             panic!("Root node must be an array, hash, or null value")
         }
@@ -402,12 +402,12 @@ impl Byml {
 
     /// Serialize the document to BYML with the specified endianness and version number.
     /// This can only be done for Null, Array or Hash nodes.
-    pub fn to_binary_with_version(&self, endian: Endian, version: u8) -> Vec<u8> {
+    pub fn to_binary_with_version(&self, endian: Endian, version: u8) -> Bytes {
         if version > 4 {
             panic!("Version must be <= 4")
         }
         if matches!(self, Byml::Array(_) | Byml::Hash(_) | Byml::Null) {
-            cvec_to_vec(ffi::BymlToBinary(
+            Bytes(ffi::BymlToBinary(
                 self,
                 matches!(endian, Endian::Big),
                 version as usize,

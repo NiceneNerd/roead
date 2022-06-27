@@ -26,14 +26,14 @@
 //! sarc_writer.add_file("A/Dummy/File.txt", b"This is a test".to_vec()); // Add a couple files
 //! sarc_writer.add_file("A/Dummy/File2.txt", b"This is another test".to_vec());
 //! sarc_writer.delete_file("A/Dummy/File.txt"); // Never mind!
-//! let data: Vec<u8> = sarc_writer.to_binary(); // Write to an in-memory buffer
+//! let data = sarc_writer.to_binary(); // Write to an in-memory buffer
 //! // We can also take construct a SARC writer from an existing SARC
-//! let sarc = Sarc::read(&data)?;
+//! let sarc = Sarc::read(data.as_slice())?;
 //! let another_sarc_writer: SarcWriter = sarc.into();
 //! # Ok(())
 //! # }
 //! ```
-use crate::{aamp, byml, cvec_to_vec, ffi, yaz0, Endian};
+use crate::{aamp, byml, ffi, yaz0, Bytes, Endian};
 use std::{
     borrow::Cow,
     collections::{BTreeMap, HashMap},
@@ -81,7 +81,7 @@ impl File<'_> {
     }
 
     /// Decompress the file data.
-    pub fn decompress_data(&self) -> yaz0::Result<Vec<u8>> {
+    pub fn decompress_data(&self) -> yaz0::Result<Bytes> {
         yaz0::decompress(self.data)
     }
 
@@ -268,7 +268,7 @@ impl Sarc<'_> {
             Err(SarcError::InsufficientDataError(data.len()))
         } else if &data[0..4] == b"Yaz0" {
             let data = crate::yaz0::decompress(data)?;
-            Self::read(data)
+            Self::read(Cow::Owned(data.to_vec()))
         } else if &data[0..4] != b"SARC" {
             Err(SarcError::MagicError)
         } else {
@@ -448,28 +448,27 @@ impl SarcWriter {
     }
 
     /// Write a SARC archive to an in-memory buffer.
-    pub fn to_binary(&self) -> Vec<u8> {
-        let ffi::SarcWriteResult { alignment, data } = ffi::WriteSarc(
+    pub fn to_binary(&self) -> Bytes {
+        let ffi::SarcWriteResult { alignment: _, data } = ffi::WriteSarc(
             self,
             matches!(self.endian, Endian::Big),
             self.legacy,
             self.alignment,
         );
-        let data = cvec_to_vec(data);
-        data
+        Bytes(data)
     }
 
     /// Write a SARC archive to an in-memory buffer, returning a tuple containing
     /// both the file data and the final alignment.
     #[allow(clippy::wrong_self_convention)]
-    pub fn to_binary_and_check_alignment(&mut self) -> (Vec<u8>, usize) {
+    pub fn to_binary_and_check_alignment(&mut self) -> (Bytes, usize) {
         let result = ffi::WriteSarc(
             self,
             matches!(self.endian, Endian::Big),
             self.legacy,
             self.alignment,
         );
-        (cvec_to_vec(result.data), result.alignment)
+        (Bytes(result.data), result.alignment)
     }
 
     /// Write a SARC archive to any writer.
@@ -560,7 +559,10 @@ mod tests {
         );
         let mut bytes2: Vec<u8> = vec![];
         writer.write_compressed(&mut bytes2).unwrap();
-        assert_eq!(bytes, crate::yaz0::decompress(bytes2).unwrap());
+        assert_eq!(
+            bytes,
+            crate::yaz0::decompress(bytes2).unwrap()
+        );
     }
 
     #[test]
@@ -569,7 +571,7 @@ mod tests {
         let sarc = sarc::Sarc::read(&bytes).unwrap();
         let writer = sarc::SarcWriter::from(&sarc);
         assert_eq!(writer.len(), sarc.len());
-        assert_eq!(writer.to_binary(), sarc._data.as_ref());
+        assert_eq!(writer.to_binary().as_ref(), sarc._data.as_ref());
     }
 
     #[test]

@@ -27,6 +27,8 @@ use crate::aamp::ParameterList as RsParameterList;
 use crate::aamp::ParameterObject as RsParameterObject;
 use crate::byml::Byml as RByml;
 use crate::sarc::SarcWriter as RsSarcWriter;
+use std::ops::Deref;
+use std::ops::DerefMut;
 
 /// Represents endianness where applicable. Generally, big endian is used for
 /// Wii U and little endian is used for Switch.
@@ -36,12 +38,45 @@ pub enum Endian {
     Little,
 }
 
-#[inline]
-pub(crate) fn cvec_to_vec(cvec: cxx::UniquePtr<cxx::CxxVector<u8>>) -> Vec<u8> {
-    let vec =
-        unsafe { Vec::from_raw_parts(cvec.as_slice().as_ptr() as *mut u8, cvec.len(), cvec.len()) };
-    std::mem::forget(cvec);
-    vec
+#[derive(Debug)]
+pub struct Bytes(cxx::UniquePtr<cxx::CxxVector<u8>>);
+
+impl Bytes {
+    pub fn as_slice(&self) -> &[u8] {
+        self.0.as_slice()
+    }
+}
+
+impl AsRef<[u8]> for Bytes {
+    fn as_ref(&self) -> &[u8] {
+        self.0.as_slice()
+    }
+}
+
+impl Deref for Bytes {
+    type Target = [u8];
+
+    fn deref(&self) -> &Self::Target {
+        self.0.as_slice()
+    }
+}
+
+impl DerefMut for Bytes {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        self.0.pin_mut().as_mut_slice()
+    }
+}
+
+impl<T: AsRef<[u8]>> PartialEq<T> for Bytes {
+    fn eq(&self, other: &T) -> bool {
+        self.0.as_slice() == other.as_ref()
+    }
+}
+
+impl<'a> From<&'a Bytes> for std::borrow::Cow<'a, [u8]> {
+    fn from(bytes: &'a Bytes) -> Self {
+        bytes.as_ref().into()
+    }
 }
 
 #[cxx::bridge]

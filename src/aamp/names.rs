@@ -6,7 +6,8 @@ use once_cell::sync::Lazy;
 const NAMES: &str = include_str!("../../include/oead/data/botw_hashed_names.txt");
 const NUMBERED_NAMES: &str = include_str!("../../include/oead/data/botw_numbered_names.txt");
 
-static NUMBERED_NAME_LIST: Lazy<Vec<&'static str>> = Lazy::new(|| NUMBERED_NAMES.split('\n').collect());
+static NUMBERED_NAME_LIST: Lazy<Vec<&'static str>> =
+    Lazy::new(|| NUMBERED_NAMES.split('\n').collect());
 
 /// A table of names that is used to recover original names in binary parameter archives which store only name hashes.
 #[derive(Clone, Default, Debug)]
@@ -45,7 +46,8 @@ impl NameTable {
     /// Gets the string associated with a specific hash, if present in the table
     pub fn get_name(&self, crc: u32) -> Option<&str> {
         self.table
-            .get(&crc).copied()
+            .get(&crc)
+            .copied()
             .or_else(|| self.own_table.get(&crc).map(|s| s.as_str()))
     }
 
