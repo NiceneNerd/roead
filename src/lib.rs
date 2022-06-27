@@ -38,12 +38,42 @@ pub enum Endian {
     Little,
 }
 
+/// Newtype wrapper for binary data returned from oead. This is used to avoid
+/// possibly expensive data copies.  
+/// This class is the equivalent to `std::vector<u8>`.
 #[derive(Debug)]
 pub struct Bytes(cxx::UniquePtr<cxx::CxxVector<u8>>);
 
 impl Bytes {
     pub fn as_slice(&self) -> &[u8] {
         self.0.as_slice()
+    }
+
+    pub fn to_vec(&self) -> Vec<u8> {
+        self.0.as_slice().to_vec()
+    }
+
+    #[cfg(unix)]
+    pub fn into_vec(self) -> Vec<u8> {
+        assert!(!self.0.is_null());
+        unsafe {
+            let len = self.0.len();
+            let ptr = self.0.into_raw();
+            Vec::from_raw_parts(
+                ptr.as_mut().unwrap().as_slice().as_ptr() as *mut u8,
+                len,
+                len,
+            )
+        }
+    }
+
+    #[cfg(windows)]
+    pub fn into_vec(self) -> Vec<u8> {
+        self.into()
+    }
+
+    pub fn push(&mut self, value: u8) {
+        self.0.pin_mut().push(value)
     }
 }
 
@@ -76,6 +106,46 @@ impl<T: AsRef<[u8]>> PartialEq<T> for Bytes {
 impl<'a> From<&'a Bytes> for std::borrow::Cow<'a, [u8]> {
     fn from(bytes: &'a Bytes) -> Self {
         bytes.as_ref().into()
+    }
+}
+
+impl From<Bytes> for std::borrow::Cow<'_, [u8]> {
+    fn from(bytes: Bytes) -> Self {
+        bytes.into_vec().into()
+    }
+}
+
+impl From<Bytes> for Vec<u8> {
+    fn from(val: Bytes) -> Self {
+        val.into_vec()
+    }
+}
+
+impl std::ops::Index<usize> for Bytes {
+    type Output = u8;
+
+    fn index(&self, index: usize) -> &Self::Output {
+        &self.0.as_slice()[index]
+    }
+}
+
+impl std::ops::IndexMut<usize> for Bytes {
+    fn index_mut(&mut self, index: usize) -> &mut Self::Output {
+        self.0.pin_mut().as_mut_slice().index_mut(index)
+    }
+}
+
+impl std::ops::Index<std::ops::Range<usize>> for Bytes {
+    type Output = [u8];
+
+    fn index(&self, index: std::ops::Range<usize>) -> &Self::Output {
+        &self.0.as_slice()[index]
+    }
+}
+
+impl std::ops::IndexMut<std::ops::Range<usize>> for Bytes {
+    fn index_mut(&mut self, index: std::ops::Range<usize>) -> &mut Self::Output {
+        self.0.pin_mut().as_mut_slice().index_mut(index)
     }
 }
 

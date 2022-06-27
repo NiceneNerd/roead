@@ -9,7 +9,7 @@
 //!
 //! For detailed benchmarks, see the results files in the [test directory of the syaz0 project](https://github.com/zeldamods/syaz0/tree/master/test).
 use crate::{ffi, Bytes};
-use std::{path::Path, ops::Deref};
+use std::{ops::Deref, path::Path};
 use thiserror::Error;
 use unicase::UniCase;
 
@@ -28,7 +28,7 @@ pub enum Yaz0Error {
 #[derive(Debug, PartialEq)]
 pub enum YazData<'a> {
     Borrowed(&'a [u8]),
-    Owned(Bytes)
+    Owned(Bytes),
 }
 
 impl<'a> Deref for YazData<'a> {
@@ -37,7 +37,7 @@ impl<'a> Deref for YazData<'a> {
     fn deref(&self) -> &Self::Target {
         match self {
             Self::Owned(v) => v.as_slice(),
-            Self::Borrowed(v) => *v
+            Self::Borrowed(v) => *v,
         }
     }
 }
@@ -52,7 +52,7 @@ impl<'a, T: ?Sized + AsRef<[u8]>> PartialEq<T> for YazData<'a> {
     fn eq(&self, other: &T) -> bool {
         (match self {
             Self::Borrowed(v) => *v,
-            Self::Owned(v) => v.as_slice() 
+            Self::Owned(v) => v.as_slice(),
         }) == other.as_ref()
     }
 }
@@ -75,11 +75,11 @@ pub fn decompress<B: AsRef<[u8]>>(data: B) -> Result<Bytes> {
 
 /// Check if data is yaz0 compressed and decompress if needed.
 #[inline]
-pub fn decompress_if<'a>(data: &'a [u8]) -> Result<YazData<'a>> {
+pub fn decompress_if(data: &[u8]) -> Result<YazData<'_>> {
     if data.len() < 4 || &data[0..4] != b"Yaz0" {
         Ok(data.into())
     } else {
-        decompress(data).map(|d| YazData::Owned(d))
+        decompress(data).map(YazData::Owned)
     }
 }
 
@@ -101,7 +101,7 @@ pub fn compress_with_level<B: AsRef<[u8]>>(data: B, level: u8) -> Result<Bytes> 
 /// Compress data conditionally, if an associated path has a yaz0-associated
 /// file extension (starts with 's', but does not equal 'sarc').
 #[inline]
-pub fn compress_if<'a, P: AsRef<Path>>(data: &'a [u8], path: P) -> YazData<'a> {
+pub fn compress_if<P: AsRef<Path>>(data: &[u8], path: P) -> YazData<'_> {
     if let Some(ext) = path.as_ref().extension() {
         if let Some(ext) = ext.to_str() {
             if ext.starts_with('s') && UniCase::new("sarc") != UniCase::new(ext) {
@@ -109,7 +109,7 @@ pub fn compress_if<'a, P: AsRef<Path>>(data: &'a [u8], path: P) -> YazData<'a> {
             }
         }
     }
-    YazData::Borrowed(data.into())
+    YazData::Borrowed(data)
 }
 
 #[cfg(test)]
