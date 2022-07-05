@@ -9,7 +9,7 @@
 //!
 //! For detailed benchmarks, see the results files in the [test directory of the syaz0 project](https://github.com/zeldamods/syaz0/tree/master/test).
 use crate::{ffi, Bytes};
-use std::{ops::Deref, path::Path};
+use std::{borrow::Cow, ops::Deref, path::Path};
 use thiserror::Error;
 use unicase::UniCase;
 
@@ -25,7 +25,9 @@ pub enum Yaz0Error {
     OeadError(#[from] cxx::Exception),
 }
 
-#[derive(Debug, PartialEq)]
+/// Cow-like wrapper for conditional Yaz0 operations which could return owned
+/// or borrowed data, using [`Bytes`](roead::Bytes) as the owned type.
+#[derive(Debug)]
 pub enum YazData<'a> {
     Borrowed(&'a [u8]),
     Owned(Bytes),
@@ -42,6 +44,12 @@ impl<'a> Deref for YazData<'a> {
     }
 }
 
+impl AsRef<[u8]> for YazData<'_> {
+    fn as_ref(&self) -> &[u8] {
+        self.deref()
+    }
+}
+
 impl<'a> From<&'a [u8]> for YazData<'a> {
     fn from(val: &'a [u8]) -> Self {
         Self::Borrowed(val)
@@ -54,6 +62,37 @@ impl<'a, T: ?Sized + AsRef<[u8]>> PartialEq<T> for YazData<'a> {
             Self::Borrowed(v) => *v,
             Self::Owned(v) => v.as_slice(),
         }) == other.as_ref()
+    }
+}
+
+impl std::borrow::Borrow<[u8]> for YazData<'_> {
+    fn borrow(&self) -> &[u8] {
+        self.deref()
+    }
+}
+
+impl std::ops::Index<usize> for YazData<'_> {
+    type Output = u8;
+
+    fn index(&self, index: usize) -> &Self::Output {
+        &self.deref()[index]
+    }
+}
+
+impl std::ops::Index<std::ops::Range<usize>> for YazData<'_> {
+    type Output = [u8];
+
+    fn index(&self, index: std::ops::Range<usize>) -> &Self::Output {
+        &self.deref()[index]
+    }
+}
+
+impl<'a> From<YazData<'a>> for Cow<'a, [u8]> {
+    fn from(val: YazData<'a>) -> Self {
+        match val {
+            YazData::Borrowed(v) => Cow::Borrowed(v),
+            YazData::Owned(v) => Cow::Owned(v.into_vec()),
+        }
     }
 }
 

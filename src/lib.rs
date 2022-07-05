@@ -149,6 +149,18 @@ impl std::ops::IndexMut<std::ops::Range<usize>> for Bytes {
     }
 }
 
+impl std::borrow::Borrow<[u8]> for Bytes {
+    fn borrow(&self) -> &[u8] {
+        self.0.as_slice()
+    }
+}
+
+impl std::borrow::BorrowMut<[u8]> for Bytes {
+    fn borrow_mut(&mut self) -> &mut [u8] {
+        self.0.pin_mut().as_mut_slice()
+    }
+}
+
 #[cxx::bridge]
 pub(crate) mod ffi {
     #[derive(Debug, Default, Clone, Copy, PartialEq, PartialOrd)]
