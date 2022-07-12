@@ -47,6 +47,15 @@ impl<const N: usize> std::fmt::Display for FixedSafeString<N> {
     }
 }
 
+impl<const N: usize> Default for FixedSafeString<N> {
+    fn default() -> Self {
+        Self {
+            length: 0,
+            data: [0; N],
+        }
+    }
+}
+
 unsafe impl cxx::ExternType for FixedSafeString<32> {
     type Id = cxx::type_id!("String32");
     type Kind = cxx::kind::Trivial;
@@ -131,6 +140,20 @@ impl<const N: usize> From<String> for FixedSafeString<N> {
 impl<const N: usize> From<FixedSafeString<N>> for String {
     fn from(f: FixedSafeString<N>) -> Self {
         unsafe { String::from_utf8_unchecked(f.data[..f.length].to_vec()) }
+    }
+}
+
+#[cfg(feature = "smartstring")]
+impl<const N: usize> From<smartstring::alias::String> for FixedSafeString<N> {
+    fn from(s: smartstring::alias::String) -> Self {
+        s.as_str().into()
+    }
+}
+
+#[cfg(feature = "smartstring")]
+impl<const N: usize> From<FixedSafeString<N>> for smartstring::alias::String {
+    fn from(f: FixedSafeString<N>) -> Self {
+        smartstring::alias::String::from(f.as_str())
     }
 }
 
