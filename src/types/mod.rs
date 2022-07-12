@@ -72,10 +72,12 @@ unsafe impl cxx::ExternType for FixedSafeString<256> {
 }
 
 impl<const N: usize> FixedSafeString<N> {
+    #[inline(always)]
     pub fn as_str(&self) -> &str {
         self.as_ref()
     }
 
+    #[inline(always)]
     pub fn as_mut_str(&mut self) -> &mut str {
         self.as_mut()
     }
@@ -143,19 +145,38 @@ impl<const N: usize> From<FixedSafeString<N>> for String {
     }
 }
 
-#[cfg(feature = "smartstring")]
-impl<const N: usize> From<smartstring::alias::String> for FixedSafeString<N> {
-    fn from(s: smartstring::alias::String) -> Self {
-        s.as_str().into()
+impl<const N: usize> From<&FixedSafeString<N>> for String {
+    fn from(f: &FixedSafeString<N>) -> Self {
+        unsafe { String::from_utf8_unchecked(f.data[..f.length].to_vec()) }
     }
 }
 
 #[cfg(feature = "smartstring")]
-impl<const N: usize> From<FixedSafeString<N>> for smartstring::alias::String {
-    fn from(f: FixedSafeString<N>) -> Self {
-        smartstring::alias::String::from(f.as_str())
+const _: () = {
+    impl<const N: usize> From<smartstring::alias::String> for FixedSafeString<N> {
+        fn from(s: smartstring::alias::String) -> Self {
+            s.as_str().into()
+        }
     }
-}
+
+    impl<const N: usize> From<FixedSafeString<N>> for smartstring::alias::String {
+        fn from(f: FixedSafeString<N>) -> Self {
+            smartstring::alias::String::from(f.as_str())
+        }
+    }
+
+    impl<const N: usize> From<&smartstring::alias::String> for FixedSafeString<N> {
+        fn from(s: &smartstring::alias::String) -> Self {
+            s.as_str().into()
+        }
+    }
+
+    impl<const N: usize> From<&FixedSafeString<N>> for smartstring::alias::String {
+        fn from(f: &FixedSafeString<N>) -> Self {
+            smartstring::alias::String::from(f.as_str())
+        }
+    }
+};
 
 #[cfg(feature = "serde")]
 mod serde {
