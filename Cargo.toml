@@ -1,7 +1,7 @@
 [package]
 name = "roead"
 description = "Rust bindings for oead C++ library for common Nintendo formats"
-version = "0.11.1"
+version = "0.12.0"
 authors = ["Caleb Smith <email@calebdixonsmith.top>"]
 license = "GPL-3.0-or-later"
 readme = "README.md"
@@ -16,9 +16,9 @@ exclude = ["/include/oead/test"]
 with-serde = ["serde", "indexmap/serde"]
 
 [dependencies]
-cached = "0.26.2"
+cached = "0.36.0"
+crc = "3.0.0"
 cxx = "1.0.69"
-crc = "2.0.0"
 derivative = "2.1.1"
 indexmap = "1.6.2"
 once_cell = "1.12.0"

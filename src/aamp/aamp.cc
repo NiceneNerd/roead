@@ -106,6 +106,24 @@ rust::String GetParamString(const Parameter &param)
   return rust::String(string.data(), string.size());
 }
 
+String32 GetParamString32(const Parameter &param)
+{
+  const auto string = param.Get<ParamType::String32>();
+  return string;
+}
+
+String64 GetParamString64(const Parameter &param)
+{
+  const auto string = param.Get<ParamType::String64>();
+  return string;
+}
+
+String256 GetParamString256(const Parameter &param)
+{
+  const auto string = param.Get<ParamType::String256>();
+  return string;
+}
+
 rust::Vec<int> GetParamBufInt(const Parameter &param)
 {
   const auto buf = param.Get<ParamType::BufferInt>();

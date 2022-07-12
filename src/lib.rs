@@ -443,6 +443,9 @@ pub(crate) mod ffi {
         pub(crate) fn AampToText(pio: &RsParameterIO) -> String;
         pub(crate) fn AampToBinary(pio: &RsParameterIO) -> UniquePtr<CxxVector<u8>>;
 
+        type String32 = crate::types::FixedSafeString<32>;
+        type String64 = crate::types::FixedSafeString<64>;
+        type String256 = crate::types::FixedSafeString<256>;
         fn GetType(self: &Parameter) -> ParamType;
         pub(crate) fn GetParamBool(param: &Parameter) -> bool;
         pub(crate) fn GetParamInt(param: &Parameter) -> i32;
@@ -457,6 +460,9 @@ pub(crate) mod ffi {
         pub(crate) fn GetParamCurve2(param: &Parameter) -> [Curve; 2];
         pub(crate) fn GetParamCurve3(param: &Parameter) -> [Curve; 3];
         pub(crate) fn GetParamCurve4(param: &Parameter) -> [Curve; 4];
+        pub(crate) fn GetParamString32(param: &Parameter) -> String32;
+        pub(crate) fn GetParamString64(param: &Parameter) -> String64;
+        pub(crate) fn GetParamString256(param: &Parameter) -> String256;
         pub(crate) fn GetParamString(param: &Parameter) -> String;
         pub(crate) fn GetParamBufInt(param: &Parameter) -> Vec<i32>;
         pub(crate) fn GetParamBufF32(param: &Parameter) -> Vec<f32>;

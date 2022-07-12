@@ -1,6 +1,139 @@
 //! Some miscellaneous needful oead types.
 pub use crate::ffi::{Color, Curve, Quat, Vector2f, Vector3f, Vector4f};
 
+#[repr(C)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+#[cfg_attr(
+    feature = "with-serde",
+    derive(::serde::Serialize, ::serde::Deserialize),
+    serde(from = "String", into = "String")
+)]
+/// A string class with its own inline, fixed-size storage.
+///
+/// In sead, this is actually a derived class of `sead::BufferedSafeString`
+/// which is in turn derived from `sead::SafeString`. Since the latter is
+/// essentially a `{vptr, const char* cstr}` pair and the former is a
+/// `std::string_view`, we will not bother implementing those base classes.
+///
+/// **Note:** Any string that is too long to be stored in a `FixedSafeString`
+/// is truncated.
+///
+/// ## Safety
+/// All values of this type are assumed to be valid UTF-8 when coming from the
+/// C++ side. This is only checked in debug mode, and in that case will panic
+/// if the string is invalid. In release mode the values are taken from FFI
+/// unchecked, so if they are not valid UTF-8 the strings will probably be
+/// corrupted, but there should not be any more serious side effects.
+pub struct FixedSafeString<const N: usize> {
+    length: usize,
+    data: [u8; N],
+}
+
+impl<const N: usize> PartialOrd for FixedSafeString<N> {
+    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+        self.as_str().partial_cmp(other.as_str())
+    }
+}
+
+impl<const N: usize> Ord for FixedSafeString<N> {
+    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+        self.as_str().cmp(other.as_str())
+    }
+}
+
+impl<const N: usize> std::fmt::Display for FixedSafeString<N> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        self.as_str().fmt(f)
+    }
+}
+
+unsafe impl cxx::ExternType for FixedSafeString<32> {
+    type Id = cxx::type_id!("String32");
+    type Kind = cxx::kind::Trivial;
+}
+
+unsafe impl cxx::ExternType for FixedSafeString<64> {
+    type Id = cxx::type_id!("String64");
+    type Kind = cxx::kind::Trivial;
+}
+
+unsafe impl cxx::ExternType for FixedSafeString<256> {
+    type Id = cxx::type_id!("String256");
+    type Kind = cxx::kind::Trivial;
+}
+
+impl<const N: usize> FixedSafeString<N> {
+    pub fn as_str(&self) -> &str {
+        self.as_ref()
+    }
+
+    pub fn as_mut_str(&mut self) -> &mut str {
+        self.as_mut()
+    }
+}
+
+impl<const N: usize> AsRef<str> for FixedSafeString<N> {
+    fn as_ref(&self) -> &str {
+        let slice = unsafe { core::slice::from_raw_parts(self.data.as_ptr(), self.length) };
+        if cfg!(debug_assertions) {
+            core::str::from_utf8(slice).unwrap()
+        } else {
+            unsafe { core::str::from_utf8_unchecked(slice) }
+        }
+    }
+}
+
+impl<const N: usize> AsMut<str> for FixedSafeString<N> {
+    fn as_mut(&mut self) -> &mut str {
+        let slice = unsafe { core::slice::from_raw_parts_mut(self.data.as_mut_ptr(), self.length) };
+        if cfg!(debug_assertions) {
+            core::str::from_utf8_mut(slice).unwrap()
+        } else {
+            unsafe { core::str::from_utf8_unchecked_mut(slice) }
+        }
+    }
+}
+
+impl<const N: usize> core::ops::Deref for FixedSafeString<N> {
+    type Target = str;
+    fn deref(&self) -> &Self::Target {
+        self.as_ref()
+    }
+}
+
+impl<const N: usize> core::ops::DerefMut for FixedSafeString<N> {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        self.as_mut()
+    }
+}
+
+impl<const N: usize> From<&str> for FixedSafeString<N> {
+    fn from(s: &str) -> Self {
+        let mut data = [0; N];
+        let length = core::cmp::min(N, s.len());
+        unsafe { std::ptr::copy_nonoverlapping(s.as_ptr(), data.as_mut_ptr(), length) };
+        Self { length, data }
+    }
+}
+
+impl<const N: usize> From<&String> for FixedSafeString<N> {
+    fn from(s: &String) -> Self {
+        s.as_str().into()
+    }
+}
+
+impl<const N: usize> From<String> for FixedSafeString<N> {
+    fn from(s: String) -> Self {
+        s.as_str().into()
+    }
+}
+
+impl<const N: usize> From<FixedSafeString<N>> for String {
+    fn from(f: FixedSafeString<N>) -> Self {
+        unsafe { String::from_utf8_unchecked(f.data[..f.length].to_vec()) }
+    }
+}
+
 #[cfg(feature = "serde")]
 mod serde {
     use crate::ffi::{Color, Curve, Quat, Vector2f, Vector3f, Vector4f};

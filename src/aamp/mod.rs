@@ -27,14 +27,15 @@
 
 use crate::{
     ffi::{self, Color, Curve, ParamType, Quat, Vector2f, Vector3f, Vector4f},
+    types::FixedSafeString,
     Bytes,
 };
 use cxx::UniquePtr;
 use indexmap::IndexMap;
 #[cfg(feature = "serde")]
 use serde::{Deserialize, Serialize};
-use std::iter::FromIterator;
 use std::ops::{Index, IndexMut};
+use std::{hint::unreachable_unchecked, iter::FromIterator};
 use thiserror::Error;
 
 pub mod names;
@@ -70,15 +71,15 @@ pub enum Parameter {
     Vec3(Vector3f),
     Vec4(Vector4f),
     Color(Color),
-    String32(String),
-    String64(String),
+    String32(FixedSafeString<32>),
+    String64(FixedSafeString<64>),
     Curve1([Curve; 1]),
     Curve2([Curve; 2]),
     Curve3([Curve; 3]),
     Curve4([Curve; 4]),
     BufferInt(Vec<i32>),
     BufferF32(Vec<f32>),
-    String256(String),
+    String256(FixedSafeString<256>),
     Quat(Quat),
     U32(u32),
     BufferU32(Vec<u32>),
@@ -148,9 +149,9 @@ impl From<UniquePtr<ffi::Parameter>> for Parameter {
             ParamType::Curve2 => Self::Curve2(ffi::GetParamCurve2(&fparam)),
             ParamType::Curve3 => Self::Curve3(ffi::GetParamCurve3(&fparam)),
             ParamType::Curve4 => Self::Curve4(ffi::GetParamCurve4(&fparam)),
-            ParamType::String32 => Self::String32(ffi::GetParamString(&fparam)),
-            ParamType::String64 => Self::String64(ffi::GetParamString(&fparam)),
-            ParamType::String256 => Self::String256(ffi::GetParamString(&fparam)),
+            ParamType::String32 => Self::String32(ffi::GetParamString32(&fparam)),
+            ParamType::String64 => Self::String64(ffi::GetParamString64(&fparam)),
+            ParamType::String256 => Self::String256(ffi::GetParamString256(&fparam)),
             ParamType::StringRef => Self::StringRef(ffi::GetParamString(&fparam)),
             ParamType::BufferInt => Self::BufferInt(ffi::GetParamBufInt(&fparam)),
             ParamType::BufferF32 => Self::BufferF32(ffi::GetParamBufF32(&fparam)),
@@ -158,7 +159,7 @@ impl From<UniquePtr<ffi::Parameter>> for Parameter {
             ParamType::BufferBinary => {
                 Self::BufferBinary(ffi::GetParamBufBin(&fparam).into_iter().copied().collect())
             }
-            _ => unreachable!(),
+            _ => unsafe { unreachable_unchecked() },
         }
     }
 }
@@ -218,7 +219,7 @@ impl Parameter {
         if let Self::Bool(v) = self {
             *v
         } else {
-            unreachable!()
+            unsafe { unreachable_unchecked() }
         }
     }
 
@@ -226,7 +227,7 @@ impl Parameter {
         if let Self::F32(v) = self {
             *v
         } else {
-            unreachable!()
+            unsafe { unreachable_unchecked() }
         }
     }
 
@@ -234,7 +235,7 @@ impl Parameter {
         if let Self::Int(v) = self {
             *v
         } else {
-            unreachable!()
+            unsafe { unreachable_unchecked() }
         }
     }
 
@@ -242,7 +243,7 @@ impl Parameter {
         if let Self::Vec2(v) = self {
             v
         } else {
-            unreachable!()
+            unsafe { unreachable_unchecked() }
         }
     }
 
@@ -250,7 +251,7 @@ impl Parameter {
         if let Self::Vec3(v) = self {
             v
         } else {
-            unreachable!()
+            unsafe { unreachable_unchecked() }
         }
     }
 
@@ -258,7 +259,7 @@ impl Parameter {
         if let Self::Vec4(v) = self {
             v
         } else {
-            unreachable!()
+            unsafe { unreachable_unchecked() }
         }
     }
 
@@ -266,7 +267,7 @@ impl Parameter {
         if let Self::Color(v) = self {
             v
         } else {
-            unreachable!()
+            unsafe { unreachable_unchecked() }
         }
     }
 
@@ -274,7 +275,7 @@ impl Parameter {
         if let Self::String32(v) = self {
             v.as_str()
         } else {
-            unreachable!()
+            unsafe { unreachable_unchecked() }
         }
     }
 
@@ -282,7 +283,7 @@ impl Parameter {
         if let Self::String64(v) = self {
             v.as_str()
         } else {
-            unreachable!()
+            unsafe { unreachable_unchecked() }
         }
     }
 
@@ -290,7 +291,7 @@ impl Parameter {
         if let Self::Curve1(v) = self {
             v
         } else {
-            unreachable!()
+            unsafe { unreachable_unchecked() }
         }
     }
 
@@ -298,7 +299,7 @@ impl Parameter {
         if let Self::Curve2(v) = self {
             v
         } else {
-            unreachable!()
+            unsafe { unreachable_unchecked() }
         }
     }
 
@@ -306,7 +307,7 @@ impl Parameter {
         if let Self::Curve3(v) = self {
             v
         } else {
-            unreachable!()
+            unsafe { unreachable_unchecked() }
         }
     }
 
@@ -314,7 +315,7 @@ impl Parameter {
         if let Self::Curve4(v) = self {
             v
         } else {
-            unreachable!()
+            unsafe { unreachable_unchecked() }
         }
     }
 
@@ -322,7 +323,7 @@ impl Parameter {
         if let Self::BufferInt(v) = self {
             v.as_slice()
         } else {
-            unreachable!()
+            unsafe { unreachable_unchecked() }
         }
     }
 
@@ -330,7 +331,7 @@ impl Parameter {
         if let Self::BufferF32(v) = self {
             v
         } else {
-            unreachable!()
+            unsafe { unreachable_unchecked() }
         }
     }
 
@@ -338,7 +339,7 @@ impl Parameter {
         if let Self::String256(v) = self {
             v.as_str()
         } else {
-            unreachable!()
+            unsafe { unreachable_unchecked() }
         }
     }
 
@@ -346,7 +347,7 @@ impl Parameter {
         if let Self::Quat(v) = self {
             v
         } else {
-            unreachable!()
+            unsafe { unreachable_unchecked() }
         }
     }
 
@@ -354,7 +355,7 @@ impl Parameter {
         if let Self::U32(v) = self {
             *v
         } else {
-            unreachable!()
+            unsafe { unreachable_unchecked() }
         }
     }
 
@@ -362,7 +363,7 @@ impl Parameter {
         if let Self::BufferU32(v) = self {
             v
         } else {
-            unreachable!()
+            unsafe { unreachable_unchecked() }
         }
     }
 
@@ -370,7 +371,7 @@ impl Parameter {
         if let Self::BufferBinary(v) = self {
             v
         } else {
-            unreachable!()
+            unsafe { unreachable_unchecked() }
         }
     }
 
@@ -378,7 +379,7 @@ impl Parameter {
         if let Self::StringRef(v) = self {
             v.as_str()
         } else {
-            unreachable!()
+            unsafe { unreachable_unchecked() }
         }
     }
 
@@ -446,18 +447,18 @@ impl Parameter {
     }
 
     /// Returns a result with a reference to the inner string or a type error
-    pub fn as_string32(&self) -> Result<&str> {
+    pub fn as_string32(&self) -> Result<&FixedSafeString<32>> {
         if let Self::String32(v) = self {
-            Ok(v.as_str())
+            Ok(v)
         } else {
             Err(AampError::TypeError)
         }
     }
 
     /// Returns a result with a reference to the inner string or a type error
-    pub fn as_string64(&self) -> Result<&str> {
+    pub fn as_string64(&self) -> Result<&FixedSafeString<64>> {
         if let Self::String64(v) = self {
-            Ok(v.as_str())
+            Ok(v)
         } else {
             Err(AampError::TypeError)
         }
@@ -574,9 +575,18 @@ impl Parameter {
     /// Returns a result with a reference to the inner string or a type error
     pub fn as_string(&self) -> Result<&str> {
         match self {
-            Self::StringRef(s) | Self::String32(s) | Self::String64(s) | Self::String256(s) => {
-                Ok(s)
-            }
+            Self::StringRef(s) => Ok(s),
+            Self::String32(s) => Ok(s.as_str()),
+            Self::String64(s) => Ok(s.as_str()),
+            Self::String256(s) => Ok(s.as_str()),
+            _ => Err(AampError::TypeError),
+        }
+    }
+
+    /// Returns a result with a reference to the inner string (max len 256) or a type error
+    pub fn as_string256(&self) -> Result<&FixedSafeString<256>> {
+        match self {
+            Self::String256(s) => Ok(s),
             _ => Err(AampError::TypeError),
         }
     }
@@ -645,9 +655,9 @@ impl Parameter {
     }
 
     /// Returns a result with a mutable reference to the inner string or a type error
-    pub fn as_mut_string32(&mut self) -> Result<&mut str> {
+    pub fn as_mut_string32(&mut self) -> Result<&mut FixedSafeString<32>> {
         if let Self::String32(v) = self {
-            Ok(v.as_mut_str())
+            Ok(v)
         } else {
             Err(AampError::TypeError)
         }
@@ -656,7 +666,16 @@ impl Parameter {
     /// Returns a result with a mutable reference to the inner string or a type error
     pub fn as_mut_string64(&mut self) -> Result<&mut str> {
         if let Self::String64(v) = self {
-            Ok(v.as_mut_str())
+            Ok(v)
+        } else {
+            Err(AampError::TypeError)
+        }
+    }
+
+    /// Returns a result with a mutable reference to the inner string or a type error
+    pub fn as_mut_string256(&mut self) -> Result<&mut FixedSafeString<256>> {
+        if let Self::String256(v) = self {
+            Ok(v)
         } else {
             Err(AampError::TypeError)
         }
