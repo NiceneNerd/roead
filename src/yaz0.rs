@@ -1,7 +1,6 @@
 //! Bindings for the oead::yaz0 module, which supports Yaz0 decompression and
 //! fast compression (using syaz0).
 use crate::{Error, Result};
-pub use ffi::Header;
 use std::borrow::Cow;
 
 /// Error type for Yaz0 handling.
@@ -11,6 +10,25 @@ pub enum Yaz0Error {
     InsufficientBuffer(usize, usize),
     #[error(transparent)]
     CxxError(#[from] cxx::Exception),
+}
+
+/// The header of Yaz0 compressed data.
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
+#[repr(C)]
+pub struct Header {
+    /// Should be "Yaz0".
+    pub magic: [u8; 4],
+    /// The size of the uncompressed data.
+    pub uncompressed_size: u32,
+    /// [Newer files only] Required buffer alignment
+    pub data_alignment: u32,
+    #[doc(hidden)]
+    reserved: [u8; 4],
+}
+static_assertions::const_assert_eq!(std::mem::size_of::<ffi::Header>(), 0x10);
+unsafe impl cxx::ExternType for Header {
+    type Id = cxx::type_id!("oead::yaz0::Header");
+    type Kind = cxx::kind::Trivial;
 }
 
 /// Get the header of Yaz0 compressed data, if it exists.
@@ -159,20 +177,8 @@ pub fn compress_if(data: &[u8], path: impl AsRef<std::path::Path>) -> Cow<'_, [u
 
 #[cxx::bridge(namespace = "oead::yaz0")]
 mod ffi {
-    /// The header of Yaz0 compressed data.
-    #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
-    struct Header {
-        /// Should be "Yaz0".
-        pub magic: [u8; 4],
-        /// The size of the uncompressed data.
-        pub uncompressed_size: u32,
-        /// [Newer files only] Required buffer alignment
-        pub data_alignment: u32,
-        #[doc(hidden)]
-        reserved: [u8; 4],
-    }
-
     unsafe extern "C++" {
+        type Header = super::Header;
         include!("roead/src/include/oead/yaz0.h");
         fn GetHeader(data: &[u8]) -> Result<Header>;
         #[rust_name = "DecompressIntoBuffer"]
@@ -182,12 +188,10 @@ mod ffi {
     }
 }
 
-static_assertions::const_assert_eq!(std::mem::size_of::<ffi::Header>(), 0x10);
-
 #[cfg(test)]
 mod tests {
     static FILES: &[(&str, [u8; 4], usize)] = &[
-        ("ActorInfo.product.sbyml", [0x59, 0x42, 0x02, 0x0], 1963604),
+        ("ActorInfo.product.sbyml", [b'Y', b'B', 0x02, 0x0], 1963604),
         ("Demo344_1.sbeventpack", [b'S', b'A', b'R', b'C'], 2847908),
         (
             "ResourceSizeTable.product.srsizetable",
@@ -199,7 +203,7 @@ mod tests {
             [b'F', b'R', b'E', b'S'],
             64041136,
         ),
-        ("0-0.shknm2", [b'Y', b'B', 0xE0, 0x57], 17584),
+        ("0-0.shknm2", [0x57, 0xE0, 0xE0, 0x57], 17584),
     ];
 
     #[test]
@@ -222,5 +226,26 @@ mod tests {
             assert_eq!(decompressed.len(), *len);
             println!("{} is good", file);
         }
+    }
+
+    #[test]
+    fn test_roundtrip() {
+        for (file, _, _) in FILES {
+            let path = std::path::Path::new("test/yaz0").join(file);
+            let data = std::fs::read(path).unwrap();
+            let decompressed = super::decompress(&data).unwrap();
+            let compressed = super::compress(decompressed.as_slice());
+            let decompressed2 = super::decompress(&compressed).unwrap();
+            assert_eq!(decompressed, decompressed2);
+        }
+    }
+
+    #[test]
+    fn test_unchecked() {
+        let data = b"Nothing you have not given away will ever really be yours.";
+        let compressed = super::compress(data);
+        let mut buffer = vec![0; data.len()];
+        let size = unsafe { super::decompress_unchecked(compressed, &mut buffer) };
+        assert_eq!(data.as_slice(), &buffer[..size]);
     }
 }

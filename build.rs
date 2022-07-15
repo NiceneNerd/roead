@@ -1,9 +1,19 @@
-fn main() {
+fn build_zlib() {
     std::process::Command::new("cmake")
         .current_dir("lib/zlib-ng")
         .arg(".")
         .output()
         .unwrap();
+    std::process::Command::new("cmake")
+        .current_dir("lib/zlib-ng")
+        .arg("--build")
+        .arg(".")
+        .output()
+        .unwrap();
+}
+
+fn main() {
+    build_zlib();
     let bridge_files = [
         #[cfg(feature = "yaz0")]
         "src/yaz0.rs",
@@ -42,7 +52,12 @@ fn main() {
     }
     builder.compile("roead");
     println!("cargo:rerun-if-changed=src/include/oead");
-    println!("cargo:rerun-if-changed=src/yaz0.rs");
-    println!("cargo:rerun-if-changed=src/yaz0.cpp");
-    println!("cargo:rerun-if-changed=src/include/oead/yaz0.h");
+    #[cfg(feature = "yaz0")]
+    {
+        println!("cargo:rerun-if-changed=src/yaz0.rs");
+        println!("cargo:rerun-if-changed=src/yaz0.cpp");
+        println!("cargo:rerun-if-changed=src/include/oead/yaz0.h");
+        println!("cargo:rustc-link-search=native=lib/zlib-ng");
+        println!("cargo:rustc-link-lib=static=zlib");
+    }
 }

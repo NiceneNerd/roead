@@ -29,7 +29,7 @@
 
 namespace oead::yaz0 {
 
-constexpr std::array<u8, 4> Magic = {'Y', 'a', 'z', '0'};
+constexpr std::array<char, 4> Magic = {'Y', 'a', 'z', '0'};
 constexpr size_t ChunksPerGroup = 8;
 constexpr size_t MaximumMatchLength = 0xFF + 0x12;
 
@@ -135,7 +135,7 @@ rust::Vec<u8> Compress(rust::Slice<const u8> src, u32 data_alignment, int level)
 template <bool Safe>
 static void Decompress(rust::Slice<const u8> src, rust::Slice<u8> dst) {
   util::BinaryReader reader{src, util::Endianness::Big};
-  reader.Seek(0x10);//sizeof(Header));
+  reader.Seek(sizeof(Header));
 
   u8 group_header = 0;
   size_t remaining_chunks = 0;

@@ -30,7 +30,20 @@
 
 namespace oead::yaz0 {
 
-struct Header;
+class Header {
+public:
+  /// 'Yaz0'
+  std::array<char, 4> magic;
+  /// Size of uncompressed data
+  u32 uncompressed_size;
+  /// [Newer files only] Required buffer alignment
+  u32 data_alignment;
+  /// Unused (as of December 2019)
+  std::array<u8, 4> reserved;
+
+  OEAD_DEFINE_FIELDS(Header, magic, uncompressed_size, data_alignment, reserved);
+};
+static_assert(sizeof(Header) == 0x10);
 
 Header GetHeader(rust::Slice<const u8> data);
 
