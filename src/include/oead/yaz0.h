@@ -39,13 +39,7 @@ Header GetHeader(rust::Slice<const u8> data);
 /// @param level  Compression level (6 to 9; 6 is fastest and 9 is slowest)
 rust::Vec<u8> Compress(rust::Slice<const u8> src, u32 data_alignment = 0, int level = 7);
 
-rust::Vec<u8> Decompress(rust::Slice<const u8> src);
-/// For increased flexibility, allocating the destination buffer can be done manually.
-/// In that case, the header is assumed to be valid, and the buffer size
-/// must be equal to the uncompressed data size.
 void Decompress(rust::Slice<const u8> src, rust::Slice<u8> dst);
-/// Same, but additionally assumes that the source is well-formed.
-/// DO NOT USE THIS FOR UNTRUSTED SOURCES.
 void DecompressUnsafe(rust::Slice<const u8> src, rust::Slice<u8> dst);
 
 }  // namespace oead::yaz0

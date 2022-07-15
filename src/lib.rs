@@ -1,16 +1,31 @@
-pub mod yaz0;
+// #![deny(missing_docs)]
+//! TODO: Docs
 pub mod types;
-pub fn add(left: usize, right: usize) -> usize {
-    left + right
+#[cfg(feature = "yaz0")]
+pub mod yaz0;
+
+/// Error type for this crate.
+#[derive(Debug, thiserror::Error)]
+pub enum Error {
+    #[error("Incorrect magic: found `{0}`, expected `{1}`.")]
+    InvalidMagic(String, &'static str),
+    #[error("Data too short: found {0:#x} bytes, expected >= {1:#x}.")]
+    InsufficientData(usize, usize),
+    #[cfg(feature = "yaz0")]
+    #[error(transparent)]
+    Yaz0Error(#[from] yaz0::Yaz0Error),
+    #[error("{0}")]
+    Any(String),
 }
 
-#[cfg(test)]
-mod tests {
-    use super::*;
+type Result<T> = std::result::Result<T, Error>;
 
-    #[test]
-    fn it_works() {
-        let result = add(2, 2);
-        assert_eq!(result, 4);
+impl Clone for Error {
+    fn clone(&self) -> Self {
+        match self {
+            #[cfg(feature = "yaz0")]
+            Error::Yaz0Error(e) => Error::Any(join_str::jstr!("Yaz0Error: {&e.to_string()}")),
+            other => other.clone(),
+        }
     }
 }

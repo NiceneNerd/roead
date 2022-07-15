@@ -132,14 +132,6 @@ rust::Vec<u8> Compress(rust::Slice<const u8> src, u32 data_alignment, int level)
   return writer.Finalize();
 }
 
-rust::Vec<u8> Decompress(rust::Slice<const u8> src) {
-  const auto header = GetHeader(src);
-  rust::Vec<u8> result;
-  result.reserve(header.uncompressed_size);
-  Decompress(src, rust::Slice(result.data(), result.size()));
-  return result;
-}
-
 template <bool Safe>
 static void Decompress(rust::Slice<const u8> src, rust::Slice<u8> dst) {
   util::BinaryReader reader{src, util::Endianness::Big};

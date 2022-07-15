@@ -2,11 +2,19 @@
 name = "roead"
 version = "0.1.0"
 edition = "2021"
-
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+license = "GPL-3.0-or-later"
 
 [dependencies]
 cxx = "1.0.71"
+join_str = "0.1.0"
+thiserror = "1.0.31"
 
 [build-dependencies]
 cxx-build = "1.0.71"
+
+[features]
+aamp = []
+byml = []
+sarc = []
+yaz0 = []
+default = ["aamp", "byml", "sarc", "yaz0"]
