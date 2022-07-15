@@ -25,23 +25,24 @@
 
 #include <oead/util/binary_reader.h>
 #include <oead/yaz0.h>
+#include <roead/src/yaz0.rs.h>
 
 namespace oead::yaz0 {
 
-constexpr std::array<char, 4> Magic = {'Y', 'a', 'z', '0'};
+constexpr std::array<u8, 4> Magic = {'Y', 'a', 'z', '0'};
 constexpr size_t ChunksPerGroup = 8;
 constexpr size_t MaximumMatchLength = 0xFF + 0x12;
 
-static std::optional<Header> GetHeader(util::BinaryReader& reader) {
+static Header GetHeader(util::BinaryReader& reader) {
   const auto header = reader.Read<Header>();
-  if (!header)
-    return std::nullopt;
+  if (header == std::nullopt || !header.has_value() )
+    throw "No header";
   if (header->magic != Magic)
-    return std::nullopt;
-  return header;
+    throw "No header";
+  return header.value();
 }
 
-std::optional<Header> GetHeader(tcb::span<const u8> data) {
+Header GetHeader(rust::Slice<const u8> data) {
   util::BinaryReader reader{data, util::Endianness::Big};
   return GetHeader(reader);
 }
@@ -49,7 +50,7 @@ std::optional<Header> GetHeader(tcb::span<const u8> data) {
 namespace {
 class GroupWriter {
 public:
-  GroupWriter(std::vector<u8>& result) : m_result{result} { Reset(); }
+  GroupWriter(rust::Vec<u8>& result) : m_result{result} { Reset(); }
 
   void HandleZlibMatch(u32 dist, u32 lc) {
     if (dist == 0) {
@@ -96,14 +97,14 @@ private:
     }
   }
 
-  std::vector<u8>& m_result;
+  rust::Vec<u8>& m_result;
   size_t m_pending_chunks;
   std::bitset<8> m_group_header;
   std::size_t m_group_header_offset;
 };
 }  // namespace
 
-std::vector<u8> Compress(tcb::span<const u8> src, u32 data_alignment, int level) {
+rust::Vec<u8> Compress(rust::Slice<const u8> src, u32 data_alignment, int level) {
   util::BinaryWriter writer{util::Endianness::Big};
   writer.Buffer().reserve(src.size());
 
@@ -131,17 +132,16 @@ std::vector<u8> Compress(tcb::span<const u8> src, u32 data_alignment, int level)
   return writer.Finalize();
 }
 
-std::vector<u8> Decompress(tcb::span<const u8> src) {
+rust::Vec<u8> Decompress(rust::Slice<const u8> src) {
   const auto header = GetHeader(src);
-  if (!header)
-    return {};
-  std::vector<u8> result(header->uncompressed_size);
-  Decompress(src, result);
+  rust::Vec<u8> result;
+  result.reserve(header.uncompressed_size);
+  Decompress(src, rust::Slice(result.data(), result.size()));
   return result;
 }
 
 template <bool Safe>
-static void Decompress(tcb::span<const u8> src, tcb::span<u8> dst) {
+static void Decompress(rust::Slice<const u8> src, rust::Slice<u8> dst) {
   util::BinaryReader reader{src, util::Endianness::Big};
   reader.Seek(sizeof(Header));
 
@@ -161,7 +161,7 @@ static void Decompress(tcb::span<const u8> src, tcb::span<u8> dst) {
       const size_t length =
           ((pair >> 12) ? (pair >> 12) : (reader.Read<u8, Safe>().value() + 16)) + 2;
 
-      const u8* base = dst_it - distance;
+      const auto base = dst_it - distance;
       if (base < dst.begin() || dst_it + length > dst.end()) {
         throw std::invalid_argument("Copy is out of bounds");
       }
@@ -175,11 +175,11 @@ static void Decompress(tcb::span<const u8> src, tcb::span<u8> dst) {
   }
 }
 
-void Decompress(tcb::span<const u8> src, tcb::span<u8> dst) {
+void Decompress(rust::Slice<const u8> src, rust::Slice<u8> dst) {
   Decompress<true>(src, dst);
 }
 
-void DecompressUnsafe(tcb::span<const u8> src, tcb::span<u8> dst) {
+void DecompressUnsafe(rust::Slice<const u8> src, rust::Slice<u8> dst) {
   Decompress<false>(src, dst);
 }
 

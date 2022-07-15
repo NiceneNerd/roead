@@ -30,6 +30,7 @@
 #include <oead/util/align.h>
 #include <oead/util/bit_utils.h>
 #include <oead/util/swap.h>
+#include "rust/cxx.h"
 
 namespace oead::util {
 
@@ -37,7 +38,7 @@ namespace oead::util {
 class BinaryReader final {
 public:
   BinaryReader() = default;
-  BinaryReader(tcb::span<const u8> data, Endianness endian) : m_data{data}, m_endian{endian} {}
+  BinaryReader(rust::Slice<const u8> data, Endianness endian) : m_data{data}, m_endian{endian} {}
 
   const auto& span() const { return m_data; }
   size_t Tell() const { return m_offset; }
@@ -90,13 +91,13 @@ public:
   }
 
 private:
-  tcb::span<const u8> m_data{};
+  rust::Slice<const u8> m_data{};
   size_t m_offset = 0;
   Endianness m_endian = Endianness::Big;
 };
 
 template <typename T>
-inline void RelocateWithSize(tcb::span<u8> buffer, T*& ptr, size_t size) {
+inline void RelocateWithSize(rust::Slice<u8> buffer, T*& ptr, size_t size) {
   const u64 offset = reinterpret_cast<u64>(ptr);
   if (buffer.size() < offset || buffer.size() < offset + size)
     throw std::out_of_range("RelocateWithSize: out of bounds");
@@ -104,11 +105,11 @@ inline void RelocateWithSize(tcb::span<u8> buffer, T*& ptr, size_t size) {
 }
 
 template <typename T>
-inline void Relocate(tcb::span<u8> buffer, T*& ptr, size_t num_objects = 1) {
+inline void Relocate(rust::Slice<u8> buffer, T*& ptr, size_t num_objects = 1) {
   RelocateWithSize(buffer, ptr, sizeof(T) * num_objects);
 }
 
-inline std::string_view ReadString(tcb::span<u8> buffer, const char* ptr_) {
+inline std::string_view ReadString(rust::Slice<u8> buffer, const char* ptr_) {
   const u8* ptr = reinterpret_cast<const u8*>(ptr_);
   if (ptr < buffer.data() || buffer.data() + buffer.size() <= ptr)
     throw std::out_of_range("ReadString: out of bounds");
@@ -124,8 +125,8 @@ class BinaryWriterBase {
 public:
   BinaryWriterBase(Endianness endian) : m_endian{endian} {}
 
-  /// Returns a std::vector<u8> with everything written so far, and resets the buffer.
-  std::vector<u8> Finalize() { return std::move(m_data); }
+  /// Returns a rust::Vec<u8> with everything written so far, and resets the buffer.
+  Storage Finalize() { return std::move(m_data); }
 
   const auto& Buffer() const { return m_data; }
   auto& Buffer() { return m_data; }
@@ -135,9 +136,12 @@ public:
   Endianness Endian() const { return m_endian; }
   BinaryReader Reader() const { return {m_data, m_endian}; }
 
-  void WriteBytes(tcb::span<const u8> bytes) {
-    if (m_offset + bytes.size() > m_data.size())
-      m_data.resize(m_offset + bytes.size());
+  void WriteBytes(rust::Slice<const u8> bytes) {
+    if (m_offset + bytes.size() > m_data.size()) {
+      m_data.reserve(m_offset + bytes.size());
+      while (m_data.size() < m_offset + bytes.size())
+        m_data.emplace_back(0);
+    }
 
     std::memcpy(&m_data[m_offset], bytes.data(), bytes.size());
     m_offset += bytes.size();
@@ -192,6 +196,6 @@ private:
   Endianness m_endian;
 };
 
-using BinaryWriter = BinaryWriterBase<std::vector<u8>>;
+using BinaryWriter = BinaryWriterBase<rust::Vec<u8>>;
 
 }  // namespace oead::util

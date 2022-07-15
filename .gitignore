@@ -32,3 +32,9 @@ docs/build
 docs/modules
 docs/doxygen/*
 !docs/doxygen/Doxyfile
+
+
+# Added by cargo
+
+/target
+/Cargo.lock

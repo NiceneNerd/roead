@@ -26,37 +26,26 @@
 
 #include <oead/types.h>
 #include <oead/util/swap.h>
+#include "rust/cxx.h"
 
 namespace oead::yaz0 {
 
-struct Header {
-  /// 'Yaz0'
-  std::array<char, 4> magic;
-  /// Size of uncompressed data
-  u32 uncompressed_size;
-  /// [Newer files only] Required buffer alignment
-  u32 data_alignment;
-  /// Unused (as of December 2019)
-  std::array<u8, 4> reserved;
+struct Header;
 
-  OEAD_DEFINE_FIELDS(Header, magic, uncompressed_size, data_alignment, reserved);
-};
-static_assert(sizeof(Header) == 0x10);
-
-std::optional<Header> GetHeader(tcb::span<const u8> data);
+Header GetHeader(rust::Slice<const u8> data);
 
 /// @param src  Source data
 /// @param data_alignment  Required buffer alignment hint for decompression
 /// @param level  Compression level (6 to 9; 6 is fastest and 9 is slowest)
-std::vector<u8> Compress(tcb::span<const u8> src, u32 data_alignment = 0, int level = 7);
+rust::Vec<u8> Compress(rust::Slice<const u8> src, u32 data_alignment = 0, int level = 7);
 
-std::vector<u8> Decompress(tcb::span<const u8> src);
+rust::Vec<u8> Decompress(rust::Slice<const u8> src);
 /// For increased flexibility, allocating the destination buffer can be done manually.
 /// In that case, the header is assumed to be valid, and the buffer size
 /// must be equal to the uncompressed data size.
-void Decompress(tcb::span<const u8> src, tcb::span<u8> dst);
+void Decompress(rust::Slice<const u8> src, rust::Slice<u8> dst);
 /// Same, but additionally assumes that the source is well-formed.
 /// DO NOT USE THIS FOR UNTRUSTED SOURCES.
-void DecompressUnsafe(tcb::span<const u8> src, tcb::span<u8> dst);
+void DecompressUnsafe(rust::Slice<const u8> src, rust::Slice<u8> dst);
 
 }  // namespace oead::yaz0
