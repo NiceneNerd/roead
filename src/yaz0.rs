@@ -1,9 +1,8 @@
 //! Bindings for the oead::yaz0 module, which supports Yaz0 decompression and
 //! fast compression (using syaz0).
-use std::borrow::Cow;
-
 use crate::{Error, Result};
 pub use ffi::Header;
+use std::borrow::Cow;
 
 /// Error type for Yaz0 handling.
 #[derive(Debug, thiserror::Error)]
@@ -26,7 +25,7 @@ pub fn decompress(data: impl AsRef<[u8]>) -> Result<Vec<u8>> {
     if data.len() < 0x16 {
         return Err(Error::InsufficientData(data.len(), 0x16));
     }
-    let header: Header = ffi::GetHeader(data).map_err(Yaz0Error::from)?;
+    let header = ffi::GetHeader(data).map_err(Yaz0Error::from)?;
     if &header.magic != b"Yaz0" {
         return Err(Error::InvalidMagic(
             String::from_utf8_lossy(header.magic.as_slice()).to_string(),
@@ -180,5 +179,48 @@ mod ffi {
         fn Decompress(data: &[u8], dest: &mut [u8]) -> Result<()>;
         unsafe fn DecompressUnsafe(data: &[u8], dest: &mut [u8]) -> Result<()>;
         fn Compress(data: &[u8], data_alignment: u32, level: i32) -> Vec<u8>;
+    }
+}
+
+static_assertions::const_assert_eq!(std::mem::size_of::<ffi::Header>(), 0x10);
+
+#[cfg(test)]
+mod tests {
+    static FILES: &[(&str, [u8; 4], usize)] = &[
+        ("ActorInfo.product.sbyml", [0x59, 0x42, 0x02, 0x0], 1963604),
+        ("Demo344_1.sbeventpack", [b'S', b'A', b'R', b'C'], 2847908),
+        (
+            "ResourceSizeTable.product.srsizetable",
+            [b'R', b'S', b'T', b'B'],
+            526804,
+        ),
+        (
+            "TwnObj_HyruleCastle_A.Tex.sbfres",
+            [b'F', b'R', b'E', b'S'],
+            64041136,
+        ),
+        ("0-0.shknm2", [b'Y', b'B', 0xE0, 0x57], 17584),
+    ];
+
+    #[test]
+    fn test_header() {
+        for (file, _, len) in FILES {
+            let path = std::path::Path::new("test/yaz0").join(file);
+            let data = std::fs::read(path).unwrap();
+            let header = super::get_header(data.as_slice()).unwrap();
+            assert_eq!(header.uncompressed_size, *len as u32);
+        }
+    }
+
+    #[test]
+    fn test_decompress() {
+        for (file, magic, len) in FILES {
+            let path = std::path::Path::new("test/yaz0").join(file);
+            let data = std::fs::read(path).unwrap();
+            let decompressed = super::decompress(&data).unwrap();
+            assert_eq!(&decompressed[..4], magic.as_slice());
+            assert_eq!(decompressed.len(), *len);
+            println!("{} is good", file);
+        }
     }
 }

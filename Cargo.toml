@@ -7,6 +7,7 @@ license = "GPL-3.0-or-later"
 [dependencies]
 cxx = "1.0.71"
 join_str = "0.1.0"
+static_assertions = "1.1.0"
 thiserror = "1.0.31"
 
 [build-dependencies]

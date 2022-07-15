@@ -41,6 +41,7 @@ fn main() {
             .flag_if_supported("-fno-plt");
     }
     builder.compile("roead");
+    println!("cargo:rerun-if-changed=src/include/oead");
     println!("cargo:rerun-if-changed=src/yaz0.rs");
     println!("cargo:rerun-if-changed=src/yaz0.cpp");
     println!("cargo:rerun-if-changed=src/include/oead/yaz0.h");

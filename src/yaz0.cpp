@@ -135,7 +135,7 @@ rust::Vec<u8> Compress(rust::Slice<const u8> src, u32 data_alignment, int level)
 template <bool Safe>
 static void Decompress(rust::Slice<const u8> src, rust::Slice<u8> dst) {
   util::BinaryReader reader{src, util::Endianness::Big};
-  reader.Seek(sizeof(Header));
+  reader.Seek(0x10);//sizeof(Header));
 
   u8 group_header = 0;
   size_t remaining_chunks = 0;
