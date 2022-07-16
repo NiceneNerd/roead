@@ -1,5 +1,7 @@
 // #![deny(missing_docs)]
 //! TODO: Docs
+#[cfg(feature = "sarc")]
+pub mod sarc;
 pub mod types;
 #[cfg(feature = "yaz0")]
 pub mod yaz0;

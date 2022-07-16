@@ -23,7 +23,7 @@
 #include <array>
 #include <numeric>
 
-#include <cmrc/cmrc.hpp>
+// #include <cmrc/cmrc.hpp>
 #include <ryml.hpp>
 
 #include <oead/errors.h>
@@ -31,9 +31,10 @@
 #include <oead/util/align.h>
 #include <oead/util/magic_utils.h>
 #include <oead/util/string_utils.h>
+#include <roead/src/sarc.rs.h>
 #include "yaml.h"
 
-CMRC_DECLARE(oead::res);
+// CMRC_DECLARE(oead::res);
 
 namespace oead {
 
@@ -93,7 +94,7 @@ constexpr u32 HashName(u32 multiplier, std::string_view name) {
 }  // namespace sarc
 
 // Note: This mirrors what sead::SharcArchiveRes::prepareArchive_ does.
-Sarc::Sarc(tcb::span<const u8> data) : m_reader{data, util::Endianness::Big} {
+Sarc::Sarc(rust::Slice<const u8> data) : m_reader{data, util::Endianness::Big} {
   m_reader = {data, util::ByteOrderMarkToEndianness(m_reader.Read<sarc::ResHeader>().value().bom)};
   const auto header = *m_reader.Read<sarc::ResHeader>();
 
@@ -139,10 +140,11 @@ Sarc::File Sarc::GetFile(u16 index) const {
   File file{};
   if (entry.rel_name_optional_offset) {
     const auto name_offset = m_names_offset + (entry.rel_name_optional_offset & 0xFFFFFF) * 4;
-    file.name = m_reader.ReadString<std::string_view>(name_offset);
+    file.name = m_reader.ReadString<rust::Str>(name_offset);
   }
-  file.data =
-      m_reader.span().subspan(m_data_offset + entry.data_begin, entry.data_end - entry.data_begin);
+  file.data = rust::Slice<const u8>{m_reader.span().data() + m_data_offset + entry.data_begin,
+                                    entry.data_end - entry.data_begin};
+  // m_reader.span().subspan(m_data_offset + entry.data_begin, entry.data_end - entry.data_begin);
   return file;
 }
 
@@ -203,27 +205,28 @@ size_t Sarc::GuessMinAlignment() const {
   return gcd;
 }
 
-static auto& GetBotwFactoryNames() {
-  static auto names = [] {
-    absl::flat_hash_set<std::string_view> names;
-    const auto fs = cmrc::oead::res::get_filesystem();
-    const auto info_tsv_file = fs.open("data/botw_resource_factory_info.tsv");
-    util::SplitStringByLine({info_tsv_file.begin(), info_tsv_file.size()},
-                            [&names](std::string_view line) {
-                              const auto tab_pos = line.find('\t');
-                              names.emplace(line.substr(0, tab_pos));
-                            });
-    return names;
-  }();
-  return names;
-}
+// static auto& GetBotwFactoryNames() {
+//   static auto names = [] {
+//     absl::flat_hash_set<std::string_view> names;
+//     const auto fs = cmrc::oead::res::get_filesystem();
+//     const auto info_tsv_file = fs.open("data/botw_resource_factory_info.tsv");
+//     util::SplitStringByLine({info_tsv_file.begin(), info_tsv_file.size()},
+//                             [&names](std::string_view line) {
+//                               const auto tab_pos = line.find('\t');
+//                               names.emplace(line.substr(0, tab_pos));
+//                             });
+//     return names;
+//   }();
+//   return names;
+// }
 
 static const auto& GetAglEnvAlignmentRequirements() {
   static auto requirements = [] {
     std::vector<std::pair<std::string, u32>> requirements;
 
-    const auto fs = cmrc::oead::res::get_filesystem();
-    const auto info_tsv_file = fs.open("data/aglenv_file_info.json");
+    // const auto fs = cmrc::oead::res::get_filesystem();
+    const auto info_tsv_file =
+        oead::sarc::GetAglEnvFileInfo();  // fs.open("data/aglenv_file_info.json");
 
     yml::InitRymlIfNeeded();
     const auto tree =
@@ -261,7 +264,7 @@ void SarcWriter::AddDefaultAlignmentRequirements() {
   AddAlignmentRequirement("bffnt", m_endian == util::Endianness::Big ? 0x2000 : 0x1000);
 }
 
-std::pair<u32, std::vector<u8>> SarcWriter::Write() {
+Written SarcWriter::Write() {
   util::BinaryWriter writer{m_endian};
 
   writer.Seek(sizeof(sarc::ResHeader));
@@ -300,7 +303,7 @@ std::pair<u32, std::vector<u8>> SarcWriter::Write() {
     u32 rel_data_offset = 0;
     for (const FileMap::value_type& pair : files) {
       const auto& [name, data] = pair;
-      const u32 alignment = GetAlignmentForFile(name, data);
+      const u32 alignment = GetAlignmentForFile(name, rust::Slice{data.data(), data.size()});
       alignments.emplace_back(alignment);
 
       sarc::ResFatEntry entry{};
@@ -331,7 +334,7 @@ std::pair<u32, std::vector<u8>> SarcWriter::Write() {
   const u32 data_offset_begin = u32(writer.Tell());
   for (const auto& [pair, alignment] : easy_iterator::zip(files, alignments)) {
     writer.AlignUp(alignment);
-    writer.WriteBytes(pair.second);
+    writer.WriteBytes(rust::Slice<const u8>{pair.second.data(), pair.second.size()});
   }
 
   sarc::ResHeader header{};
@@ -358,6 +361,10 @@ void SarcWriter::AddAlignmentRequirement(std::string extension, size_t alignment
   m_alignment_map.insert_or_assign(std::move(extension), alignment);
 }
 
+void SarcWriter::AddFile(rust::String name, rust::Vec<u8> data) {
+  m_files.emplace(std::string(name), std::move(data));
+}
+
 static bool IsSarc(tcb::span<const u8> data) {
   return data.size() >= 0x20 && (std::memcmp(data.data(), "SARC", 4) == 0 ||
                                  (std::memcmp(data.data(), "Yaz0", 4) == 0 &&
@@ -365,7 +372,7 @@ static bool IsSarc(tcb::span<const u8> data) {
 }
 
 /// Detects alignment requirements for binary files that use nn::util::BinaryFileHeader.
-static u32 GetAlignmentForNewBinaryFile(tcb::span<const u8> data) {
+static u32 GetAlignmentForNewBinaryFile(rust::Slice<const u8> data) {
   util::BinaryReader reader{data, util::Endianness::Big};
   if (data.size() <= 0x20)
     return 1;
@@ -392,9 +399,10 @@ static u32 GetAlignmentForCafeBflim(tcb::span<const u8> data) {
                             util::Endianness::Big);
 }
 
-u32 SarcWriter::GetAlignmentForFile(std::string_view name, tcb::span<const u8> data) const {
-  const std::string_view::size_type dot_pos = name.rfind('.');
-  const std::string_view ext = dot_pos + 1 < name.size() ? name.substr(dot_pos + 1) : "";
+u32 SarcWriter::GetAlignmentForFile(rust::Str name, rust::Slice<const u8> data) const {
+  const std::string_view name_tmp{name.data(), name.size()};
+  const std::string_view::size_type dot_pos = name_tmp.rfind('.');
+  const std::string_view ext = dot_pos + 1 < name_tmp.size() ? name_tmp.substr(dot_pos + 1) : "";
 
   u32 alignment = m_min_alignment;
 
@@ -410,7 +418,7 @@ u32 SarcWriter::GetAlignmentForFile(std::string_view name, tcb::span<const u8> d
 
   // For resources that are unhandled by a BotW-style resource system, or for resources
   // from games that do not have such a system, try to detect the alignment.
-  if (m_mode == Mode::Legacy || !GetBotwFactoryNames().contains(ext)) {
+  if (m_mode == Mode::Legacy || !oead::sarc::FactoryContains(rust::Str{ext.data(), ext.size()})) {
     alignment = std::lcm(alignment, GetAlignmentForNewBinaryFile(data));
     if (m_endian == util::Endianness::Big)
       alignment = std::lcm(alignment, GetAlignmentForCafeBflim(data));
@@ -425,8 +433,9 @@ SarcWriter SarcWriter::FromSarc(const Sarc& archive) {
   writer.SetMinAlignment(archive.GuessMinAlignment());
   writer.m_files.reserve(archive.GetNumFiles());
   for (const Sarc::File& file : archive.GetFiles()) {
-    writer.m_files.emplace(std::string(file.name),
-                           std::vector<u8>(file.data.begin(), file.data.end()));
+    rust::Vec<u8> data;
+    std::copy(file.data.begin(), file.data.end(), std::back_inserter(data));
+    writer.m_files.emplace(std::string(file.name), std::move(data));
   }
   return writer;
 }

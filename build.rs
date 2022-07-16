@@ -13,15 +13,22 @@ fn build_zlib() {
 }
 
 fn main() {
+    #[cfg(feature = "yaz0")]
     build_zlib();
+
     let bridge_files = [
         #[cfg(feature = "yaz0")]
         "src/yaz0.rs",
+        #[cfg(feature = "sarc")]
+        "src/sarc.rs",
     ];
     let source_files = [
         #[cfg(feature = "yaz0")]
         "src/yaz0.cpp",
+        #[cfg(feature = "sarc")]
+        "src/sarc.cpp",
     ];
+
     let mut builder = cxx_build::bridges(bridge_files);
     builder
         .files(source_files)
@@ -34,7 +41,9 @@ fn main() {
         .include("lib/nonstd")
         .include("lib/ordered-map/include")
         .include("lib/pybind11")
-        .include("lib/rapidyaml")
+        .include("lib/rapidyaml/src")
+        .include("lib/rapidyaml/ext/c4core/src")
+        .include("lib/rapidyaml/ext/c4core/ext")
         .include("lib/zlib-ng")
         .flag_if_supported("-static");
     if cfg!(windows) {
@@ -52,6 +61,7 @@ fn main() {
     }
     builder.compile("roead");
     println!("cargo:rerun-if-changed=src/include/oead");
+
     #[cfg(feature = "yaz0")]
     {
         println!("cargo:rerun-if-changed=src/yaz0.rs");
@@ -59,5 +69,11 @@ fn main() {
         println!("cargo:rerun-if-changed=src/include/oead/yaz0.h");
         println!("cargo:rustc-link-search=native=lib/zlib-ng");
         println!("cargo:rustc-link-lib=static=zlib");
+    }
+    #[cfg(feature = "sarc")]
+    {
+        println!("cargo:rerun-if-changed=src/sarc.rs");
+        println!("cargo:rerun-if-changed=src/sarc.cpp");
+        println!("cargo:rerun-if-changed=src/include/oead/sarc.h");
     }
 }

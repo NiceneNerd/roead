@@ -30,8 +30,11 @@
 
 #include <oead/types.h>
 #include <oead/util/binary_reader.h>
+#include "rust/cxx.h"
 
 namespace oead {
+
+  using Written = std::pair<u32, rust::Vec<u8>>;
 
 /// A simple SARC archive reader.
 class Sarc {
@@ -39,9 +42,9 @@ public:
   /// A file that is stored in a SARC archive.
   struct File {
     /// File name. May be empty for file entries that do not use the file name table.
-    std::string_view name;
+    rust::Str name;
     /// File data (as a view).
-    tcb::span<const u8> data;
+    rust::Slice<const u8> data;
 
     bool operator==(const File& other) const {
       return name == other.name && absl::c_equal(data, other.data);
@@ -63,7 +66,7 @@ public:
     const Sarc& m_parent;
   };
 
-  Sarc(tcb::span<const u8> data);
+  Sarc(rust::Slice<const u8> data);
 
   /// Get the number of files that are stored in the archive.
   u16 GetNumFiles() const { return m_num_files; }
@@ -119,7 +122,7 @@ public:
   /// Write a SARC archive using the specified endianness.
   /// Default alignment requirements may be automatically added.
   /// \returns the required data alignment and the data.
-  std::pair<u32, std::vector<u8>> Write();
+  Written Write();
 
   /// Set the endianness.
   void SetEndianness(util::Endianness endian) { m_endian = endian; }
@@ -135,14 +138,16 @@ public:
 
   void SetMode(Mode mode) { m_mode = mode; }
 
+  void AddFile(rust::String name, rust::Vec<u8> data);
+
   /// \warning The map type is an implementation detail.
-  using FileMap = absl::flat_hash_map<std::string, std::vector<u8>>;
+  using FileMap = absl::flat_hash_map<std::string, rust::Vec<u8>>;
   /// Files to be written.
   FileMap m_files;
 
 private:
   void AddDefaultAlignmentRequirements();
-  u32 GetAlignmentForFile(std::string_view name, tcb::span<const u8> data) const;
+  u32 GetAlignmentForFile(rust::Str name, rust::Slice<const u8> data) const;
 
   util::Endianness m_endian = util::Endianness::Little;
   Mode m_mode = Mode::New;
