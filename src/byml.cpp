@@ -133,7 +133,7 @@ private:
 
 class Parser {
 public:
-  Parser(tcb::span<const u8> data) {
+  Parser(rust::Slice<const u8> data) {
     if (data.size() < sizeof(ResHeader))
       throw InvalidDataError("Invalid header");
 
@@ -303,10 +303,12 @@ struct WriteContext {
       return writer.Write<u32>(0);
     case Byml::Type::String:
       return writer.Write<u32>(string_table.GetIndex(data.GetString()));
-    case Byml::Type::Binary:
-      writer.Write(static_cast<u32>(data.GetBinary().size()));
-      writer.WriteBytes(data.GetBinary());
+    case Byml::Type::Binary: {
+      const auto size = data.GetBinary().size();
+      writer.Write(static_cast<u32>(size));
+      writer.WriteBytes(rust::Slice{data.GetBinary().data(), size});
       return;
+    }
     case Byml::Type::Bool:
       return writer.Write<u32>(data.GetBool());
     case Byml::Type::Int:
@@ -433,12 +435,12 @@ struct WriteContext {
 
 }  // namespace byml
 
-Byml Byml::FromBinary(tcb::span<const u8> data) {
+Byml Byml::FromBinary(rust::Slice<const u8> data) {
   byml::Parser parser{data};
   return parser.Parse();
 }
 
-std::vector<u8> Byml::ToBinary(bool big_endian, int version) const {
+rust::Vec<u8> Byml::ToBinary(bool big_endian, int version) const {
   if (!byml::IsValidVersion(version))
     throw std::invalid_argument("Invalid version");
 

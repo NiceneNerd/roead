@@ -19,15 +19,20 @@ fn main() {
     let bridge_files = [
         #[cfg(feature = "yaz0")]
         "src/yaz0.rs",
+        // #[cfg(feature = "byml")]
+        // "src/byml.rs",
     ];
     let source_files = [
         #[cfg(feature = "yaz0")]
         "src/yaz0.cpp",
+        // #[cfg(feature = "byml")]
+        // "src/byml.cpp",
     ];
 
     let mut builder = cxx_build::bridges(bridge_files);
     builder
         .files(source_files)
+        .compiler("clang++")
         .flag("-w")
         .flag_if_supported("-std=c++17")
         .include("src/include")
@@ -65,5 +70,11 @@ fn main() {
         println!("cargo:rerun-if-changed=src/include/oead/yaz0.h");
         println!("cargo:rustc-link-search=native=lib/zlib-ng");
         println!("cargo:rustc-link-lib=static=zlib");
+    }
+    #[cfg(feature = "byml")]
+    {
+        println!("cargo:rerun-if-changed=src/byml.rs");
+        println!("cargo:rerun-if-changed=src/byml.cpp");
+        println!("cargo:rerun-if-changed=src/include/oead/byml.h");
     }
 }

@@ -34,6 +34,7 @@
 #include <oead/types.h>
 #include <oead/util/type_utils.h>
 #include <oead/util/variant_utils.h>
+#include "rust/cxx.h"
 
 namespace oead {
 
@@ -121,16 +122,16 @@ public:
   }
 
   /// Load a document from binary data.
-  static Byml FromBinary(tcb::span<const u8> data);
+  static Byml FromBinary(rust::Slice<const u8> data);
   /// Load a document from YAML text.
-  static Byml FromText(std::string_view yml_text);
+  static Byml FromText(rust::Str yml_text);
 
   /// Serialize the document to BYML with the specified endianness and version number.
   /// This can only be done for Null, Array or Hash nodes.
-  std::vector<u8> ToBinary(bool big_endian, int version = 2) const;
+  rust::Vec<u8> ToBinary(bool big_endian, int version = 2) const;
   /// Serialize the document to YAML.
   /// This can only be done for Null, Array or Hash nodes.
-  std::string ToText() const;
+  rust::String ToText() const;
 
   // These getters mirror the behaviour of Nintendo's BYML library.
   // Some of them will perform type conversions automatically.

@@ -157,7 +157,7 @@ static void Decompress(rust::Slice<const u8> src, rust::Slice<u8> dst) {
       if (base < dst.begin() || dst_it + length > dst.end()) {
         throw std::invalid_argument("Copy is out of bounds");
       }
-#pragma GCC unroll 0
+#pragma GCC unroll 1
       for (size_t i = 0; i < length; ++i)
         *dst_it++ = base[i];
     }

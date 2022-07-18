@@ -1,6 +1,10 @@
-#![feature(const_slice_index)]
-// #![deny(missing_docs)]
 //! TODO: Docs
+#![feature(const_slice_index)]
+#![feature(seek_stream_len)]
+mod util;
+// #![deny(missing_docs)]
+#[cfg(feature = "byml")]
+pub mod byml;
 #[cfg(feature = "sarc")]
 pub mod sarc;
 pub mod types;
@@ -27,7 +31,10 @@ pub enum Error {
 #[cfg_attr(feature = "sarc", binrw::binread, brw(repr = u16))]
 #[derive(Debug, Eq, PartialEq, Copy, Clone)]
 #[repr(u16)]
-/// An enum to represent SARC endianness
+/// Represents endianness where applicable.
+///
+/// Generally in the game ROM, big endian is used for Wii U and little endian
+/// is used for Switch.
 pub enum Endian {
     /// Big Endian (Wii U)
     Big = 0xFFFE,
