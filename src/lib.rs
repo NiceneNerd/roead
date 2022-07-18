@@ -18,6 +18,9 @@ pub enum Error {
     InvalidMagic(String, &'static str),
     #[error("Data too short: found {0:#x} bytes, expected >= {1:#x}.")]
     InsufficientData(usize, usize),
+    #[cfg(feature = "byml")]
+    #[error(transparent)]
+    BymlError(#[from] byml::BymlError),
     #[cfg(feature = "yaz0")]
     #[error(transparent)]
     Yaz0Error(#[from] yaz0::Yaz0Error),

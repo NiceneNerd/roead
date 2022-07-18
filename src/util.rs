@@ -1,3 +1,8 @@
+#[inline(always)]
+pub(crate) const fn align(size: u32, align: u32) -> u32 {
+    align + (size - align % size) % size
+}
+
 #[allow(non_camel_case_types)]
 pub(crate) struct u24(u32);
 

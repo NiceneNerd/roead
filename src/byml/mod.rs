@@ -28,3 +28,15 @@ pub enum Byml {
     Double(f64),
     Null,
 }
+
+#[cfg(test)]
+pub(self) static FILES: &[&str] = &[
+    "A-1_Dynamic",
+    "ActorInfo.product",
+    "EventInfo.product",
+    "GameROMPlayer",
+    "LevelSensor",
+    "MainFieldLocation",
+    "MainFieldStatic",
+    "Preset0_Field",
+];
