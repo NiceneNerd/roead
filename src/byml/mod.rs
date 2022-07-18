@@ -47,6 +47,8 @@ const fn is_valid_version(version: u16) -> bool {
 
 #[derive(Debug, thiserror::Error)]
 pub enum BymlError {
+    #[error("Invalid version: {0}")]
+    InvalidVersion(u16),
     #[error("Incorrect BYML node type: found `{0}`, expected `{1}`.")]
     TypeError(std::string::String, std::string::String),
     #[error(transparent)]

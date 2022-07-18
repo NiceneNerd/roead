@@ -217,7 +217,6 @@ impl<R: Read + Seek> Parser<R> {
 
     fn parse_array_node(&mut self, offset: u32, size: u32) -> Result<Byml, BymlError> {
         let mut array = Vec::with_capacity(size as usize);
-        let aligned = align(size, 4);
         let values_offset = offset + 4 + align(size, 4);
         for i in 0..size {
             let child_offset = offset + 4 + i;
