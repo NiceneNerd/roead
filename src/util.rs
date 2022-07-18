@@ -1,6 +1,6 @@
 #[inline(always)]
-pub(crate) const fn align(size: u32, align: u32) -> u32 {
-    align + (size - align % size) % size
+pub(crate) fn align(value: u32, size: u32) -> u32 {
+    (value + (size - value % size) % size) as u32
 }
 
 #[allow(non_camel_case_types)]

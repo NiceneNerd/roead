@@ -71,10 +71,4 @@ fn main() {
         println!("cargo:rustc-link-search=native=lib/zlib-ng");
         println!("cargo:rustc-link-lib=static=zlib");
     }
-    #[cfg(feature = "byml")]
-    {
-        println!("cargo:rerun-if-changed=src/byml.rs");
-        println!("cargo:rerun-if-changed=src/byml.cpp");
-        println!("cargo:rerun-if-changed=src/include/oead/byml.h");
-    }
 }

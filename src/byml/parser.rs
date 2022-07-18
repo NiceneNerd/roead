@@ -56,7 +56,7 @@ impl<R: Read + Seek> BinReader<R> {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[binrw]
 struct ResHeaderInner {
-    /// Format version (2 or 3).
+    /// Format version (2-4).
     version: u16,
     /// Offset to the hash key table, relative to start (usually 0x010)
     /// May be 0 if no hash nodes are used. Must be a string table node (0xc2).
@@ -72,53 +72,10 @@ struct ResHeaderInner {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[binrw]
 struct ResHeader {
-    /// “BY” (big endian) or “YB” (little endian).
+    /// “BY” (big endian) or “YB” (Verslittle endian).
     magic: [u8; 2],
     #[br(is_little = &magic == b"YB")]
     inner: ResHeaderInner,
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-#[binrw]
-#[brw(repr = u8)]
-#[repr(u8)]
-enum NodeType {
-    String = 0xa0,
-    Binary = 0xa1,
-    Array = 0xc0,
-    Hash = 0xc1,
-    StringTable = 0xc2,
-    Bool = 0xd0,
-    Int = 0xd1,
-    Float = 0xd2,
-    UInt = 0xd3,
-    Int64 = 0xd4,
-    UInt64 = 0xd5,
-    Double = 0xd6,
-    Null = 0xff,
-}
-
-#[inline(always)]
-const fn is_container_type(node_type: NodeType) -> bool {
-    matches!(node_type, NodeType::Array | NodeType::Hash)
-}
-
-#[inline(always)]
-const fn is_long_type(node_type: NodeType) -> bool {
-    matches!(
-        node_type,
-        NodeType::Int64 | NodeType::UInt64 | NodeType::Double
-    )
-}
-
-#[inline(always)]
-const fn is_non_inline_type(node_type: NodeType) -> bool {
-    is_container_type(node_type) || is_long_type(node_type) || matches!(node_type, NodeType::Binary)
-}
-
-#[inline(always)]
-const fn is_valid_version(version: u16) -> bool {
-    version == 2 || version == 3
 }
 
 #[derive(Debug, Default)]
@@ -187,7 +144,6 @@ impl<R: Read + Seek> Parser<R> {
         } else {
             Endian::Little
         };
-        dbg!(&header);
         if !is_valid_version(header.inner.version) {
             return Err(BymlError::ParseError(
                 "Unsupported BYML version (2 or 3 only)",
@@ -252,25 +208,20 @@ impl<R: Read + Seek> Parser<R> {
         node_type: NodeType,
     ) -> Result<Byml, BymlError> {
         if is_container_type(node_type) {
-            dbg!("Container child node");
             let container_offset = self.reader.read_at(offset as u64)?;
-            dbg!(container_offset);
             self.parse_container_node(container_offset)
         } else {
-            dbg!("Value child node");
             self.parse_value_node(offset, node_type)
         }
     }
 
     fn parse_array_node(&mut self, offset: u32, size: u32) -> Result<Byml, BymlError> {
         let mut array = Vec::with_capacity(size as usize);
+        let aligned = align(size, 4);
         let values_offset = offset + 4 + align(size, 4);
-        dbg!(values_offset);
         for i in 0..size {
             let child_offset = offset + 4 + i;
-            dbg!(child_offset);
             let child_type: NodeType = self.reader.read_at(child_offset as u64)?;
-            dbg!(child_type);
             array.push(self.parse_container_child_node(values_offset + 4 * i, child_type)?);
         }
         Ok(Byml::Array(array))
@@ -281,13 +232,10 @@ impl<R: Read + Seek> Parser<R> {
         for i in 0..size {
             let entry_offset = offset + 4 + 8 * i;
             let name_idx: u24 = self.reader.read_at(entry_offset as u64)?;
-            dbg!(name_idx.as_u32());
             let node_type: NodeType = self.reader.read_at(entry_offset as u64 + 3)?;
-            dbg!(&node_type);
             let key = self
                 .hash_key_table
                 .get_string(name_idx.as_u32(), &mut self.reader)?;
-            dbg!(&key);
             hash.insert(
                 key,
                 self.parse_container_child_node(entry_offset + 4, node_type)?,
@@ -298,9 +246,7 @@ impl<R: Read + Seek> Parser<R> {
 
     fn parse_container_node(&mut self, offset: u32) -> Result<Byml, BymlError> {
         let node_type: NodeType = self.reader.read_at(offset as u64)?;
-        dbg!(&node_type);
         let size: u24 = self.reader.read()?;
-        dbg!(size.as_u32());
         match node_type {
             NodeType::Array => self.parse_array_node(offset, size.as_u32()),
             NodeType::Hash => self.parse_hash_node(offset, size.as_u32()),
@@ -314,16 +260,30 @@ mod test {
     use super::*;
 
     #[test]
-    fn parse_binary() {
+    fn read_files() {
         for file in FILES {
+            println!("{}", file);
             let reader = std::fs::File::open(
-                std::path::Path::new("test/byml")
-                    .join(file)
-                    .with_extension("byml"),
+                std::path::Path::new("test/byml").join([file, ".byml"].join("")),
             )
             .unwrap();
-            println!("{}", file);
             let byml = Byml::read(reader).unwrap();
+            match byml {
+                Byml::Array(arr) => println!("  Array with {} elements", arr.len()),
+                Byml::Hash(hash) => println!("  Hash with {} entries", hash.len()),
+                _ => println!("{:?}", byml),
+            }
+        }
+    }
+
+    #[test]
+    fn from_bytes() {
+        for file in FILES {
+            println!("{}", file);
+            let bytes =
+                std::fs::read(std::path::Path::new("test/byml").join([file, ".byml"].join("")))
+                    .unwrap();
+            let byml = Byml::from_binary(bytes).unwrap();
             match byml {
                 Byml::Array(arr) => println!("  Array with {} elements", arr.len()),
                 Byml::Hash(hash) => println!("  Hash with {} entries", hash.len()),
