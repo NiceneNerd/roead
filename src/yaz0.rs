@@ -25,7 +25,6 @@ pub struct Header {
     #[doc(hidden)]
     reserved: [u8; 4],
 }
-static_assertions::const_assert_eq!(std::mem::size_of::<ffi::Header>(), 0x10);
 unsafe impl cxx::ExternType for Header {
     type Id = cxx::type_id!("oead::yaz0::Header");
     type Kind = cxx::kind::Trivial;

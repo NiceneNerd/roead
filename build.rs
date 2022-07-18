@@ -19,14 +19,10 @@ fn main() {
     let bridge_files = [
         #[cfg(feature = "yaz0")]
         "src/yaz0.rs",
-        #[cfg(feature = "sarc")]
-        "src/sarc.rs",
     ];
     let source_files = [
         #[cfg(feature = "yaz0")]
         "src/yaz0.cpp",
-        #[cfg(feature = "sarc")]
-        "src/sarc.cpp",
     ];
 
     let mut builder = cxx_build::bridges(bridge_files);
@@ -69,11 +65,5 @@ fn main() {
         println!("cargo:rerun-if-changed=src/include/oead/yaz0.h");
         println!("cargo:rustc-link-search=native=lib/zlib-ng");
         println!("cargo:rustc-link-lib=static=zlib");
-    }
-    #[cfg(feature = "sarc")]
-    {
-        println!("cargo:rerun-if-changed=src/sarc.rs");
-        println!("cargo:rerun-if-changed=src/sarc.cpp");
-        println!("cargo:rerun-if-changed=src/include/oead/sarc.h");
     }
 }

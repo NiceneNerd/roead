@@ -1,3 +1,4 @@
+#![feature(const_slice_index)]
 // #![deny(missing_docs)]
 //! TODO: Docs
 #[cfg(feature = "sarc")]
@@ -16,8 +17,22 @@ pub enum Error {
     #[cfg(feature = "yaz0")]
     #[error(transparent)]
     Yaz0Error(#[from] yaz0::Yaz0Error),
+    #[cfg(feature = "sarc")]
+    #[error(transparent)]
+    SarcError(#[from] sarc::SarcError),
     #[error("{0}")]
     Any(String),
+}
+
+#[cfg_attr(feature = "sarc", binrw::binread, brw(repr = u16))]
+#[derive(Debug, Eq, PartialEq, Copy, Clone)]
+#[repr(u16)]
+/// An enum to represent SARC endianness
+pub enum Endian {
+    /// Big Endian (Wii U)
+    Big = 0xFFFE,
+    /// Little Endian (Switch)
+    Little = 0xFEFF,
 }
 
 type Result<T> = std::result::Result<T, Error>;
