@@ -7,11 +7,25 @@ use binrw::{binrw, BinRead, VecArgs};
 use std::io::{Read, Seek, SeekFrom};
 
 impl Byml {
+    /// Read a document from a binary reader.
     pub fn read<R: Read + Seek>(reader: R) -> crate::Result<Byml> {
         Ok(Parser::new(reader)?.parse()?)
     }
 
+    /// Load a document from binary data.
+    ///
+    /// **Note**: If and only if the `yaz0` feature is enabled, this function
+    /// automatically decompresses the SARC when necessary.
     pub fn from_binary(data: impl AsRef<[u8]>) -> crate::Result<Byml> {
+        #[cfg(feature = "yaz0")]
+        {
+            if data.as_ref().starts_with(b"Yaz0") {
+                return Ok(Parser::new(std::io::Cursor::new(crate::yaz0::decompress(
+                    data.as_ref(),
+                )?))?
+                .parse()?);
+            }
+        }
         Ok(Parser::new(std::io::Cursor::new(data.as_ref()))?.parse()?)
     }
 }

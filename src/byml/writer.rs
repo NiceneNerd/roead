@@ -11,6 +11,8 @@ use std::{
 };
 
 impl Byml {
+    /// Serialize the document to binary into the given writer. This can only
+    /// be done for Null, Array, or Hash nodes.
     pub fn write<W: Write + Seek>(
         &self,
         writer: &mut W,
@@ -19,6 +21,14 @@ impl Byml {
     ) -> crate::Result<()> {
         if !is_valid_version(version) {
             return Err(BymlError::InvalidVersion(version).into());
+        }
+
+        if !matches!(self, Byml::Hash(_) | Byml::Array(_) | Byml::Null) {
+            return Err(BymlError::TypeError(
+                format!("{:?}", self),
+                "Hash, Array, or Null".to_string(),
+            )
+            .into());
         }
 
         let do_write = move || -> Result<(), BymlError> {
@@ -60,9 +70,20 @@ impl Byml {
         Ok(do_write()?)
     }
 
+    /// Serialize the document to bytes with the specified endianness and
+    /// default version (2). This can only be done for Null, Array, or Hash nodes.
     pub fn to_binary(&self, endian: Endian) -> Vec<u8> {
         let mut buf = Vec::new();
         self.write(&mut Cursor::new(&mut buf), endian, 2).unwrap();
+        buf
+    }
+
+    /// Serialize the document to BYML with the specified endianness and
+    /// version number. This can only be done for Null, Array, or Hash nodes.
+    pub fn to_binary_with_version(&self, endian: Endian, version: u16) -> Vec<u8> {
+        let mut buf = Vec::new();
+        self.write(&mut Cursor::new(&mut buf), endian, version)
+            .unwrap();
         buf
     }
 }
@@ -79,10 +100,12 @@ struct StringTable<'a> {
 }
 
 impl<'a> StringTable<'a> {
+    #[inline]
     fn add<'b>(&'b mut self, s: &'a String) {
         self.table.insert(s, 0);
     }
 
+    #[inline]
     fn get_index(&self, s: &String) -> u32 {
         unsafe { self.table.get(s).copied().unwrap_unchecked() }
     }
@@ -98,10 +121,12 @@ impl<'a> StringTable<'a> {
             .collect();
     }
 
+    #[inline]
     fn len(&self) -> usize {
         self.table.len()
     }
 
+    #[inline]
     fn is_empty(&self) -> bool {
         self.table.is_empty()
     }

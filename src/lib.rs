@@ -3,6 +3,8 @@
 #![feature(seek_stream_len)]
 mod util;
 // #![deny(missing_docs)]
+#[cfg(feature = "aamp")]
+pub mod aamp;
 #[cfg(feature = "byml")]
 pub mod byml;
 #[cfg(feature = "sarc")]
