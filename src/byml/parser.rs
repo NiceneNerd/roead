@@ -241,6 +241,9 @@ impl<R: Read + Seek> Parser<R> {
     }
 
     fn parse_hash_node(&mut self, offset: u32, size: u32) -> Result<Byml, BymlError> {
+        #[cfg(feature = "im-rc")]
+        let mut hash = Hash::new();
+        #[cfg(all(feature = "rustc-hash", not(feature = "im-rc")))]
         let mut hash = Hash::with_capacity_and_hasher(size as usize, Default::default());
         for i in 0..size {
             let entry_offset = offset + 4 + 8 * i;

@@ -75,12 +75,14 @@ impl<const N: usize> std::borrow::Borrow<str> for FixedSafeString<N> {
     }
 }
 
+#[cfg(feature = "smartstring")]
 impl<const N: usize> From<smartstring::alias::String> for FixedSafeString<N> {
     fn from(s: smartstring::alias::String) -> Self {
         s.as_str().into()
     }
 }
 
+#[cfg(feature = "smartstring")]
 impl<const N: usize> From<FixedSafeString<N>> for smartstring::alias::String {
     fn from(s: FixedSafeString<N>) -> Self {
         s.as_ref().into()

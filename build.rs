@@ -1,3 +1,4 @@
+#[cfg(feature = "yaz0")]
 fn build_zlib() {
     std::process::Command::new("cmake")
         .current_dir("lib/zlib-ng")
@@ -12,26 +13,12 @@ fn build_zlib() {
         .unwrap();
 }
 
+#[cfg(feature = "yaz0")]
 fn main() {
-    #[cfg(feature = "yaz0")]
     build_zlib();
-
-    let bridge_files = [
-        #[cfg(feature = "yaz0")]
-        "src/yaz0.rs",
-        // #[cfg(feature = "byml")]
-        // "src/byml.rs",
-    ];
-    let source_files = [
-        #[cfg(feature = "yaz0")]
-        "src/yaz0.cpp",
-        // #[cfg(feature = "byml")]
-        // "src/byml.cpp",
-    ];
-
-    let mut builder = cxx_build::bridges(bridge_files);
+    let mut builder = cxx_build::bridge("src/yaz0.rs");
     builder
-        .files(source_files)
+        .file("src/yaz0.cpp")
         .compiler("clang++")
         .flag("-w")
         .flag_if_supported("-std=c++17")
@@ -62,13 +49,12 @@ fn main() {
     }
     builder.compile("roead");
     println!("cargo:rerun-if-changed=src/include/oead");
-
-    #[cfg(feature = "yaz0")]
-    {
-        println!("cargo:rerun-if-changed=src/yaz0.rs");
-        println!("cargo:rerun-if-changed=src/yaz0.cpp");
-        println!("cargo:rerun-if-changed=src/include/oead/yaz0.h");
-        println!("cargo:rustc-link-search=native=lib/zlib-ng");
-        println!("cargo:rustc-link-lib=static=zlib");
-    }
+    println!("cargo:rerun-if-changed=src/yaz0.rs");
+    println!("cargo:rerun-if-changed=src/yaz0.cpp");
+    println!("cargo:rerun-if-changed=src/include/oead/yaz0.h");
+    println!("cargo:rustc-link-search=native=lib/zlib-ng");
+    println!("cargo:rustc-link-lib=static=zlib");
 }
+
+#[cfg(not(feature = "yaz0"))]
+fn main() {}

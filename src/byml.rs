@@ -49,6 +49,9 @@ pub enum BymlError {
 }
 
 /// A BYML hash node.
+#[cfg(feature = "im-rc")]
+pub type Hash = im_rc::HashMap<String, Byml>;
+#[cfg(all(feature = "rustc-hash", not(feature = "im-rc")))]
 pub type Hash = rustc_hash::FxHashMap<String, Byml>;
 
 /// Convenience type used for indexing into `Byml`s
