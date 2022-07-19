@@ -160,8 +160,8 @@ impl<'a, W: Write + Seek> WriteContext<'a, W> {
                 Endian::Little => binrw::Endian::Little,
                 Endian::Big => binrw::Endian::Big,
             }),
-            hash_key_table: Rc::new(string_table),
-            string_table: Rc::new(hash_key_table),
+            hash_key_table: Rc::new(hash_key_table),
+            string_table: Rc::new(string_table),
             non_inline_node_data: FxHashMap::with_capacity_and_hasher(
                 non_inline_node_count,
                 Default::default(),
