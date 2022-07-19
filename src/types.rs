@@ -23,6 +23,12 @@ pub struct FixedSafeString<const N: usize> {
     len: usize,
 }
 
+impl<const N: usize> FixedSafeString<N> {
+    pub fn as_str(&self) -> &str {
+        self.as_ref()
+    }
+}
+
 impl<const N: usize> std::ops::Deref for FixedSafeString<N> {
     type Target = str;
     fn deref(&self) -> &str {
@@ -109,6 +115,7 @@ impl<const N: usize> binrw::BinRead for FixedSafeString<N> {
     }
 }
 
+/// 2D vector.
 #[cfg_attr(feature = "with-serde", derive(Serialize, Deserialize))]
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct Vector2f {
@@ -116,6 +123,7 @@ pub struct Vector2f {
     pub y: R32,
 }
 
+/// 3D vector.
 #[cfg_attr(feature = "with-serde", derive(Serialize, Deserialize))]
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct Vector3f {
@@ -124,6 +132,7 @@ pub struct Vector3f {
     pub z: R32,
 }
 
+/// 4D vector.
 #[cfg_attr(feature = "with-serde", derive(Serialize, Deserialize))]
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct Vector4f {
@@ -133,6 +142,7 @@ pub struct Vector4f {
     pub t: R32,
 }
 
+/// Quaternion.
 #[cfg_attr(feature = "with-serde", derive(Serialize, Deserialize))]
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct Quat {
@@ -142,6 +152,7 @@ pub struct Quat {
     pub d: R32,
 }
 
+/// RGBA color (Red/Green/Blue/Alpha).
 #[cfg_attr(feature = "with-serde", derive(Serialize, Deserialize))]
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct Color {
@@ -151,6 +162,7 @@ pub struct Color {
     pub a: R32,
 }
 
+/// Curve (`sead::hostio::curve*`)
 #[cfg_attr(feature = "with-serde", derive(Serialize, Deserialize))]
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct Curve {

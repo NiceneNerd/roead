@@ -4,6 +4,7 @@ pub(crate) fn align(value: u32, size: u32) -> u32 {
 }
 
 #[allow(non_camel_case_types)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 pub(crate) struct u24(pub u32);
 
 impl u24 {
