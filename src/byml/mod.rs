@@ -59,12 +59,14 @@ pub enum BymlError {
     ParseError(&'static str),
 }
 
+pub type Hash = rustc_hash::FxHashMap<String, Byml>;
+
 #[derive(Debug, Clone, PartialEq)]
 pub enum Byml {
     String(String),
     Binary(Vec<u8>),
     Array(Vec<Byml>),
-    Hash(im::OrdMap<String, Byml>),
+    Hash(Hash),
     Bool(bool),
     Int(i32),
     Float(f32),
@@ -76,6 +78,7 @@ pub enum Byml {
 }
 
 impl Byml {
+    #[inline]
     fn get_node_type(&self) -> NodeType {
         match self {
             Byml::String(_) => NodeType::String,
@@ -91,6 +94,19 @@ impl Byml {
             Byml::Double(_) => NodeType::Double,
             Byml::Null => NodeType::Null,
         }
+    }
+
+    #[inline(always)]
+    fn is_non_inline_type(&self) -> bool {
+        matches!(
+            self,
+            Byml::Array(_)
+                | Byml::Hash(_)
+                | Byml::Binary(_)
+                | Byml::Int64(_)
+                | Byml::UInt64(_)
+                | Byml::Double(_)
+        )
     }
 }
 

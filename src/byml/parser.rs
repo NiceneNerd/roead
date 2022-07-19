@@ -227,7 +227,7 @@ impl<R: Read + Seek> Parser<R> {
     }
 
     fn parse_hash_node(&mut self, offset: u32, size: u32) -> Result<Byml, BymlError> {
-        let mut hash = im::OrdMap::new();
+        let mut hash = Hash::default();
         for i in 0..size {
             let entry_offset = offset + 4 + 8 * i;
             let name_idx: u24 = self.reader.read_at(entry_offset as u64)?;

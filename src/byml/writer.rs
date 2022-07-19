@@ -4,8 +4,8 @@ use crate::{
     Endian,
 };
 use binrw::prelude::*;
+use rustc_hash::FxHashMap;
 use std::{
-    collections::{BTreeSet, HashMap},
     io::{Cursor, Seek, SeekFrom, Write},
     rc::Rc,
 };
@@ -82,8 +82,8 @@ struct NonInlineNode<'a> {
 
 #[derive(Debug, Default)]
 struct StringTable<'a> {
-    table: HashMap<&'a String, u32>,
-    sorted_strings: BTreeSet<&'a String>,
+    table: FxHashMap<&'a String, u32>,
+    sorted_strings: Vec<&'a String>,
 }
 
 impl<'a> StringTable<'a> {
@@ -92,11 +92,12 @@ impl<'a> StringTable<'a> {
     }
 
     fn get_index(&self, s: &String) -> u32 {
-        self.table.get(s).copied().unwrap()
+        unsafe { self.table.get(s).copied().unwrap_unchecked() }
     }
 
     fn build(&mut self) {
         self.sorted_strings = self.table.keys().copied().collect();
+        self.sorted_strings.sort();
         self.table = self
             .sorted_strings
             .iter()
@@ -119,7 +120,7 @@ struct WriteContext<'a, W: Write + Seek> {
     options: binrw::WriteOptions,
     hash_key_table: Rc<StringTable<'a>>,
     string_table: Rc<StringTable<'a>>,
-    non_inline_node_data: HashMap<&'a Byml, u32>,
+    non_inline_node_data: FxHashMap<&'a Byml, u32>,
 }
 
 impl<'a, W: Write + Seek> WriteContext<'a, W> {
@@ -169,7 +170,7 @@ impl<'a, W: Write + Seek> WriteContext<'a, W> {
             }),
             hash_key_table: Rc::new(hash_key_table),
             string_table: Rc::new(string_table),
-            non_inline_node_data: HashMap::with_capacity(non_inline_node_count),
+            non_inline_node_data: FxHashMap::default(),
         }
     }
 
@@ -203,10 +204,10 @@ impl<'a, W: Write + Seek> WriteContext<'a, W> {
                 self.write(data.len() as u32)?;
                 self.write(data)
             }
-            Byml::Bool(b) => self.write(if *b { 1u32 } else { 0u32 }),
+            Byml::Bool(b) => self.write(*b as u32),
             Byml::Int(i) => self.write(*i),
             Byml::UInt(u) => self.write(*u),
-            Byml::Float(f) => self.write(*f),
+            Byml::Float(f) => self.write(*f as u32),
             Byml::Int64(i) => self.write(*i),
             Byml::UInt64(u) => self.write(*u),
             Byml::Double(d) => self.write(*d),
@@ -217,12 +218,13 @@ impl<'a, W: Write + Seek> WriteContext<'a, W> {
     fn write_container_node<'b>(&'b mut self, node: &'a Byml) -> binrw::BinResult<()> {
         let mut non_inline_nodes = Vec::new();
 
+        #[inline]
         fn write_container_item<'parent, 'nodes, W: Write + Seek>(
             ctx: &mut WriteContext<'parent, W>,
             item: &'parent Byml,
             non_inline_nodes: &'nodes mut Vec<NonInlineNode<'parent>>,
         ) -> binrw::BinResult<()> {
-            if is_non_inline_type(item.get_node_type()) {
+            if item.is_non_inline_type() {
                 non_inline_nodes.push(NonInlineNode {
                     data: item,
                     offset: ctx.writer.stream_position()? as u32,
@@ -236,17 +238,19 @@ impl<'a, W: Write + Seek> WriteContext<'a, W> {
 
         match node {
             Byml::Array(arr) => {
+                non_inline_nodes.reserve(arr.len());
                 self.write(NodeType::Array)?;
                 self.write(u24(arr.len() as u32))?;
-                for item in arr.iter() {
-                    self.write(item.get_node_type())?;
-                }
+                let types_pos = self.writer.stream_position()? as u32;
+                self.writer.seek(SeekFrom::Current(arr.len() as i64))?;
                 self.align()?;
-                for item in arr.iter() {
+                for (i, item) in arr.iter().enumerate() {
+                    self.write_at(item.get_node_type(), types_pos + i as u32)?;
                     write_container_item(self, item, &mut non_inline_nodes)?;
                 }
             }
             Byml::Hash(hash) => {
+                non_inline_nodes.reserve(hash.len());
                 self.write(NodeType::Hash)?;
                 self.write(u24(hash.len() as u32))?;
                 for (key, item) in hash.iter() {
@@ -261,17 +265,14 @@ impl<'a, W: Write + Seek> WriteContext<'a, W> {
         for node in non_inline_nodes {
             if let Some(pos) = self.non_inline_node_data.get(&node.data).copied() {
                 self.write_at(pos, node.offset)?;
-                continue;
             } else {
                 let offset = self.writer.stream_position()? as u32;
                 self.write_at(offset, node.offset)?;
                 self.non_inline_node_data.insert(node.data, offset);
-                if is_container_type(node.data.get_node_type()) {
-                    self.write_container_node(node.data)?;
-                } else {
-                    self.write_value_node(node.data)?;
+                match node.data {
+                    Byml::Array(_) | Byml::Hash(_) => self.write_container_node(node.data)?,
+                    _ => self.write_value_node(node.data)?,
                 }
-                continue;
             }
         }
 
@@ -312,6 +313,7 @@ mod test {
 
     #[test]
     fn binary_roundtrip() {
+        println!("{}", std::mem::size_of::<Hash>());
         for file in FILES {
             println!("{}", file);
             let bytes =
@@ -320,24 +322,7 @@ mod test {
             let byml = Byml::from_binary(bytes).unwrap();
             let new_le_bytes = byml.to_binary(Endian::Little);
             let mut new_byml = Byml::from_binary(&new_le_bytes).unwrap();
-            if byml != new_byml {
-                match (&byml, &new_byml) {
-                    (Byml::Array(arr), Byml::Array(new_arr)) => {
-                        assert_eq!(arr.len(), new_arr.len());
-                        for (i, item) in arr.iter().enumerate() {
-                            assert_eq!(item, &new_arr[i]);
-                        }
-                    }
-                    (Byml::Hash(hash), Byml::Hash(new_hash)) => {
-                        assert_eq!(hash.len(), new_hash.len());
-                        for (key, item) in hash.iter() {
-                            assert_eq!(item, &new_hash[key]);
-                        }
-                    }
-                    _ => panic!("Invalid node type"),
-                }
-                panic!("They don't equal, man")
-            }
+            assert_eq!(byml, new_byml);
             let new_be_bytes = byml.to_binary(Endian::Big);
             new_byml = Byml::from_binary(new_be_bytes).unwrap();
             assert_eq!(byml, new_byml);

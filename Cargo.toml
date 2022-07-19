@@ -5,12 +5,14 @@ edition = "2021"
 license = "GPL-3.0-or-later"
 
 [dependencies]
+ahash = { version = "0.7.6", optional = true}
 binrw = { version = "0.9.2", optional = true }
 cached = "0.36.0"
 cxx = "1.0.71"
 im = { version = "15.1.0", features = ["serde"] }
 join_str = "0.1.0"
 num-integer = { version = "0.1.45", optional = true }
+rustc-hash = "1.1.0"
 serde = { version = "1.0.139", features = ["derive"], optional = true }
 serde_json = { version = "1.0.82", optional = true }
 smartstring = "1.0.1"
@@ -22,7 +24,7 @@ cxx-build = "1.0.71"
 
 [features]
 aamp = []
-byml = ["binrw"]
+byml = ["binrw", "ahash"]
 sarc = ["binrw", "num-integer", "serde", "serde_json"]
 yaz0 = []
 default = ["aamp", "byml", "sarc", "yaz0"]
