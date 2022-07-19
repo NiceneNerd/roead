@@ -9,7 +9,8 @@ ahash = { version = "0.7.6", optional = true}
 binrw = { version = "0.9.2", optional = true }
 cached = "0.36.0"
 cxx = "1.0.71"
-im = { version = "15.1.0", features = ["serde"] }
+decorum = { version = "0.3.1", optional = true }
+enum-as-inner = { version = "0.5.0", optional = true } 
 join_str = "0.1.0"
 num-integer = { version = "0.1.45", optional = true }
 rustc-hash = "1.1.0"
@@ -22,9 +23,13 @@ thiserror = "1.0.31"
 [build-dependencies]
 cxx-build = "1.0.71"
 
+[dev-dependencies]
+# roead = "0.12.2"
+
 [features]
-aamp = []
-byml = ["binrw", "ahash"]
+aamp = ["decorum", "enum-as-inner"]
+byml = ["binrw", "decorum", "enum-as-inner"]
 sarc = ["binrw", "num-integer", "serde", "serde_json"]
 yaz0 = []
+with-serde = ["serde", "decorum/serde", "smartstring/serde"]
 default = ["aamp", "byml", "sarc", "yaz0"]

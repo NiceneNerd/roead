@@ -3,8 +3,9 @@ use crate::Endian;
 use binrw::{io::Write, BinReaderExt, BinWrite};
 use cached::proc_macro::cached;
 use num_integer::Integer;
+use rustc_hash::{FxHashMap, FxHashSet};
 use serde::Deserialize;
-use std::collections::{BTreeMap, HashMap, HashSet};
+use std::collections::BTreeMap;
 use std::io::{Cursor, Seek, SeekFrom};
 
 const FACTORY_INFO: &str = include_str!("../../data/botw_resource_factory_info.tsv");
@@ -30,7 +31,7 @@ impl BinWrite for Endian {
 }
 
 #[cached]
-fn get_botw_factory_names() -> HashSet<&'static str> {
+fn get_botw_factory_names() -> FxHashSet<&'static str> {
     FACTORY_INFO
         .split('\n')
         .map(|line| line.split('\t').next().unwrap())
@@ -162,7 +163,7 @@ pub struct SarcWriter {
     legacy: bool,
     hash_multiplier: u32,
     min_alignment: usize,
-    alignment_map: HashMap<String, usize>,
+    alignment_map: FxHashMap<String, usize>,
     options: binrw::WriteOptions,
     /// Files to be written.
     pub files: BTreeMap<FileName, Vec<u8>>,
@@ -201,7 +202,7 @@ impl SarcWriter {
             endian,
             legacy: false,
             hash_multiplier: HASH_MULTIPLIER,
-            alignment_map: HashMap::new(),
+            alignment_map: FxHashMap::default(),
             files: BTreeMap::new(),
             options: binrw::WriteOptions::default().with_endian(match endian {
                 Endian::Big => binrw::Endian::Big,
@@ -219,7 +220,7 @@ impl SarcWriter {
             endian,
             legacy: false,
             hash_multiplier: HASH_MULTIPLIER,
-            alignment_map: HashMap::new(),
+            alignment_map: FxHashMap::default(),
             files: sarc
                 .files()
                 .filter_map(|f| f.name.map(|name| (name.into(), f.data.to_vec())))

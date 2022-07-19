@@ -118,7 +118,7 @@ impl StringTableParser {
         reader.seek((self.offset + offset) as u64)?;
         let mut string_ = String::new_const();
         let mut c: u8 = reader.read()?;
-        while c != 0 && string_.len() <= max_len as usize {
+        while c != 0 && string_.len() < max_len as usize {
             string_.push(c as char);
             c = reader.read()?;
         }
@@ -187,15 +187,15 @@ impl<R: Read + Seek> Parser<R> {
                         inner: (),
                     },
                 )?;
-                Byml::Binary(buf)
+                Byml::BinaryData(buf)
             }
             NodeType::Bool => Byml::Bool(raw != 0),
-            NodeType::Int => Byml::Int(raw as i32),
-            NodeType::UInt => Byml::UInt(raw),
-            NodeType::Float => Byml::Float(raw as f32),
-            NodeType::Int64 => Byml::Int64(read_long()? as i64),
-            NodeType::UInt64 => Byml::UInt64(read_long()?),
-            NodeType::Double => Byml::Double(read_long()? as f64),
+            NodeType::I32 => Byml::I32(raw as i32),
+            NodeType::U32 => Byml::U32(raw),
+            NodeType::Float => Byml::Float((raw as f32).into()),
+            NodeType::I64 => Byml::I64(read_long()? as i64),
+            NodeType::U64 => Byml::U64(read_long()?),
+            NodeType::Double => Byml::Double((read_long()? as f64).into()),
             NodeType::Null => Byml::Null,
             _ => unreachable!("Invalid value node type"),
         };
@@ -227,7 +227,7 @@ impl<R: Read + Seek> Parser<R> {
     }
 
     fn parse_hash_node(&mut self, offset: u32, size: u32) -> Result<Byml, BymlError> {
-        let mut hash = Hash::default();
+        let mut hash = Hash::with_capacity_and_hasher(size as usize, Default::default());
         for i in 0..size {
             let entry_offset = offset + 4 + 8 * i;
             let name_idx: u24 = self.reader.read_at(entry_offset as u64)?;
@@ -262,10 +262,12 @@ mod test {
     fn read_files() {
         for file in FILES {
             println!("{}", file);
-            let reader = std::fs::File::open(
-                std::path::Path::new("test/byml").join([file, ".byml"].join("")),
-            )
-            .unwrap();
+            let reader = std::io::BufReader::new(
+                std::fs::File::open(
+                    std::path::Path::new("test/byml").join([file, ".byml"].join("")),
+                )
+                .unwrap(),
+            );
             let byml = Byml::read(reader).unwrap();
             match byml {
                 Byml::Array(arr) => println!("  Array with {} elements", arr.len()),

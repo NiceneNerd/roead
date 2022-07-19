@@ -197,11 +197,6 @@ mod tests {
             [b'R', b'S', b'T', b'B'],
             526804,
         ),
-        (
-            "TwnObj_HyruleCastle_A.Tex.sbfres",
-            [b'F', b'R', b'E', b'S'],
-            64041136,
-        ),
         ("0-0.shknm2", [0x57, 0xE0, 0xE0, 0x57], 17584),
     ];
 

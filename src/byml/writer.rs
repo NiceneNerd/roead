@@ -67,14 +67,6 @@ impl Byml {
     }
 }
 
-impl std::hash::Hash for &Byml {
-    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
-        state.write_usize(&self as *const _ as usize);
-    }
-}
-
-impl Eq for &Byml {}
-
 struct NonInlineNode<'a> {
     data: &'a Byml,
     offset: u32,
@@ -149,7 +141,7 @@ impl<'a, W: Write + Seek> WriteContext<'a, W> {
                         traverse(node, count, string_table, hash_key_table);
                     }
                 }
-                Byml::Binary(_) | Byml::Int64(_) | Byml::UInt64(_) | Byml::Double(_) => {}
+                Byml::BinaryData(_) | Byml::I64(_) | Byml::U64(_) | Byml::Double(_) => {}
                 _ => return,
             }
             *count += 1;
@@ -168,9 +160,12 @@ impl<'a, W: Write + Seek> WriteContext<'a, W> {
                 Endian::Little => binrw::Endian::Little,
                 Endian::Big => binrw::Endian::Big,
             }),
-            hash_key_table: Rc::new(hash_key_table),
-            string_table: Rc::new(string_table),
-            non_inline_node_data: FxHashMap::default(),
+            hash_key_table: Rc::new(string_table),
+            string_table: Rc::new(hash_key_table),
+            non_inline_node_data: FxHashMap::with_capacity_and_hasher(
+                non_inline_node_count,
+                Default::default(),
+            ),
         }
     }
 
@@ -200,17 +195,17 @@ impl<'a, W: Write + Seek> WriteContext<'a, W> {
         match node {
             Byml::Null => self.write(0u32),
             Byml::String(s) => self.write(self.string_table.get_index(s)),
-            Byml::Binary(data) => {
+            Byml::BinaryData(data) => {
                 self.write(data.len() as u32)?;
                 self.write(data)
             }
             Byml::Bool(b) => self.write(*b as u32),
-            Byml::Int(i) => self.write(*i),
-            Byml::UInt(u) => self.write(*u),
-            Byml::Float(f) => self.write(*f as u32),
-            Byml::Int64(i) => self.write(*i),
-            Byml::UInt64(u) => self.write(*u),
-            Byml::Double(d) => self.write(*d),
+            Byml::I32(i) => self.write(*i),
+            Byml::U32(u) => self.write(*u),
+            Byml::Float(f) => self.write(*f.as_ref() as u32),
+            Byml::I64(i) => self.write(*i),
+            Byml::U64(u) => self.write(*u),
+            Byml::Double(d) => self.write(*d.as_ref() as u64),
             _ => unreachable!("Invalid value node type"),
         }
     }
