@@ -25,6 +25,7 @@ thiserror = "1.0.31"
 cxx-build = { version = "1.0.71", optional = true }
 
 [dev-dependencies]
+jwalk = "0.6.0"
 # roead = "0.12.2"
 
 [features]

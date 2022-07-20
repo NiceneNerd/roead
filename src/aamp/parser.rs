@@ -1,26 +1,39 @@
 use super::*;
 use crate::util::u24;
-use binrw::{binrw, prelude::*, NullString};
+use binrw::{binrw, prelude::*};
 use enumflags2::{bitflags, BitFlags};
 use std::io::{Read, Seek};
 
-#[binrw]
-#[brw(repr(u32), little)]
-#[bitflags]
-#[repr(u32)]
-#[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
-enum HeaderFlag {
-    LittleEndian = 1 << 0,
-    Utf8 = 1 << 1,
+impl ParameterIO {
+    /// Read a parameter archive from a binary reader.
+    pub fn read<R: Read + Seek>(reader: R) -> crate::Result<ParameterIO> {
+        Ok(Parser::new(reader)?.parse()?)
+    }
+
+    /// Load a parameter archive from binary data.
+    ///
+    /// **Note**: If and only if the `yaz0` feature is enabled, this function
+    /// automatically decompresses the data when necessary.
+    pub fn from_binary(data: impl AsRef<[u8]>) -> crate::Result<ParameterIO> {
+        #[cfg(feature = "yaz0")]
+        {
+            if data.as_ref().starts_with(b"Yaz0") {
+                return Ok(Parser::new(std::io::Cursor::new(crate::yaz0::decompress(
+                    data.as_ref(),
+                )?))?
+                .parse()?);
+            }
+        }
+        Ok(Parser::new(std::io::Cursor::new(data.as_ref()))?.parse()?)
+    }
 }
 
 #[derive(Debug)]
 #[binrw]
-#[brw(little)]
+#[brw(little, magic = b"AAMP")]
 struct ResHeader {
-    magic: [u8; 4],
     version: u32,
-    flags: HeaderFlag,
+    flags: u32,
     file_size: u32,
     pio_version: u32,
     /// Offset to parameter IO (relative to 0x30)
@@ -65,6 +78,7 @@ struct ResParameterList {
 
 struct Parser<R: Read + Seek> {
     reader: R,
+    header: ResHeader,
     opts: binrw::ReadOptions,
 }
 
@@ -74,29 +88,44 @@ impl<R: Read + Seek> Parser<R> {
             return Err(AampError::InvalidData("Incomplete parameter archive"));
         }
         let header = ResHeader::read(&mut reader)?;
-        if &header.magic != b"AAMP" {
-            return Err(AampError::InvalidData("Invalid magic"));
-        }
         if header.version != 2 {
             return Err(AampError::InvalidData(
                 "Only version 2 parameter archives are supported",
             ));
         }
-        let flags = BitFlags::from_flag(header.flags);
-        if !flags.contains(HeaderFlag::LittleEndian) {
+        if header.flags & 1 << 0 != 1 << 0 {
             return Err(AampError::InvalidData(
                 "Only little endian parameter archives are supported",
             ));
         }
-        if !flags.contains(HeaderFlag::Utf8) {
+        if header.flags & 1 << 1 != 1 << 1 {
             return Err(AampError::InvalidData(
                 "Only UTF-8 parameter archives are supported",
             ));
         }
         Ok(Self {
             reader,
+            header,
             opts: binrw::ReadOptions::default().with_endian(binrw::Endian::Little),
         })
+    }
+
+    fn parse(&mut self) -> Result<ParameterIO, AampError> {
+        let (root_name, param_root) = self.parse_list(self.header.pio_offset + 0x30)?;
+        if root_name != ROOT_KEY {
+            Err(AampError::InvalidData(
+                "No param root found in parameter archive",
+            ))
+        } else {
+            Ok(ParameterIO {
+                version: self.header.version,
+                data_type: {
+                    self.seek(0x30)?;
+                    self.read_null_string()?
+                },
+                param_root,
+            })
+        }
     }
 
     #[inline]
@@ -108,6 +137,17 @@ impl<R: Read + Seek> Parser<R> {
     #[inline]
     fn read<T: BinRead<Args = ()>>(&mut self) -> Result<T, AampError> {
         Ok(T::read_options(&mut self.reader, &self.opts, ())?)
+    }
+
+    #[inline]
+    fn read_null_string(&mut self) -> Result<String, AampError> {
+        let mut string_ = String::new_const();
+        let mut c: u8 = self.read()?;
+        while c != 0 {
+            string_.push(c as char);
+            c = self.read()?;
+        }
+        Ok(string_)
     }
 
     #[inline]
@@ -210,9 +250,7 @@ impl<R: Read + Seek> Parser<R> {
             Type::String32 => Parameter::String32(self.read()?),
             Type::String64 => Parameter::String64(self.read()?),
             Type::String256 => Parameter::String256(self.read()?),
-            Type::StringRef => Parameter::StringRef(
-                std::str::from_utf8(self.read::<NullString>()?.as_slice())?.into(),
-            ),
+            Type::StringRef => Parameter::StringRef(self.read_null_string()?),
             Type::BufferInt => Parameter::BufferInt(self.read_buffer::<i32>(data_offset)?),
             Type::BufferU32 => Parameter::BufferU32(self.read_buffer::<u32>(data_offset)?),
             Type::BufferF32 => Parameter::BufferF32(self.read_float_buffer(offset)?),
@@ -225,17 +263,48 @@ impl<R: Read + Seek> Parser<R> {
         self.seek(offset)?;
         let info = ResParameterObj::read(&mut self.reader)?;
         let offset = info.params_rel_offset as u32 + offset;
-        let mut params = ParameterObject(
-            (0..=info.param_count)
-                .into_iter()
-                .map(|i| {
-                    Ok((
-                        info.name,
-                        self.parse_parameter(offset as u32 + 0x8 * i as u32)?,
-                    ))
-                })
-                .collect::<Result<_, AampError>>()?,
-        );
+        let params = (0..=info.param_count)
+            .into_iter()
+            .map(|i| self.parse_parameter(offset + 0x8 * i as u32))
+            .collect::<Result<_, AampError>>()?;
         Ok((info.name, params))
+    }
+
+    fn parse_list(&mut self, offset: u32) -> Result<(Name, ParameterList), AampError> {
+        self.seek(offset)?;
+        let info = ResParameterList::read(&mut self.reader)?;
+        let lists_offset = info.lists_rel_offset as u32 + offset;
+        let objects_offset = info.objects_rel_offset as u32 + offset;
+        dbg!(&info);
+        let plist = ParameterList {
+            lists: (0..=info.list_count)
+                .into_iter()
+                .map(|i| self.parse_list(lists_offset + 0x8 * i as u32))
+                .collect::<Result<_, AampError>>()?,
+            objects: (0..=info.object_count)
+                .into_iter()
+                .map(|i| self.parse_object(objects_offset + 0xC * i as u32))
+                .collect::<Result<_, AampError>>()?,
+        };
+        Ok((info.name, plist))
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    #[test]
+    fn parse() {
+        for file in jwalk::WalkDir::new("test/aamp")
+            .into_iter()
+            .filter_map(|f| {
+                f.ok()
+                    .and_then(|f| f.file_type().is_file().then(|| f.path()))
+            })
+        {
+            println!("{}", file.display());
+            let data = std::fs::read(&file).unwrap();
+            let pio = ParameterIO::from_binary(&data).unwrap();
+        }
     }
 }

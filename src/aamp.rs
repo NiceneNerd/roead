@@ -177,13 +177,31 @@ impl Name {
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub struct ParameterObject(pub ParameterStructureMap<Parameter>);
 
+impl<N: Into<Name>> FromIterator<(N, Parameter)> for ParameterObject {
+    fn from_iter<T: IntoIterator<Item = (N, Parameter)>>(iter: T) -> Self {
+        Self(iter.into_iter().map(|(k, v)| (k.into(), v)).collect())
+    }
+}
+
 #[cfg_attr(feature = "with-serde", derive(Serialize, Deserialize))]
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub struct ParameterObjectMap(pub ParameterStructureMap<ParameterObject>);
 
+impl<N: Into<Name>> FromIterator<(N, ParameterObject)> for ParameterObjectMap {
+    fn from_iter<T: IntoIterator<Item = (N, ParameterObject)>>(iter: T) -> Self {
+        Self(iter.into_iter().map(|(k, v)| (k.into(), v)).collect())
+    }
+}
+
 #[cfg_attr(feature = "with-serde", derive(Serialize, Deserialize))]
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub struct ParameterListMap(pub ParameterStructureMap<ParameterList>);
+
+impl<N: Into<Name>> FromIterator<(N, ParameterList)> for ParameterListMap {
+    fn from_iter<T: IntoIterator<Item = (N, ParameterList)>>(iter: T) -> Self {
+        Self(iter.into_iter().map(|(k, v)| (k.into(), v)).collect())
+    }
+}
 
 pub trait ParameterListing {
     fn lists(&self) -> &ParameterListMap;

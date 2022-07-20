@@ -23,6 +23,9 @@ pub enum Error {
     #[cfg(feature = "byml")]
     #[error(transparent)]
     BymlError(#[from] byml::BymlError),
+    #[cfg(feature = "aamp")]
+    #[error(transparent)]
+    AampError(#[from] aamp::AampError),
     #[cfg(feature = "yaz0")]
     #[error(transparent)]
     Yaz0Error(#[from] yaz0::Yaz0Error),
