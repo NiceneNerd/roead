@@ -1,5 +1,7 @@
 mod parser;
-use crate::types::*;
+mod writer;
+use crate::{types::*, util::u24};
+use binrw::binrw;
 use decorum::R32;
 use enum_as_inner::EnumAsInner;
 use indexmap::IndexMap;
@@ -99,6 +101,54 @@ enum Type {
     StringRef,
 }
 
+#[derive(Debug)]
+#[binrw]
+#[brw(little, magic = b"AAMP")]
+struct ResHeader {
+    version: u32,
+    flags: u32,
+    file_size: u32,
+    pio_version: u32,
+    /// Offset to parameter IO (relative to 0x30)
+    pio_offset: u32,
+    /// Number of lists (including root)
+    list_count: u32,
+    object_count: u32,
+    param_count: u32,
+    data_section_size: u32,
+    string_section_size: u32,
+    unknown_section_size: u32,
+}
+
+#[derive(Debug)]
+#[binrw]
+#[brw(little)]
+struct ResParameter {
+    name: Name,
+    data_rel_offset: u24,
+    type_: Type,
+}
+
+#[derive(Debug)]
+#[binrw]
+#[brw(little)]
+struct ResParameterObj {
+    name: Name,
+    params_rel_offset: u16,
+    param_count: u16,
+}
+
+#[derive(Debug)]
+#[binrw]
+#[brw(little)]
+struct ResParameterList {
+    name: Name,
+    lists_rel_offset: u16,
+    list_count: u16,
+    objects_rel_offset: u16,
+    object_count: u16,
+}
+
 /// Parameter.
 ///
 /// Note that unlike `agl::utl::Parameter` the name is not stored as part of
@@ -131,6 +181,33 @@ pub enum Parameter {
 }
 
 impl Parameter {
+    #[inline(always)]
+    fn get_type(&self) -> Type {
+        match self {
+            Parameter::Bool(_) => Type::Bool,
+            Parameter::F32(_) => Type::F32,
+            Parameter::Int(_) => Type::Int,
+            Parameter::Vec2(_) => Type::Vec2,
+            Parameter::Vec3(_) => Type::Vec3,
+            Parameter::Vec4(_) => Type::Vec4,
+            Parameter::Color(_) => Type::Color,
+            Parameter::String32(_) => Type::String32,
+            Parameter::String64(_) => Type::String64,
+            Parameter::Curve1(_) => Type::Curve1,
+            Parameter::Curve2(_) => Type::Curve2,
+            Parameter::Curve3(_) => Type::Curve3,
+            Parameter::Curve4(_) => Type::Curve4,
+            Parameter::BufferInt(_) => Type::BufferInt,
+            Parameter::BufferF32(_) => Type::BufferF32,
+            Parameter::String256(_) => Type::String256,
+            Parameter::Quat(_) => Type::Quat,
+            Parameter::U32(_) => Type::U32,
+            Parameter::BufferU32(_) => Type::BufferU32,
+            Parameter::BufferBinary(_) => Type::BufferBinary,
+            Parameter::StringRef(_) => Type::StringRef,
+        }
+    }
+
     pub fn as_str(&self) -> Option<&str> {
         match self {
             Parameter::String32(s) => Some(s.as_str()),
@@ -177,6 +254,16 @@ impl Name {
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub struct ParameterObject(pub ParameterStructureMap<Parameter>);
 
+impl ParameterObject {
+    pub fn len(&self) -> usize {
+        self.0.len()
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.0.is_empty()
+    }
+}
+
 impl<N: Into<Name>> FromIterator<(N, Parameter)> for ParameterObject {
     fn from_iter<T: IntoIterator<Item = (N, Parameter)>>(iter: T) -> Self {
         Self(iter.into_iter().map(|(k, v)| (k.into(), v)).collect())
@@ -187,6 +274,16 @@ impl<N: Into<Name>> FromIterator<(N, Parameter)> for ParameterObject {
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub struct ParameterObjectMap(pub ParameterStructureMap<ParameterObject>);
 
+impl ParameterObjectMap {
+    pub fn len(&self) -> usize {
+        self.0.len()
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.0.is_empty()
+    }
+}
+
 impl<N: Into<Name>> FromIterator<(N, ParameterObject)> for ParameterObjectMap {
     fn from_iter<T: IntoIterator<Item = (N, ParameterObject)>>(iter: T) -> Self {
         Self(iter.into_iter().map(|(k, v)| (k.into(), v)).collect())
@@ -196,6 +293,16 @@ impl<N: Into<Name>> FromIterator<(N, ParameterObject)> for ParameterObjectMap {
 #[cfg_attr(feature = "with-serde", derive(Serialize, Deserialize))]
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub struct ParameterListMap(pub ParameterStructureMap<ParameterList>);
+
+impl ParameterListMap {
+    pub fn len(&self) -> usize {
+        self.0.len()
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.0.is_empty()
+    }
+}
 
 impl<N: Into<Name>> FromIterator<(N, ParameterList)> for ParameterListMap {
     fn from_iter<T: IntoIterator<Item = (N, ParameterList)>>(iter: T) -> Self {

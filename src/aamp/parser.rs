@@ -1,6 +1,5 @@
 use super::*;
-use crate::util::u24;
-use binrw::{binrw, prelude::*};
+use binrw::prelude::*;
 use std::io::{Read, Seek};
 
 impl ParameterIO {
@@ -25,54 +24,6 @@ impl ParameterIO {
         }
         Ok(Parser::new(std::io::Cursor::new(data.as_ref()))?.parse()?)
     }
-}
-
-#[derive(Debug)]
-#[binrw]
-#[brw(little, magic = b"AAMP")]
-struct ResHeader {
-    version: u32,
-    flags: u32,
-    file_size: u32,
-    pio_version: u32,
-    /// Offset to parameter IO (relative to 0x30)
-    pio_offset: u32,
-    /// Number of lists (including root)
-    list_count: u32,
-    object_count: u32,
-    param_count: u32,
-    data_section_size: u32,
-    string_section_size: u32,
-    unknown_section_size: u32,
-}
-
-#[derive(Debug)]
-#[binrw]
-#[brw(little)]
-struct ResParameter {
-    name: Name,
-    data_rel_offset: u24,
-    type_: Type,
-}
-
-#[derive(Debug)]
-#[binrw]
-#[brw(little)]
-struct ResParameterObj {
-    name: Name,
-    params_rel_offset: u16,
-    param_count: u16,
-}
-
-#[derive(Debug)]
-#[binrw]
-#[brw(little)]
-struct ResParameterList {
-    name: Name,
-    lists_rel_offset: u16,
-    list_count: u16,
-    objects_rel_offset: u16,
-    object_count: u16,
 }
 
 struct Parser<R: Read + Seek> {
@@ -205,47 +156,18 @@ impl<R: Read + Seek> Parser<R> {
         self.seek(data_offset)?;
         let value = match info.type_ {
             Type::Bool => Parameter::Bool(self.read::<u32>()? != 0),
-            Type::F32 => Parameter::F32(self.read_float()?),
+            Type::F32 => Parameter::F32(self.read::<f32>()?.into()),
             Type::Int => Parameter::Int(self.read()?),
-            Type::Vec2 => Parameter::Vec2(Vector2f {
-                x: self.read_float()?,
-                y: self.read_float()?,
-            }),
-            Type::Vec3 => Parameter::Vec3(Vector3f {
-                x: self.read_float()?,
-                y: self.read_float()?,
-                z: self.read_float()?,
-            }),
-            Type::Vec4 => Parameter::Vec4(Vector4f {
-                x: self.read_float()?,
-                y: self.read_float()?,
-                z: self.read_float()?,
-                t: self.read_float()?,
-            }),
-            Type::Quat => Parameter::Quat(Quat {
-                a: self.read_float()?,
-                b: self.read_float()?,
-                c: self.read_float()?,
-                d: self.read_float()?,
-            }),
-            Type::Color => Parameter::Color(Color {
-                r: self.read_float()?,
-                g: self.read_float()?,
-                b: self.read_float()?,
-                a: self.read_float()?,
-            }),
+            Type::Vec2 => Parameter::Vec2(self.read()?),
+            Type::Vec3 => Parameter::Vec3(self.read()?),
+            Type::Vec4 => Parameter::Vec4(self.read()?),
+            Type::Quat => Parameter::Quat(self.read()?),
+            Type::Color => Parameter::Color(self.read()?),
             Type::U32 => Parameter::U32(self.read()?),
-            Type::Curve1 => Parameter::Curve1([self.read_curve()?]),
-            Type::Curve2 => Parameter::Curve2([self.read_curve()?, self.read_curve()?]),
-            Type::Curve3 => {
-                Parameter::Curve3([self.read_curve()?, self.read_curve()?, self.read_curve()?])
-            }
-            Type::Curve4 => Parameter::Curve4([
-                self.read_curve()?,
-                self.read_curve()?,
-                self.read_curve()?,
-                self.read_curve()?,
-            ]),
+            Type::Curve1 => Parameter::Curve1(self.read()?),
+            Type::Curve2 => Parameter::Curve2(self.read()?),
+            Type::Curve3 => Parameter::Curve3(self.read()?),
+            Type::Curve4 => Parameter::Curve4(self.read()?),
             Type::String32 => Parameter::String32(self.read()?),
             Type::String64 => Parameter::String64(self.read()?),
             Type::String256 => Parameter::String256(self.read()?),
@@ -302,7 +224,7 @@ mod tests {
         {
             println!("{}", file.display());
             let data = std::fs::read(&file).unwrap();
-            let pio = ParameterIO::from_binary(&data).unwrap();
+            ParameterIO::from_binary(&data).unwrap();
         }
     }
 }
