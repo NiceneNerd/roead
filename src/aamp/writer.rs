@@ -3,10 +3,77 @@ use crate::util::align;
 use binrw::prelude::*;
 use rustc_hash::FxHashMap;
 use std::{
+    cell::RefCell,
     hash::Hasher,
     io::{Cursor, Seek, SeekFrom, Write},
+    rc::Rc,
+    sync::Mutex,
 };
 
+impl ParameterIO {
+    pub fn write<W: Write + Seek>(&self, writer: W) -> crate::Result<()> {
+        let write = || -> Result<(), AampError> {
+            let mut ctx = WriteContext {
+                writer,
+                list_count: Default::default(),
+                object_count: Default::default(),
+                param_count: Default::default(),
+                param_queue: Default::default(),
+                string_param_queue: Default::default(),
+                offsets: Default::default(),
+                string_offsets: Default::default(),
+                buffer_offsets: Default::default(),
+            };
+            ctx.writer.seek(SeekFrom::Start(0x30))?;
+            ctx.writer.write_le(&self.data_type.as_bytes())?;
+            ctx.writer.write_le(&0u8)?;
+            ctx.align()?;
+            let pio_offset = ctx.writer.stream_position()?;
+            let root = &self.param_root;
+
+            ctx.write_lists(self)?;
+            ctx.write_objects(root)?;
+            ctx.collect_parameters(self);
+            ctx.write_parameters(root)?;
+
+            let data_section_begin = ctx.writer.stream_position()?;
+            ctx.write_data_section()?;
+
+            let string_section_begin = ctx.writer.stream_position()?;
+            ctx.write_string_section()?;
+
+            let unknown_section_begin = ctx.writer.stream_position()?;
+            ctx.align()?;
+
+            let header = ResHeader {
+                version: 2,
+                flags: 3,
+                file_size: ctx.writer.stream_position()? as u32,
+                pio_version: self.version,
+                pio_offset: (pio_offset - 0x30) as u32,
+                list_count: ctx.list_count,
+                object_count: ctx.object_count,
+                param_count: ctx.param_count,
+                data_section_size: (string_section_begin - data_section_begin) as u32,
+                string_section_size: (unknown_section_begin - string_section_begin) as u32,
+                unknown_section_size: 0,
+            };
+            ctx.writer.seek(SeekFrom::Start(0))?;
+            ctx.writer.write_le(&header)?;
+            ctx.writer.flush()?;
+            Ok(())
+        };
+        write().map_err(|e| e.into())
+    }
+
+    pub fn to_binary(&self) -> Vec<u8> {
+        let mut buf = Vec::new();
+        self.write(Cursor::new(&mut buf)).unwrap();
+        buf
+    }
+}
+
+#[inline]
 fn write_buffer<W: Write + Seek, T: BinWrite<Args = ()>>(
     writer: &mut W,
     buffer: &[T],
@@ -37,8 +104,8 @@ struct WriteContext<'pio, W: Write + Seek> {
 
 impl<'pio, W: Write + Seek> WriteContext<'pio, W> {
     #[inline(always)]
-    fn get_offset<T>(&mut self, data: &T) -> u32 {
-        self.offsets[&(data as *const T as usize)]
+    fn get_offset<T: std::fmt::Debug>(&mut self, data: &T) -> u32 {
+        self.offsets[&(data as *const _ as usize)]
     }
 
     #[inline(always)]
@@ -58,44 +125,119 @@ impl<'pio, W: Write + Seek> WriteContext<'pio, W> {
         Ok(())
     }
 
-    #[inline]
-    fn write_current_pos_at(&mut self, offset: u32) -> BinResult<()> {
-        let pos = self.writer.stream_position()? as u32;
-        self.write_at(offset, pos)?;
+    fn write_lists(&mut self, pio: &'pio ParameterIO) -> BinResult<()> {
+        fn write<W: Write + Seek>(
+            ctx: &mut WriteContext<W>,
+            list: &ParameterList,
+        ) -> BinResult<()> {
+            ctx.write_offset_for_parent(list, 0x4)?;
+            for (name, list) in &list.lists.0 {
+                ctx.write_list(*name, list)?;
+            }
+            for list in list.lists.0.values() {
+                write(ctx, list)?;
+            }
+            Ok(())
+        }
+        self.write_list(ROOT_KEY, &pio.param_root)?;
+        write(self, &pio.param_root)?;
         Ok(())
     }
 
-    fn collect_parameters(pio: &'pio ParameterIO) {
+    fn write_objects(&mut self, list: &ParameterList) -> BinResult<()> {
+        self.write_offset_for_parent(list, 0x8)?;
+        for (name, object) in &list.objects.0 {
+            self.write_object(*name, object)?;
+        }
+
+        for list in list.lists.0.values() {
+            self.write_objects(list)?;
+        }
+        Ok(())
+    }
+
+    fn write_parameters(&mut self, list: &ParameterList) -> BinResult<()> {
+        for list in list.lists.0.values() {
+            self.write_parameters(list)?;
+        }
+
+        for object in list.objects.0.values() {
+            self.write_offset_for_parent(object, 0x4)?;
+            for (name, param) in &object.0 {
+                self.write_parameter(*name, param)?;
+            }
+        }
+        Ok(())
+    }
+
+    fn collect_parameters(&mut self, pio: &'pio ParameterIO) {
+        // For some reason, the order in which parameter data is serialized is
+        // not the order of parameter objects or even parameters... Rather, for
+        // the majority of binary parameter archives the order is determined
+        // with a rather convoluted algorithm:
+        //
+        // * First, process all of the parameter IO's objects (i.e. add all
+        //   their parameters to the parameter queue).
+        // * Recursively collect all objects for child lists. For lists, object
+        //   processing happens after recursively processing child lists;
+        //   however every 2 lists one object from the parent list is processed.
         fn do_collect<'ctx, 'pio, W: Write + Seek>(
-            ctx: &'ctx mut WriteContext<W>,
+            ctx: Rc<Mutex<&mut WriteContext<'pio, W>>>,
             list: &'pio ParameterList,
             process_top_objects_first: bool,
         ) where
             'pio: 'ctx,
         {
-            let mut object = list.objects.0.values().next();
+            let mut obj_iter = list.objects.0.values();
+            let object = RefCell::new(obj_iter.next());
 
-            let process_one_object = || todo!();
+            let mut process_one_object = || {
+                if let Some(obj) = object.borrow().as_ref() {
+                    for param in obj.0.values() {
+                        let mut ctx = ctx.lock().unwrap();
+                        if param.is_string_type() {
+                            ctx.string_param_queue.push(param);
+                        } else {
+                            ctx.param_queue.push(param);
+                        }
+                    }
+                }
+                object.replace(obj_iter.next());
+            };
 
+            // If the parameter IO is a Breath of the Wild AIProgram, then it appears that
+            // even the parameter IO's objects are processed after child lists.
+            // This is likely a hack, but it does match observations...
             let is_botw_aiprog = !list.objects.is_empty()
                 && list.objects.0.keys().next() == Some(&Name::from_str("DemoAIActionIdx"));
 
             if process_top_objects_first && !is_botw_aiprog {
+                // Again this is probably a hack but it is required for matching BoneControl documents...
                 let mut i = 0;
-                while let Some(object) = object {
+                while object.borrow().is_some() && i < 7 {
                     process_one_object();
-                    object = list.objects.0.values().nth(i);
                     i += 1;
                 }
             }
+
+            for (i, child_list) in list.lists.0.values().enumerate() {
+                if !is_botw_aiprog && i % 2 == 0 && object.borrow().is_some() {
+                    process_one_object();
+                }
+                do_collect(ctx.clone(), child_list, false);
+            }
+
+            while object.borrow().is_some() {
+                process_one_object();
+            }
         }
+        do_collect(Rc::new(Mutex::new(self)), &pio.param_root, true)
     }
 
     fn write_data_section(&mut self) -> BinResult<()> {
-        let lookup_start_offset = self.writer.stream_position()? as u32;
         let queue = std::mem::take(&mut self.param_queue);
         for param in queue {
-            self.write_parameter_data(param, lookup_start_offset)?;
+            self.write_parameter_data(param)?;
         }
         self.align()?;
         Ok(())
@@ -110,26 +252,16 @@ impl<'pio, W: Write + Seek> WriteContext<'pio, W> {
         Ok(())
     }
 
-    fn write_parameter_data(
-        &mut self,
-        param: &Parameter,
-        lookup_start_offset: u32,
-    ) -> BinResult<()> {
-        assert!(
-            !matches!(
-                param,
-                Parameter::String32(_)
-                    | Parameter::String64(_)
-                    | Parameter::String256(_)
-                    | Parameter::StringRef(_)
-            ),
+    fn write_parameter_data(&mut self, param: &Parameter) -> BinResult<()> {
+        debug_assert!(
+            !param.is_string_type(),
             "`write_parameter_data` called with string parameter"
         );
 
         let mut tmp_writer = Cursor::new(Vec::<u8>::with_capacity(0x200));
         match param {
             Parameter::Bool(b) => tmp_writer.write_le(&if *b { 1u32 } else { 0u32 })?,
-            Parameter::F32(v) => tmp_writer.write_le(&(*v.as_ref() as u32))?,
+            Parameter::F32(v) => tmp_writer.write_le(&v)?,
             Parameter::Int(v) => tmp_writer.write_le(&v)?,
             Parameter::Vec2(v) => tmp_writer.write_le(&v)?,
             Parameter::Vec3(v) => tmp_writer.write_le(&v)?,
@@ -146,7 +278,7 @@ impl<'pio, W: Write + Seek> WriteContext<'pio, W> {
             Parameter::BufferF32(v) => {
                 tmp_writer.write_le(&(v.len() as u32))?;
                 for f in v {
-                    tmp_writer.write_le(&(*f.as_ref() as u32))?;
+                    tmp_writer.write_le(f.as_ref())?;
                 }
             }
             Parameter::BufferBinary(v) => write_buffer(&mut tmp_writer, v)?,
@@ -231,10 +363,36 @@ impl<'pio, W: Write + Seek> WriteContext<'pio, W> {
         Ok(())
     }
 
-    fn write_offset_for_parent<T>(&mut self, parent: &T, offset_in_parent: u32) -> BinResult<()> {
+    fn write_offset_for_parent<T: std::fmt::Debug>(
+        &mut self,
+        parent: &T,
+        offset_in_parent: u32,
+    ) -> BinResult<()> {
         let parent_offset = self.get_offset(parent);
         let current_rel_offset = (self.writer.stream_position()? as u32 - parent_offset) / 4;
         self.write_at(parent_offset + offset_in_parent, current_rel_offset as u16)?;
         Ok(())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    #[test]
+    fn binary_roundtrip() {
+        for file in jwalk::WalkDir::new("test/aamp")
+            .into_iter()
+            .filter_map(|f| {
+                f.ok()
+                    .and_then(|f| f.file_type().is_file().then(|| f.path()))
+            })
+        {
+            println!("{}", file.display());
+            let data = std::fs::read(&file).unwrap();
+            let pio = ParameterIO::from_binary(&data).unwrap();
+            let new_bytes = pio.to_binary();
+            let new_pio = ParameterIO::from_binary(&new_bytes).unwrap();
+            assert_eq!(pio, new_pio);
+        }
     }
 }

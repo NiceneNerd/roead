@@ -51,7 +51,7 @@ pub const fn hash_name(name: &str) -> u32 {
 ///
 /// # Example
 /// ```rust
-/// # use roead::aamp::{Name, h};
+/// # use roead::{h, aamp::{Name}};
 /// # struct Pio;
 /// # impl Pio {
 /// #    fn list<I: Into<Name>>(&self, name: I) {}
@@ -105,19 +105,19 @@ enum Type {
 #[binrw]
 #[brw(little, magic = b"AAMP")]
 struct ResHeader {
-    version: u32,
-    flags: u32,
-    file_size: u32,
-    pio_version: u32,
+    version: u32,     // 0x4
+    flags: u32,       // 0x8
+    file_size: u32,   // 0xC
+    pio_version: u32, // 0x10
     /// Offset to parameter IO (relative to 0x30)
-    pio_offset: u32,
+    pio_offset: u32, // 0x14
     /// Number of lists (including root)
-    list_count: u32,
-    object_count: u32,
-    param_count: u32,
-    data_section_size: u32,
-    string_section_size: u32,
-    unknown_section_size: u32,
+    list_count: u32, // 0x18
+    object_count: u32, // 0x1C
+    param_count: u32, // 0x20
+    data_section_size: u32, // 0x24
+    string_section_size: u32, // 0x28
+    unknown_section_size: u32, // 0x2C
 }
 
 #[derive(Debug)]
@@ -155,10 +155,11 @@ struct ResParameterList {
 /// the parameter class in order to make the parameter logic simpler and more
 /// efficient.
 #[cfg_attr(feature = "with-serde", derive(Serialize, Deserialize))]
-#[derive(Debug, Clone, PartialEq, Eq, Hash, EnumAsInner)]
+#[allow(clippy::derive_hash_xor_eq)]
+#[derive(Debug, Clone, EnumAsInner)]
 pub enum Parameter {
     Bool(bool),
-    F32(R32),
+    F32(f32),
     Int(i32),
     Vec2(Vector2f),
     Vec3(Vector3f),
@@ -179,6 +180,65 @@ pub enum Parameter {
     BufferBinary(Vec<u8>),
     StringRef(String),
 }
+
+impl std::hash::Hash for Parameter {
+    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+        match self {
+            Parameter::Bool(b) => b.hash(state),
+            Parameter::F32(f) => (*f as u32 + 1).hash(state),
+            Parameter::Int(i) => i.hash(state),
+            Parameter::Vec2(v) => v.hash(state),
+            Parameter::Vec3(v) => v.hash(state),
+            Parameter::Vec4(v) => v.hash(state),
+            Parameter::Color(c) => c.hash(state),
+            Parameter::String32(s) => s.hash(state),
+            Parameter::String64(s) => s.hash(state),
+            Parameter::Curve1(c) => c.hash(state),
+            Parameter::Curve2(c) => c.hash(state),
+            Parameter::Curve3(c) => c.hash(state),
+            Parameter::Curve4(c) => c.hash(state),
+            Parameter::BufferInt(v) => v.hash(state),
+            Parameter::BufferF32(v) => v.hash(state),
+            Parameter::String256(s) => s.hash(state),
+            Parameter::Quat(q) => q.hash(state),
+            Parameter::U32(u) => u.hash(state),
+            Parameter::BufferU32(v) => v.hash(state),
+            Parameter::BufferBinary(v) => v.hash(state),
+            Parameter::StringRef(s) => s.hash(state),
+        }
+    }
+}
+
+impl PartialEq for Parameter {
+    fn eq(&self, other: &Self) -> bool {
+        match (self, other) {
+            (Self::Bool(a), Self::Bool(b)) => a == b,
+            (Self::F32(a), Self::F32(b)) => almost::equal(*a, *b),
+            (Self::Int(a), Self::Int(b)) => a == b,
+            (Self::Vec2(a), Self::Vec2(b)) => a == b,
+            (Self::Vec3(a), Self::Vec3(b)) => a == b,
+            (Self::Vec4(a), Self::Vec4(b)) => a == b,
+            (Self::Color(a), Self::Color(b)) => a == b,
+            (Self::String32(a), Self::String32(b)) => a == b,
+            (Self::String64(a), Self::String64(b)) => a == b,
+            (Self::Curve1(a), Self::Curve1(b)) => a == b,
+            (Self::Curve2(a), Self::Curve2(b)) => a == b,
+            (Self::Curve3(a), Self::Curve3(b)) => a == b,
+            (Self::Curve4(a), Self::Curve4(b)) => a == b,
+            (Self::BufferInt(a), Self::BufferInt(b)) => a == b,
+            (Self::BufferF32(a), Self::BufferF32(b)) => a == b,
+            (Self::String256(a), Self::String256(b)) => a == b,
+            (Self::Quat(a), Self::Quat(b)) => a == b,
+            (Self::U32(a), Self::U32(b)) => a == b,
+            (Self::BufferU32(a), Self::BufferU32(b)) => a == b,
+            (Self::BufferBinary(a), Self::BufferBinary(b)) => a == b,
+            (Self::StringRef(a), Self::StringRef(b)) => a == b,
+            _ => false,
+        }
+    }
+}
+
+impl Eq for Parameter {}
 
 impl Parameter {
     #[inline(always)]
@@ -219,6 +279,17 @@ impl Parameter {
         )
     }
 
+    #[inline(always)]
+    fn is_string_type(&self) -> bool {
+        matches!(
+            self,
+            Parameter::String32(_)
+                | Parameter::String64(_)
+                | Parameter::String256(_)
+                | Parameter::StringRef(_)
+        )
+    }
+
     pub fn as_str(&self) -> Option<&str> {
         match self {
             Parameter::String32(s) => Some(s.as_str()),
@@ -232,7 +303,7 @@ impl Parameter {
 
 /// Parameter structure name. This is a wrapper around a CRC32 hash.
 #[cfg_attr(feature = "with-serde", derive(Serialize, Deserialize))]
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 #[binrw::binrw]
 #[brw(little)]
 pub struct Name(u32);

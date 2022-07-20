@@ -91,13 +91,15 @@ impl<R: Read + Seek> Parser<R> {
 
     #[inline]
     fn read_null_string(&mut self) -> Result<String, AampError> {
-        let mut string_ = String::new_const();
+        let mut string_ = [0u8; 0x256];
         let mut c: u8 = self.read()?;
+        let mut len = 0;
         while c != 0 {
-            string_.push(c as char);
+            string_[len] = c;
+            len += 1;
             c = self.read()?;
         }
-        Ok(string_)
+        Ok(unsafe { std::str::from_utf8_unchecked(&string_[..len]) }.into())
     }
 
     #[inline]
@@ -112,18 +114,6 @@ impl<R: Read + Seek> Parser<R> {
     #[inline]
     fn read_float(&mut self) -> Result<R32, AampError> {
         Ok(self.read::<f32>()?.into())
-    }
-
-    fn read_curve(&mut self) -> Result<Curve, AampError> {
-        let mut curve = Curve {
-            a: self.read()?,
-            b: self.read()?,
-            ..Default::default()
-        };
-        for i in 0..30 {
-            curve.floats[i] = self.read_float()?;
-        }
-        Ok(curve)
     }
 
     fn read_buffer<T: BinRead<Args = ()> + Copy>(
@@ -156,7 +146,7 @@ impl<R: Read + Seek> Parser<R> {
         self.seek(data_offset)?;
         let value = match info.type_ {
             Type::Bool => Parameter::Bool(self.read::<u32>()? != 0),
-            Type::F32 => Parameter::F32(self.read::<f32>()?.into()),
+            Type::F32 => Parameter::F32(self.read::<f32>()?),
             Type::Int => Parameter::Int(self.read()?),
             Type::Vec2 => Parameter::Vec2(self.read()?),
             Type::Vec3 => Parameter::Vec3(self.read()?),
