@@ -58,7 +58,7 @@ impl<const N: usize> From<&str> for FixedSafeString<N> {
     fn from(s: &str) -> Self {
         let mut data = [0; N];
         let len = std::cmp::min(N, s.len());
-        data.copy_from_slice(&s.as_bytes()[..len]);
+        (&mut data[..len]).copy_from_slice(&s.as_bytes()[..len]);
         Self { data, len }
     }
 }
@@ -109,8 +109,14 @@ impl<const N: usize> binrw::BinRead for FixedSafeString<N> {
         _: &binrw::ReadOptions,
         _: Self::Args,
     ) -> binrw::BinResult<Self> {
-        let data = <[u8; N]>::read(reader)?;
-        let len = data.iter().position(|&b| b == 0).unwrap_or(N);
+        let mut data = [0; N];
+        let mut c = u8::read(reader)?;
+        let mut len = 0;
+        while c != 0 && len < N {
+            data[len] = c;
+            len += 1;
+            c = u8::read(reader)?;
+        }
         Ok(Self { data, len })
     }
 }

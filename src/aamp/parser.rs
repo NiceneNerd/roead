@@ -1,7 +1,6 @@
 use super::*;
 use crate::util::u24;
 use binrw::{binrw, prelude::*};
-use enumflags2::{bitflags, BitFlags};
 use std::io::{Read, Seek};
 
 impl ParameterIO {
@@ -136,7 +135,7 @@ impl<R: Read + Seek> Parser<R> {
 
     #[inline]
     fn read<T: BinRead<Args = ()>>(&mut self) -> Result<T, AampError> {
-        Ok(T::read_options(&mut self.reader, &self.opts, ())?)
+        Ok(self.reader.read_le()?)
     }
 
     #[inline]
@@ -201,8 +200,8 @@ impl<R: Read + Seek> Parser<R> {
 
     fn parse_parameter(&mut self, offset: u32) -> Result<(Name, Parameter), AampError> {
         self.seek(offset)?;
-        let info = ResParameter::read(&mut self.reader)?;
-        let data_offset = info.data_rel_offset.as_u32() + offset;
+        let info: ResParameter = self.read()?;
+        let data_offset = info.data_rel_offset.as_u32() * 4 + offset;
         self.seek(data_offset)?;
         let value = match info.type_ {
             Type::Bool => Parameter::Bool(self.read::<u32>()? != 0),
@@ -261,9 +260,9 @@ impl<R: Read + Seek> Parser<R> {
 
     fn parse_object(&mut self, offset: u32) -> Result<(Name, ParameterObject), AampError> {
         self.seek(offset)?;
-        let info = ResParameterObj::read(&mut self.reader)?;
-        let offset = info.params_rel_offset as u32 + offset;
-        let params = (0..=info.param_count)
+        let info: ResParameterObj = self.read()?;
+        let offset = info.params_rel_offset as u32 * 4 + offset;
+        let params = (0..info.param_count)
             .into_iter()
             .map(|i| self.parse_parameter(offset + 0x8 * i as u32))
             .collect::<Result<_, AampError>>()?;
@@ -272,18 +271,17 @@ impl<R: Read + Seek> Parser<R> {
 
     fn parse_list(&mut self, offset: u32) -> Result<(Name, ParameterList), AampError> {
         self.seek(offset)?;
-        let info = ResParameterList::read(&mut self.reader)?;
-        let lists_offset = info.lists_rel_offset as u32 + offset;
-        let objects_offset = info.objects_rel_offset as u32 + offset;
-        dbg!(&info);
+        let info: ResParameterList = self.read()?;
+        let lists_offset = info.lists_rel_offset as u32 * 4 + offset;
+        let objects_offset = info.objects_rel_offset as u32 * 4 + offset;
         let plist = ParameterList {
-            lists: (0..=info.list_count)
+            lists: (0..info.list_count)
                 .into_iter()
-                .map(|i| self.parse_list(lists_offset + 0x8 * i as u32))
+                .map(|i| self.parse_list(lists_offset + 0xC * i as u32))
                 .collect::<Result<_, AampError>>()?,
-            objects: (0..=info.object_count)
+            objects: (0..info.object_count)
                 .into_iter()
-                .map(|i| self.parse_object(objects_offset + 0xC * i as u32))
+                .map(|i| self.parse_object(objects_offset + 0x8 * i as u32))
                 .collect::<Result<_, AampError>>()?,
         };
         Ok((info.name, plist))
