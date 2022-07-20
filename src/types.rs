@@ -164,9 +164,9 @@ pub struct Color {
 
 /// Curve (`sead::hostio::curve*`)
 #[cfg_attr(feature = "with-serde", derive(Serialize, Deserialize))]
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Debug, Default, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct Curve {
-    a: u32,
-    b: u32,
-    floats: [R32; 30],
+    pub a: u32,
+    pub b: u32,
+    pub floats: [R32; 30],
 }

@@ -15,6 +15,8 @@ pub enum AampError {
     IoError(#[from] std::io::Error),
     #[error(transparent)]
     BinaryRWError(#[from] binrw::Error),
+    #[error("Invalid string")]
+    BadString(#[from] std::str::Utf8Error),
 }
 
 type ParameterStructureMap<V> =
