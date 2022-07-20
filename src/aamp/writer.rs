@@ -1,9 +1,11 @@
-use crate::util::align;
-
 use super::*;
+use crate::util::align;
 use binrw::prelude::*;
 use rustc_hash::FxHashMap;
-use std::io::{Cursor, Seek, SeekFrom, Write};
+use std::{
+    hash::Hasher,
+    io::{Cursor, Seek, SeekFrom, Write},
+};
 
 fn write_buffer<W: Write + Seek, T: BinWrite<Args = ()>>(
     writer: &mut W,
@@ -14,15 +16,23 @@ fn write_buffer<W: Write + Seek, T: BinWrite<Args = ()>>(
     Ok(())
 }
 
+#[inline]
+fn hash_buf_data(data: &[u8]) -> u64 {
+    let mut hasher = rustc_hash::FxHasher::default();
+    hasher.write(data);
+    hasher.finish()
+}
+
 struct WriteContext<'pio, W: Write + Seek> {
     writer: W,
     list_count: u32,
     object_count: u32,
     param_count: u32,
-    param_queue: Vec<&'pio ResParameter>,
-    string_param_queue: Vec<&'pio ResParameter>,
+    param_queue: Vec<&'pio Parameter>,
+    string_param_queue: Vec<&'pio Parameter>,
     offsets: FxHashMap<usize, u32>,
     string_offsets: FxHashMap<&'pio str, u32>,
+    buffer_offsets: FxHashMap<u64, u32>,
 }
 
 impl<'pio, W: Write + Seek> WriteContext<'pio, W> {
@@ -55,6 +65,51 @@ impl<'pio, W: Write + Seek> WriteContext<'pio, W> {
         Ok(())
     }
 
+    fn collect_parameters(pio: &'pio ParameterIO) {
+        fn do_collect<'ctx, 'pio, W: Write + Seek>(
+            ctx: &'ctx mut WriteContext<W>,
+            list: &'pio ParameterList,
+            process_top_objects_first: bool,
+        ) where
+            'pio: 'ctx,
+        {
+            let mut object = list.objects.0.values().next();
+
+            let process_one_object = || todo!();
+
+            let is_botw_aiprog = !list.objects.is_empty()
+                && list.objects.0.keys().next() == Some(&Name::from_str("DemoAIActionIdx"));
+
+            if process_top_objects_first && !is_botw_aiprog {
+                let mut i = 0;
+                while let Some(object) = object {
+                    process_one_object();
+                    object = list.objects.0.values().nth(i);
+                    i += 1;
+                }
+            }
+        }
+    }
+
+    fn write_data_section(&mut self) -> BinResult<()> {
+        let lookup_start_offset = self.writer.stream_position()? as u32;
+        let queue = std::mem::take(&mut self.param_queue);
+        for param in queue {
+            self.write_parameter_data(param, lookup_start_offset)?;
+        }
+        self.align()?;
+        Ok(())
+    }
+
+    fn write_string_section(&mut self) -> BinResult<()> {
+        let queue = std::mem::take(&mut self.string_param_queue);
+        for param in queue {
+            self.write_string(param)?;
+        }
+        self.align()?;
+        Ok(())
+    }
+
     fn write_parameter_data(
         &mut self,
         param: &Parameter,
@@ -71,7 +126,7 @@ impl<'pio, W: Write + Seek> WriteContext<'pio, W> {
             "`write_parameter_data` called with string parameter"
         );
 
-        let mut tmp_writer = Cursor::new([0u8; 0x200]);
+        let mut tmp_writer = Cursor::new(Vec::<u8>::with_capacity(0x200));
         match param {
             Parameter::Bool(b) => tmp_writer.write_le(&if *b { 1u32 } else { 0u32 })?,
             Parameter::F32(v) => tmp_writer.write_le(&(*v.as_ref() as u32))?,
@@ -99,7 +154,24 @@ impl<'pio, W: Write + Seek> WriteContext<'pio, W> {
         }
 
         let parent_offset = self.get_offset(param);
-        // let data_offset = self.writer.stream_position()? as u32 + ;
+        let mut data_offset =
+            self.writer.stream_position()? as u32 + if param.is_buffer_type() { 4 } else { 0 };
+        let mut existed = true;
+
+        // We're going to do this very differently from the oead method
+        // because we want to support any writer, even one without an
+        // accessible underlying buffer.
+        let hash = hash_buf_data(&tmp_writer.get_ref()[..]);
+        data_offset = *self.buffer_offsets.entry(hash).or_insert_with(|| {
+            existed = false;
+            data_offset
+        });
+
+        self.write_at(parent_offset + 0x4, u24((data_offset - parent_offset) / 4))?;
+        if !existed {
+            self.writer.write_all(tmp_writer.into_inner().as_slice())?;
+            self.align()?;
+        }
         Ok(())
     }
 

@@ -208,6 +208,17 @@ impl Parameter {
         }
     }
 
+    #[inline(always)]
+    fn is_buffer_type(&self) -> bool {
+        matches!(
+            self,
+            Parameter::BufferInt(_)
+                | Parameter::BufferF32(_)
+                | Parameter::BufferU32(_)
+                | Parameter::BufferBinary(_)
+        )
+    }
+
     pub fn as_str(&self) -> Option<&str> {
         match self {
             Parameter::String32(s) => Some(s.as_str()),
