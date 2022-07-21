@@ -10,6 +10,7 @@ pub mod byml;
 pub mod sarc;
 pub mod types;
 mod util;
+mod yaml;
 #[cfg(feature = "yaz0")]
 pub mod yaz0;
 
