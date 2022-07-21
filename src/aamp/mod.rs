@@ -1,3 +1,29 @@
+//! Port of the `oead::aamp` module.
+//!
+//! Only version 2, little endian and UTF-8 binary parameter archives are supported.  
+//! All parameter types including buffers are supported.  
+//! The YAML output is compatible with the pure Python aamp library.
+//!
+//! The main type is the `ParameterIO`, which will usually be constructed
+//! from binary data of a YAML document. Some sample usage:
+//! ```
+//! # use roead::aamp::*;
+//! # fn doctest() -> std::result::Result<(), Box<dyn std::error::Error>> {
+//! let data = std::fs::read("test/aamp/Lizalfos.bphysics")?;
+//! let pio = ParameterIO::from_binary(&data)?; // Parse AAMP from binary data
+//! for (hash, list) in pio.lists().iter() {
+//!     // Do stuff with lists
+//! }
+//! if let Some(demo_obj) = pio.object("DemoAIActionIdx") { // Access a parameter object
+//!     for (hash, parameter) in demo_obj.params() {
+//!         // Do stuff with parameters
+//!     }
+//! }
+//! // Dumps YAML representation to a String
+//! // let yaml_dump: String = pio.to_text();
+//! # Ok(())
+//! # }
+//! ```
 mod parser;
 mod writer;
 use crate::{types::*, util::u24};
@@ -8,6 +34,7 @@ use indexmap::IndexMap;
 use serde::{Deserialize, Serialize};
 use smartstring::alias::String;
 
+#[allow(missing_docs)]
 #[derive(Debug, thiserror::Error)]
 pub enum AampError {
     #[error("{0}")]
@@ -157,26 +184,47 @@ struct ResParameterList {
 #[allow(clippy::derive_hash_xor_eq)]
 #[derive(Debug, Clone, EnumAsInner)]
 pub enum Parameter {
+    /// Boolean.
     Bool(bool),
+    /// Float.
     F32(f32),
+    /// Int.
     Int(i32),
+    /// 2D vector.
     Vec2(Vector2f),
+    /// 3D vector.
     Vec3(Vector3f),
+    /// 4D vector.
     Vec4(Vector4f),
+    /// Color.
     Color(Color),
+    /// String (max length 32 bytes).
     String32(FixedSafeString<32>),
+    /// String (max length 64 bytes).
     String64(FixedSafeString<64>),
+    /// A single curve.
     Curve1([Curve; 1]),
+    /// Two curves.
     Curve2([Curve; 2]),
+    /// Three curves.
     Curve3([Curve; 3]),
+    /// Four curves.
     Curve4([Curve; 4]),
+    /// Buffer of signed ints.
     BufferInt(Vec<i32>),
+    /// Buffer of floats.
     BufferF32(Vec<f32>),
+    /// String (max length 256 bytes).
     String256(FixedSafeString<256>),
+    /// Quaternion.
     Quat(Quat),
+    /// Unsigned int.
     U32(u32),
+    /// Buffer of unsigned ints.
     BufferU32(Vec<u32>),
+    /// Buffer of binary data.
     BufferBinary(Vec<u8>),
+    /// String (no length limit).
     StringRef(String),
 }
 
@@ -297,6 +345,7 @@ impl Parameter {
         )
     }
 
+    /// Returns a [`&str`](`str`) if the parameter is any string type.
     pub fn as_str(&self) -> Option<&str> {
         match self {
             Parameter::String32(s) => Some(s.as_str()),
@@ -339,15 +388,18 @@ impl Name {
     }
 }
 
+/// [`Parameter`] object. This is essentially a dictionary of parameters.
 #[cfg_attr(feature = "with-serde", derive(Serialize, Deserialize))]
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub struct ParameterObject(pub ParameterStructureMap<Parameter>);
 
 impl ParameterObject {
+    /// Return the number of parameters in the object.
     pub fn len(&self) -> usize {
         self.0.len()
     }
 
+    /// Returns true if the object is empty.
     pub fn is_empty(&self) -> bool {
         self.0.is_empty()
     }
@@ -359,15 +411,18 @@ impl<N: Into<Name>> FromIterator<(N, Parameter)> for ParameterObject {
     }
 }
 
+/// Newtype map of parameter objects.
 #[cfg_attr(feature = "with-serde", derive(Serialize, Deserialize))]
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub struct ParameterObjectMap(pub ParameterStructureMap<ParameterObject>);
 
 impl ParameterObjectMap {
+    /// Return the number of parameter objects in the map.
     pub fn len(&self) -> usize {
         self.0.len()
     }
 
+    /// Returns true if the map is empty.
     pub fn is_empty(&self) -> bool {
         self.0.is_empty()
     }
@@ -379,15 +434,18 @@ impl<N: Into<Name>> FromIterator<(N, ParameterObject)> for ParameterObjectMap {
     }
 }
 
+/// Newtype map of parameter lists.
 #[cfg_attr(feature = "with-serde", derive(Serialize, Deserialize))]
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub struct ParameterListMap(pub ParameterStructureMap<ParameterList>);
 
 impl ParameterListMap {
+    /// Return the number of parameter lists in the map.
     pub fn len(&self) -> usize {
         self.0.len()
     }
 
+    /// Returns true if the map is empty.
     pub fn is_empty(&self) -> bool {
         self.0.is_empty()
     }
@@ -399,28 +457,49 @@ impl<N: Into<Name>> FromIterator<(N, ParameterList)> for ParameterListMap {
     }
 }
 
+/// Trait abstracting over [`ParameterList`] and [`ParameterIO`]. Useful since
+/// a parameter IO is all but interchangeable with the root list.
 pub trait ParameterListing {
+    /// Returns a map of parameter lists.
     fn lists(&self) -> &ParameterListMap;
+    /// Returns a mutable map of parameter lists.
     fn lists_mut(&mut self) -> &mut ParameterListMap;
+    /// Get a parameter list by name or hash.
     fn list<N: Into<Name>>(&self, name: N) -> Option<&ParameterList>;
+    /// Get a mutable reference to a parameter list by name or hash.
+    fn list_mut<N: Into<Name>>(&self, name: N) -> Option<&mut ParameterList>;
+    /// Returns a map of parameter objects.
     fn objects(&self) -> &ParameterObjectMap;
+    /// Returns a mutable map of parameter objects.
     fn objects_mut(&mut self) -> &mut ParameterObjectMap;
+    /// Get a parameter object by name or hash.
     fn object<N: Into<Name>>(&self, name: N) -> Option<&ParameterObject>;
+    /// Get a mutable reference to a parameter object by name or hash.
+    fn object_mut<N: Into<Name>>(&self, name: N) -> Option<&mut ParameterObject>;
 }
 
+/// [`Parameter`] list. This is essentially a dictionary of parameter objects and
+/// a dictionary of parameter lists.
 #[cfg_attr(feature = "with-serde", derive(Serialize, Deserialize))]
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub struct ParameterList {
+    /// Map of child parameter objects.
     pub objects: ParameterObjectMap,
+    /// Map of child parameter lists.
     pub lists: ParameterListMap,
 }
 
 const ROOT_KEY: Name = Name::from_str("param_root");
 
+/// [`Parameter`] IO. This is the root parameter list and the only structure
+/// that can be serialized to or deserialized from a binary parameter archive.
 #[cfg_attr(feature = "with-serde", derive(Serialize, Deserialize))]
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub struct ParameterIO {
+    /// Data version (not the AAMP format version). Typically 0.
     pub version: u32,
+    /// Data type identifier. Typically “xml”.
     pub data_type: String,
+    /// Root parameter list.
     pub param_root: ParameterList,
 }

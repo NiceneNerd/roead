@@ -31,6 +31,7 @@ impl<const N: usize> std::fmt::Debug for FixedSafeString<N> {
 }
 
 impl<const N: usize> FixedSafeString<N> {
+    /// Extracts a string slice from the owned string.
     pub fn as_str(&self) -> &str {
         self.as_ref()
     }
@@ -130,6 +131,7 @@ impl<const N: usize> binrw::BinRead for FixedSafeString<N> {
 
 /// 2D vector.
 #[cfg_attr(feature = "with-serde", derive(Serialize, Deserialize))]
+#[allow(missing_docs)]
 #[derive(Debug, Clone, Copy)]
 #[binrw::binrw]
 pub struct Vector2f {
@@ -153,6 +155,7 @@ impl std::hash::Hash for Vector2f {
 
 /// 3D vector.
 #[cfg_attr(feature = "with-serde", derive(Serialize, Deserialize))]
+#[allow(missing_docs)]
 #[derive(Debug, Clone, Copy)]
 #[binrw::binrw]
 pub struct Vector3f {
@@ -183,6 +186,7 @@ impl std::hash::Hash for Vector3f {
 
 /// 4D vector.
 #[cfg_attr(feature = "with-serde", derive(Serialize, Deserialize))]
+#[allow(missing_docs)]
 #[derive(Debug, Clone, Copy)]
 #[binrw::binrw]
 pub struct Vector4f {
@@ -217,6 +221,7 @@ impl std::hash::Hash for Vector4f {
 
 /// Quaternion.
 #[cfg_attr(feature = "with-serde", derive(Serialize, Deserialize))]
+#[allow(missing_docs)]
 #[derive(Debug, Clone, Copy)]
 #[binrw::binrw]
 pub struct Quat {
@@ -251,6 +256,7 @@ impl std::hash::Hash for Quat {
 
 /// RGBA color (Red/Green/Blue/Alpha).
 #[cfg_attr(feature = "with-serde", derive(Serialize, Deserialize))]
+#[allow(missing_docs)]
 #[derive(Debug, Clone, Copy)]
 #[binrw::binrw]
 pub struct Color {
@@ -285,6 +291,7 @@ impl std::hash::Hash for Color {
 
 /// Curve (`sead::hostio::curve*`)
 #[cfg_attr(feature = "with-serde", derive(Serialize, Deserialize))]
+#[allow(missing_docs)]
 #[derive(Debug, Default, Clone, Copy)]
 #[binrw::binrw]
 pub struct Curve {

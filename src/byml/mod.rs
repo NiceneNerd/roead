@@ -1,4 +1,59 @@
+//! Port of the `oead::byml` module.
+//!
+//! A `Byml` type will usually be constructed from binary data or a YAML string,
+//! e.g.
+//! ```
+//! # use roead::byml::Byml;
+//! # use std::{fs::read, error::Error};
+//! # fn docttest() -> Result<(), Box<dyn Error>> {
+//! let buf: Vec<u8> = std::fs::read("test/byml/A-1_Dynamic.byml")?;
+//! let map_unit = Byml::from_binary(&buf)?;
+//! let text: String = std::fs::read_to_string("test/byml/A-1_Dynamic.yml")?;
+//! //let map_unit2 = Byml::from_text(&text)?;
+//! //assert_eq!(map_unit, map_unit2);
+//! # Ok(())
+//! # }
+//! ```
+//! You can also easily serialize to binary or a YAML string.
+//! ```no_run
+//! # use roead::{byml::Byml, Endian};
+//! # fn docttest() -> Result<(), Box<dyn std::error::Error>> {
+//! let buf: Vec<u8> = std::fs::read("test/aamp/A-1_Dynamic.byml")?;
+//! let map_unit = Byml::from_binary(&buf)?;
+//! //std::fs::write("A-1_Static.yml", &map_unit.to_text())?;
+//! std::fs::write("test/aamp/A-1_Dynamic.byml", &map_unit.to_binary(Endian::Big))?;
+//! # Ok(())
+//! # }
+//! ```
+//!
+//! A number of convenience getters are available which return a result for a variant value:
+//! ```
+//! # use roead::byml::Byml;
+//! # fn docttest() -> Result<(), Box<dyn std::error::Error>> {
+//! # let some_data = b"BYML";
+//! let doc = Byml::from_binary(some_data)?;
+//! let hash = doc.as_hash().unwrap();
+//! # Ok(())
+//! # }
+//! ```
+//!
+//! Most of the node types are fairly self-explanatory. Arrays are implemented as `Vec<Byml>`, and
+//! hash nodes as `FxHashMap<String, Byml>`.
+//!
+//! For convenience, a `Byml` *known* to be an array or hash node can be indexed. **Panics if the
+//! node has the wrong type, the index has the wrong type, or the index is not found**.
+//! ```
+//! # use roead::byml::Byml;
+//! # fn docttest() -> Result<(), Box<dyn std::error::Error>> {
+//! let buf: Vec<u8> = std::fs::read("test/byml/ActorInfo.product.byml")?;
+//! let actor_info = Byml::from_binary(&buf)?;
+//! assert_eq!(actor_info["Actors"].as_array().unwrap().len(), 7934);
+//! assert_eq!(*actor_info["Hashes"][0].as_i32().unwrap(), 31119);
+//! # Ok(())
+//! # }
+//! ```
 mod writer;
+mod yaml;
 use enum_as_inner::EnumAsInner;
 use smartstring::alias::String;
 mod parser;
@@ -33,6 +88,7 @@ const fn is_valid_version(version: u16) -> bool {
     version >= 2 && version <= 4
 }
 
+#[allow(missing_docs)]
 #[derive(Debug, thiserror::Error)]
 pub enum BymlError {
     #[error("Invalid version: {0}")]
@@ -50,12 +106,15 @@ pub enum BymlError {
 /// A BYML hash node.
 #[cfg(feature = "im-rc")]
 pub type Hash = im_rc::HashMap<String, Byml>;
+/// A BYML hash node.
 #[cfg(not(feature = "im-rc"))]
 pub type Hash = rustc_hash::FxHashMap<String, Byml>;
 
 /// Convenience type used for indexing into `Byml`s
 pub enum BymlIndex<'a> {
+    /// Index into a hash node. The key is a string.
     HashIdx(&'a str),
+    /// Index into an array node. The index is an integer.
     ArrayIdx(usize),
 }
 
@@ -75,17 +134,29 @@ impl<'a> From<usize> for BymlIndex<'a> {
 #[cfg_attr(feature = "with-serde", derive(serde::Serialize, serde::Deserialize))]
 #[derive(Debug, Clone, EnumAsInner)]
 pub enum Byml {
+    /// String value.
     String(String),
+    /// Binary data (not used in BOTW).
     BinaryData(Vec<u8>),
+    /// Array of BYML nodes.
     Array(Vec<Byml>),
+    /// Hash map of BYML nodes.
     Hash(Hash),
+    /// Boolean value.
     Bool(bool),
+    /// 32-bit signed integer.
     I32(i32),
+    /// 32-bit float.
     Float(f32),
+    /// 32-bit unsigned integer.
     U32(u32),
+    /// 64-bit signed integer.
     I64(i64),
+    /// 64-bit unsigned integer.
     U64(u64),
+    /// 64-bit float.
     Double(f64),
+    /// Null value.
     Null,
 }
 
@@ -137,6 +208,28 @@ impl std::hash::Hash for Byml {
                 d.to_bits().hash(state)
             }
             Byml::Null => std::hash::Hash::hash(&0, state),
+        }
+    }
+}
+
+impl<'a, I: Into<BymlIndex<'a>>> std::ops::Index<I> for Byml {
+    type Output = Byml;
+
+    fn index(&self, index: I) -> &Self::Output {
+        match (self, index.into()) {
+            (Byml::Array(a), BymlIndex::ArrayIdx(i)) => &a[i],
+            (Byml::Hash(h), BymlIndex::HashIdx(k)) => h.get(k).unwrap(),
+            _ => panic!("Wrong index type or node type."),
+        }
+    }
+}
+
+impl<'a, I: Into<BymlIndex<'a>>> std::ops::IndexMut<I> for Byml {
+    fn index_mut(&mut self, index: I) -> &mut Self::Output {
+        match (self, index.into()) {
+            (Byml::Array(a), BymlIndex::ArrayIdx(i)) => &mut a[i],
+            (Byml::Hash(h), BymlIndex::HashIdx(k)) => h.get_mut(k).unwrap(),
+            _ => panic!("Wrong index type or node type."),
         }
     }
 }

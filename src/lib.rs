@@ -1,8 +1,7 @@
 //! TODO: Docs
+#![deny(missing_docs)]
 #![feature(const_slice_index)]
 #![feature(seek_stream_len)]
-mod util;
-// #![deny(missing_docs)]
 #[cfg(feature = "aamp")]
 pub mod aamp;
 #[cfg(feature = "byml")]
@@ -10,11 +9,13 @@ pub mod byml;
 #[cfg(feature = "sarc")]
 pub mod sarc;
 pub mod types;
+mod util;
 #[cfg(feature = "yaz0")]
 pub mod yaz0;
 
 /// Error type for this crate.
 #[derive(Debug, thiserror::Error)]
+#[allow(missing_docs)]
 pub enum Error {
     #[error("Incorrect magic: found `{0}`, expected `{1}`.")]
     InvalidMagic(String, &'static str),

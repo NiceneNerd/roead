@@ -12,6 +12,7 @@ use std::{
 };
 
 impl ParameterIO {
+    /// Serialize the parameter IO to binary using the given writer.
     pub fn write<W: Write + Seek>(&self, writer: W) -> crate::Result<()> {
         let write = || -> Result<(), AampError> {
             let mut ctx = WriteContext {
@@ -67,6 +68,7 @@ impl ParameterIO {
         write().map_err(|e| e.into())
     }
 
+    /// Serialize the parameter IO to in-memory bytes.
     pub fn to_binary(&self) -> Vec<u8> {
         let mut buf = Vec::new();
         self.write(Cursor::new(&mut buf)).unwrap();

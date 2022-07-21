@@ -1,9 +1,10 @@
-//! Bindings for the oead::yaz0 module, which supports Yaz0 decompression and
+//! Bindings for the `oead::yaz0` module, which supports Yaz0 decompression and
 //! fast compression (using syaz0).
 use crate::{Error, Result};
 use std::borrow::Cow;
 
 /// Error type for Yaz0 handling.
+#[allow(missing_docs)]
 #[derive(Debug, thiserror::Error)]
 pub enum Yaz0Error {
     #[error("Buffer too small to decompress: only {0} bytes, need {1}.")]

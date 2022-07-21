@@ -45,8 +45,9 @@ pub use parse::Sarc;
 use thiserror::Error;
 pub use write::SarcWriter;
 
-#[derive(Error, Debug)]
 /// An enum for all SARC-related errors
+#[derive(Error, Debug)]
+#[allow(missing_docs)]
 pub enum SarcError {
     #[error("File index {0} out of range")]
     OutOfRange(usize),
