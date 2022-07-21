@@ -1,5 +1,4 @@
 mod writer;
-use decorum::{R32, R64};
 use enum_as_inner::EnumAsInner;
 use smartstring::alias::String;
 mod parser;
@@ -51,7 +50,7 @@ pub enum BymlError {
 /// A BYML hash node.
 #[cfg(feature = "im-rc")]
 pub type Hash = im_rc::HashMap<String, Byml>;
-#[cfg(all(feature = "rustc-hash", not(feature = "im-rc")))]
+#[cfg(not(feature = "im-rc"))]
 pub type Hash = rustc_hash::FxHashMap<String, Byml>;
 
 /// Convenience type used for indexing into `Byml`s
@@ -74,7 +73,7 @@ impl<'a> From<usize> for BymlIndex<'a> {
 
 /// Represents a Nintendo binary YAML (BYML) document or node.
 #[cfg_attr(feature = "with-serde", derive(serde::Serialize, serde::Deserialize))]
-#[derive(Debug, Clone, PartialEq, Eq, EnumAsInner)]
+#[derive(Debug, Clone, EnumAsInner)]
 pub enum Byml {
     String(String),
     BinaryData(Vec<u8>),
@@ -82,15 +81,36 @@ pub enum Byml {
     Hash(Hash),
     Bool(bool),
     I32(i32),
-    Float(R32),
+    Float(f32),
     U32(u32),
     I64(i64),
     U64(u64),
-    Double(R64),
+    Double(f64),
     Null,
 }
 
-#[allow(clippy::derive_hash_xor_eq)]
+impl PartialEq for Byml {
+    fn eq(&self, other: &Self) -> bool {
+        match (self, other) {
+            (Byml::String(s1), Byml::String(s2)) => s1 == s2,
+            (Byml::BinaryData(d1), Byml::BinaryData(d2)) => d1 == d2,
+            (Byml::Array(a1), Byml::Array(a2)) => a1 == a2,
+            (Byml::Hash(h1), Byml::Hash(h2)) => h1 == h2,
+            (Byml::Bool(b1), Byml::Bool(b2)) => b1 == b2,
+            (Byml::I32(i1), Byml::I32(i2)) => i1 == i2,
+            (Byml::Float(f1), Byml::Float(f2)) => almost::equal(*f1, *f2),
+            (Byml::U32(u1), Byml::U32(u2)) => u1 == u2,
+            (Byml::I64(i1), Byml::I64(i2)) => i1 == i2,
+            (Byml::U64(u1), Byml::U64(u2)) => u1 == u2,
+            (Byml::Double(d1), Byml::Double(d2)) => almost::equal(*d1, *d2),
+            (Byml::Null, Byml::Null) => true,
+            _ => false,
+        }
+    }
+}
+
+impl Eq for &Byml {}
+
 impl std::hash::Hash for Byml {
     fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
         match self {
@@ -105,11 +125,17 @@ impl std::hash::Hash for Byml {
             }
             Byml::Bool(b) => b.hash(state),
             Byml::I32(i) => i.hash(state),
-            Byml::Float(f) => f.hash(state),
+            Byml::Float(f) => {
+                b"f".hash(state);
+                f.to_bits().hash(state)
+            }
             Byml::U32(u) => u.hash(state),
             Byml::I64(i) => i.hash(state),
             Byml::U64(u) => u.hash(state),
-            Byml::Double(d) => d.hash(state),
+            Byml::Double(d) => {
+                b"d".hash(state);
+                d.to_bits().hash(state)
+            }
             Byml::Null => std::hash::Hash::hash(&0, state),
         }
     }

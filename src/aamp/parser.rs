@@ -111,11 +111,6 @@ impl<R: Read + Seek> Parser<R> {
         Ok(val)
     }
 
-    #[inline]
-    fn read_float(&mut self) -> Result<R32, AampError> {
-        Ok(self.read::<f32>()?.into())
-    }
-
     fn read_buffer<T: BinRead<Args = ()> + Copy>(
         &mut self,
         offset: u32,
@@ -130,11 +125,11 @@ impl<R: Read + Seek> Parser<R> {
     }
 
     #[inline]
-    fn read_float_buffer(&mut self, offset: u32) -> Result<Vec<R32>, AampError> {
+    fn read_float_buffer(&mut self, offset: u32) -> Result<Vec<f32>, AampError> {
         let size = self.read_at::<u32>(offset - 4)?;
-        let mut buf = Vec::<R32>::with_capacity(size as usize);
+        let mut buf = Vec::<f32>::with_capacity(size as usize);
         for _ in 0..size {
-            buf.push(self.read_float()?);
+            buf.push(self.read()?);
         }
         Ok(buf)
     }

@@ -2,7 +2,6 @@ mod parser;
 mod writer;
 use crate::{types::*, util::u24};
 use binrw::binrw;
-use decorum::R32;
 use enum_as_inner::EnumAsInner;
 use indexmap::IndexMap;
 #[cfg(feature = "with-serde")]
@@ -172,7 +171,7 @@ pub enum Parameter {
     Curve3([Curve; 3]),
     Curve4([Curve; 4]),
     BufferInt(Vec<i32>),
-    BufferF32(Vec<R32>),
+    BufferF32(Vec<f32>),
     String256(FixedSafeString<256>),
     Quat(Quat),
     U32(u32),
@@ -185,7 +184,10 @@ impl std::hash::Hash for Parameter {
     fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
         match self {
             Parameter::Bool(b) => b.hash(state),
-            Parameter::F32(f) => (*f as u32 + 1).hash(state),
+            Parameter::F32(f) => {
+                b"f".hash(state);
+                f.to_bits().hash(state)
+            }
             Parameter::Int(i) => i.hash(state),
             Parameter::Vec2(v) => v.hash(state),
             Parameter::Vec3(v) => v.hash(state),
@@ -198,7 +200,12 @@ impl std::hash::Hash for Parameter {
             Parameter::Curve3(c) => c.hash(state),
             Parameter::Curve4(c) => c.hash(state),
             Parameter::BufferInt(v) => v.hash(state),
-            Parameter::BufferF32(v) => v.hash(state),
+            Parameter::BufferF32(v) => {
+                for f in v {
+                    b"f".hash(state);
+                    f.to_bits().hash(state)
+                }
+            }
             Parameter::String256(s) => s.hash(state),
             Parameter::Quat(q) => q.hash(state),
             Parameter::U32(u) => u.hash(state),

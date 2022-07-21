@@ -4,6 +4,7 @@ use binrw::prelude::*;
 use rustc_hash::FxHashMap;
 use std::{
     cell::RefCell,
+    collections::hash_map::Entry,
     hash::Hasher,
     io::{Cursor, Seek, SeekFrom, Write},
     rc::Rc,
@@ -84,9 +85,9 @@ fn write_buffer<W: Write + Seek, T: BinWrite<Args = ()>>(
 }
 
 #[inline]
-fn hash_buf_data(data: &[u8]) -> u64 {
+fn hash_param_data(param: &Parameter) -> u64 {
     let mut hasher = rustc_hash::FxHasher::default();
-    hasher.write(data);
+    std::hash::Hash::hash(param, &mut hasher);
     hasher.finish()
 }
 
@@ -258,33 +259,6 @@ impl<'pio, W: Write + Seek> WriteContext<'pio, W> {
             "`write_parameter_data` called with string parameter"
         );
 
-        let mut tmp_writer = Cursor::new(Vec::<u8>::with_capacity(0x200));
-        match param {
-            Parameter::Bool(b) => tmp_writer.write_le(&if *b { 1u32 } else { 0u32 })?,
-            Parameter::F32(v) => tmp_writer.write_le(&v)?,
-            Parameter::Int(v) => tmp_writer.write_le(&v)?,
-            Parameter::Vec2(v) => tmp_writer.write_le(&v)?,
-            Parameter::Vec3(v) => tmp_writer.write_le(&v)?,
-            Parameter::Vec4(v) => tmp_writer.write_le(&v)?,
-            Parameter::Color(v) => tmp_writer.write_le(&v)?,
-            Parameter::Curve1(v) => tmp_writer.write_le(&v)?,
-            Parameter::Curve2(v) => tmp_writer.write_le(&v)?,
-            Parameter::Curve3(v) => tmp_writer.write_le(&v)?,
-            Parameter::Curve4(v) => tmp_writer.write_le(&v)?,
-            Parameter::Quat(v) => tmp_writer.write_le(&v)?,
-            Parameter::U32(v) => tmp_writer.write_le(&v)?,
-            Parameter::BufferInt(v) => write_buffer(&mut tmp_writer, v)?,
-            Parameter::BufferU32(v) => write_buffer(&mut tmp_writer, v)?,
-            Parameter::BufferF32(v) => {
-                tmp_writer.write_le(&(v.len() as u32))?;
-                for f in v {
-                    tmp_writer.write_le(f.as_ref())?;
-                }
-            }
-            Parameter::BufferBinary(v) => write_buffer(&mut tmp_writer, v)?,
-            _ => unreachable!("unhandled parameter type"),
-        }
-
         let parent_offset = self.get_offset(param);
         let mut data_offset =
             self.writer.stream_position()? as u32 + if param.is_buffer_type() { 4 } else { 0 };
@@ -292,16 +266,47 @@ impl<'pio, W: Write + Seek> WriteContext<'pio, W> {
 
         // We're going to do this very differently from the oead method
         // because we want to support any writer, even one without an
-        // accessible underlying buffer.
-        let hash = hash_buf_data(&tmp_writer.get_ref()[..]);
-        data_offset = *self.buffer_offsets.entry(hash).or_insert_with(|| {
-            existed = false;
-            data_offset
-        });
+        // accessible underlying buffer. Moreover, by hasing the parameter
+        // first we get the chance to skip writing the data even to a temp
+        // buffer if it's already been written.
+        let hash = hash_param_data(param);
+        data_offset = match self.buffer_offsets.entry(hash) {
+            Entry::Occupied(entry) => *entry.get(),
+            Entry::Vacant(entry) => {
+                let mut tmp_writer = Cursor::new(Vec::<u8>::with_capacity(0x200));
+                match param {
+                    Parameter::Bool(b) => tmp_writer.write_le(&if *b { 1u32 } else { 0u32 })?,
+                    Parameter::F32(v) => tmp_writer.write_le(&v.to_bits())?,
+                    Parameter::Int(v) => tmp_writer.write_le(&v)?,
+                    Parameter::Vec2(v) => tmp_writer.write_le(&v)?,
+                    Parameter::Vec3(v) => tmp_writer.write_le(&v)?,
+                    Parameter::Vec4(v) => tmp_writer.write_le(&v)?,
+                    Parameter::Color(v) => tmp_writer.write_le(&v)?,
+                    Parameter::Curve1(v) => tmp_writer.write_le(&v)?,
+                    Parameter::Curve2(v) => tmp_writer.write_le(&v)?,
+                    Parameter::Curve3(v) => tmp_writer.write_le(&v)?,
+                    Parameter::Curve4(v) => tmp_writer.write_le(&v)?,
+                    Parameter::Quat(v) => tmp_writer.write_le(&v)?,
+                    Parameter::U32(v) => tmp_writer.write_le(&v)?,
+                    Parameter::BufferInt(v) => write_buffer(&mut tmp_writer, v)?,
+                    Parameter::BufferU32(v) => write_buffer(&mut tmp_writer, v)?,
+                    Parameter::BufferF32(v) => {
+                        tmp_writer.write_le(&(v.len() as u32))?;
+                        for f in v {
+                            tmp_writer.write_le(f)?;
+                        }
+                    }
+                    Parameter::BufferBinary(v) => write_buffer(&mut tmp_writer, v)?,
+                    _ => unreachable!("unhandled parameter type"),
+                }
+                self.writer.write_all(tmp_writer.into_inner().as_slice())?;
+                existed = false;
+                *entry.insert(data_offset)
+            }
+        };
 
         self.write_at(parent_offset + 0x4, u24((data_offset - parent_offset) / 4))?;
         if !existed {
-            self.writer.write_all(tmp_writer.into_inner().as_slice())?;
             self.align()?;
         }
         Ok(())

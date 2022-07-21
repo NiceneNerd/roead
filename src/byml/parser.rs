@@ -206,10 +206,10 @@ impl<R: Read + Seek> Parser<R> {
             NodeType::Bool => Byml::Bool(raw != 0),
             NodeType::I32 => Byml::I32(raw as i32),
             NodeType::U32 => Byml::U32(raw),
-            NodeType::Float => Byml::Float((raw as f32).into()),
+            NodeType::Float => Byml::Float(f32::from_bits(raw)),
             NodeType::I64 => Byml::I64(read_long()? as i64),
             NodeType::U64 => Byml::U64(read_long()?),
-            NodeType::Double => Byml::Double((read_long()? as f64).into()),
+            NodeType::Double => Byml::Double(f64::from_bits(read_long()?)),
             NodeType::Null => Byml::Null,
             _ => unreachable!("Invalid value node type"),
         };
@@ -243,7 +243,7 @@ impl<R: Read + Seek> Parser<R> {
     fn parse_hash_node(&mut self, offset: u32, size: u32) -> Result<Byml, BymlError> {
         #[cfg(feature = "im-rc")]
         let mut hash = Hash::new();
-        #[cfg(all(feature = "rustc-hash", not(feature = "im-rc")))]
+        #[cfg(not(feature = "im-rc"))]
         let mut hash = Hash::with_capacity_and_hasher(size as usize, Default::default());
         for i in 0..size {
             let entry_offset = offset + 4 + 8 * i;
@@ -274,25 +274,6 @@ impl<R: Read + Seek> Parser<R> {
 #[cfg(test)]
 mod test {
     use super::*;
-
-    #[test]
-    fn read_files() {
-        for file in FILES {
-            println!("{}", file);
-            let reader = std::io::BufReader::new(
-                std::fs::File::open(
-                    std::path::Path::new("test/byml").join([file, ".byml"].join("")),
-                )
-                .unwrap(),
-            );
-            let byml = Byml::read(reader).unwrap();
-            match byml {
-                Byml::Array(arr) => println!("  Array with {} elements", arr.len()),
-                Byml::Hash(hash) => println!("  Hash with {} entries", hash.len()),
-                _ => println!("{:?}", byml),
-            }
-        }
-    }
 
     #[test]
     fn from_bytes() {

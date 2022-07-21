@@ -1,6 +1,6 @@
 #![allow(clippy::derive_hash_xor_eq)]
 //! Miscellaneous needful oead types.
-use decorum::R32;
+// use decorum::f32;
 #[cfg(feature = "with-serde")]
 use serde::{Deserialize, Serialize};
 
@@ -130,325 +130,167 @@ impl<const N: usize> binrw::BinRead for FixedSafeString<N> {
 
 /// 2D vector.
 #[cfg_attr(feature = "with-serde", derive(Serialize, Deserialize))]
-#[derive(Debug, Clone, Copy, Eq, Hash)]
+#[derive(Debug, Clone, Copy)]
+#[binrw::binrw]
 pub struct Vector2f {
-    pub x: R32,
-    pub y: R32,
+    pub x: f32,
+    pub y: f32,
 }
 
 #[cfg(feature = "almost")]
 impl PartialEq for Vector2f {
     fn eq(&self, other: &Self) -> bool {
-        almost::equal(*self.x.as_ref(), *other.x.as_ref())
-            && almost::equal(*self.y.as_ref(), *other.y.as_ref())
+        almost::equal(self.x, other.x) && almost::equal(self.y, other.y)
     }
 }
 
-#[cfg(feature = "binrw")]
-const _: () = {
-    impl binrw::BinRead for Vector2f {
-        type Args = ();
-        fn read_options<R: std::io::Read + std::io::Seek>(
-            reader: &mut R,
-            opts: &binrw::ReadOptions,
-            _: Self::Args,
-        ) -> binrw::BinResult<Self> {
-            Ok(Self {
-                x: f32::from_le_bytes(<[u8; 4]>::read_options(reader, opts, ())?).into(),
-                y: f32::from_le_bytes(<[u8; 4]>::read_options(reader, opts, ())?).into(),
-            })
-        }
+impl std::hash::Hash for Vector2f {
+    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+        (self.x.to_bits()).hash(state);
+        (self.y.to_bits()).hash(state);
     }
-
-    impl binrw::BinWrite for Vector2f {
-        type Args = ();
-        fn write_options<W: std::io::Write + std::io::Seek>(
-            &self,
-            writer: &mut W,
-            opts: &binrw::WriteOptions,
-            _: Self::Args,
-        ) -> binrw::BinResult<()> {
-            self.x
-                .as_ref()
-                .to_le_bytes()
-                .write_options(writer, opts, ())?;
-            self.y
-                .as_ref()
-                .to_le_bytes()
-                .write_options(writer, opts, ())?;
-            Ok(())
-        }
-    }
-};
+}
 
 /// 3D vector.
 #[cfg_attr(feature = "with-serde", derive(Serialize, Deserialize))]
-#[derive(Debug, Clone, Copy, Eq, Hash)]
+#[derive(Debug, Clone, Copy)]
+#[binrw::binrw]
 pub struct Vector3f {
-    pub x: R32,
-    pub y: R32,
-    pub z: R32,
+    pub x: f32,
+    pub y: f32,
+    pub z: f32,
 }
 
 #[cfg(feature = "almost")]
 impl PartialEq for Vector3f {
     fn eq(&self, other: &Self) -> bool {
-        almost::equal(*self.x.as_ref(), *other.x.as_ref())
-            && almost::equal(*self.y.as_ref(), *other.y.as_ref())
-            && almost::equal(*self.z.as_ref(), *other.z.as_ref())
+        almost::equal(self.x, other.x)
+            && almost::equal(self.y, other.y)
+            && almost::equal(self.z, other.z)
     }
 }
 
-#[cfg(feature = "binrw")]
-const _: () = {
-    impl binrw::BinRead for Vector3f {
-        type Args = ();
-        fn read_options<R: std::io::Read + std::io::Seek>(
-            reader: &mut R,
-            opts: &binrw::ReadOptions,
-            _: Self::Args,
-        ) -> binrw::BinResult<Self> {
-            Ok(Self {
-                x: f32::from_le_bytes(<[u8; 4]>::read_options(reader, opts, ())?).into(),
-                y: f32::from_le_bytes(<[u8; 4]>::read_options(reader, opts, ())?).into(),
-                z: f32::from_le_bytes(<[u8; 4]>::read_options(reader, opts, ())?).into(),
-            })
-        }
+impl std::hash::Hash for Vector3f {
+    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+        b"f".hash(state);
+        (self.x.to_bits()).hash(state);
+        b"f".hash(state);
+        (self.y.to_bits()).hash(state);
+        b"f".hash(state);
+        (self.z.to_bits()).hash(state);
     }
-
-    impl binrw::BinWrite for Vector3f {
-        type Args = ();
-        fn write_options<W: std::io::Write + std::io::Seek>(
-            &self,
-            writer: &mut W,
-            opts: &binrw::WriteOptions,
-            _: Self::Args,
-        ) -> binrw::BinResult<()> {
-            self.x
-                .as_ref()
-                .to_le_bytes()
-                .write_options(writer, opts, ())?;
-            self.y
-                .as_ref()
-                .to_le_bytes()
-                .write_options(writer, opts, ())?;
-            self.z
-                .as_ref()
-                .to_le_bytes()
-                .write_options(writer, opts, ())?;
-            Ok(())
-        }
-    }
-};
+}
 
 /// 4D vector.
 #[cfg_attr(feature = "with-serde", derive(Serialize, Deserialize))]
-#[derive(Debug, Clone, Copy, Eq, Hash)]
+#[derive(Debug, Clone, Copy)]
+#[binrw::binrw]
 pub struct Vector4f {
-    pub x: R32,
-    pub y: R32,
-    pub z: R32,
-    pub t: R32,
+    pub x: f32,
+    pub y: f32,
+    pub z: f32,
+    pub t: f32,
 }
 
 #[cfg(feature = "almost")]
 impl PartialEq for Vector4f {
     fn eq(&self, other: &Self) -> bool {
-        almost::equal(*self.x.as_ref(), *other.x.as_ref())
-            && almost::equal(*self.y.as_ref(), *other.y.as_ref())
-            && almost::equal(*self.z.as_ref(), *other.z.as_ref())
-            && almost::equal(*self.t.as_ref(), *other.t.as_ref())
+        almost::equal(self.x, other.x)
+            && almost::equal(self.y, other.y)
+            && almost::equal(self.z, other.z)
+            && almost::equal(self.t, other.t)
     }
 }
 
-#[cfg(feature = "binrw")]
-const _: () = {
-    impl binrw::BinRead for Vector4f {
-        type Args = ();
-        fn read_options<R: std::io::Read + std::io::Seek>(
-            reader: &mut R,
-            opts: &binrw::ReadOptions,
-            _: Self::Args,
-        ) -> binrw::BinResult<Self> {
-            Ok(Self {
-                x: f32::from_le_bytes(<[u8; 4]>::read_options(reader, opts, ())?).into(),
-                y: f32::from_le_bytes(<[u8; 4]>::read_options(reader, opts, ())?).into(),
-                z: f32::from_le_bytes(<[u8; 4]>::read_options(reader, opts, ())?).into(),
-                t: f32::from_le_bytes(<[u8; 4]>::read_options(reader, opts, ())?).into(),
-            })
-        }
+impl std::hash::Hash for Vector4f {
+    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+        b"f".hash(state);
+        (self.x.to_bits()).hash(state);
+        b"f".hash(state);
+        (self.y.to_bits()).hash(state);
+        b"f".hash(state);
+        (self.z.to_bits()).hash(state);
+        b"f".hash(state);
+        (self.t.to_bits()).hash(state);
     }
-
-    impl binrw::BinWrite for Vector4f {
-        type Args = ();
-        fn write_options<W: std::io::Write + std::io::Seek>(
-            &self,
-            writer: &mut W,
-            opts: &binrw::WriteOptions,
-            _: Self::Args,
-        ) -> binrw::BinResult<()> {
-            self.x
-                .as_ref()
-                .to_le_bytes()
-                .write_options(writer, opts, ())?;
-            self.y
-                .as_ref()
-                .to_le_bytes()
-                .write_options(writer, opts, ())?;
-            self.z
-                .as_ref()
-                .to_le_bytes()
-                .write_options(writer, opts, ())?;
-            self.t
-                .as_ref()
-                .to_le_bytes()
-                .write_options(writer, opts, ())?;
-            Ok(())
-        }
-    }
-};
+}
 
 /// Quaternion.
 #[cfg_attr(feature = "with-serde", derive(Serialize, Deserialize))]
-#[derive(Debug, Clone, Copy, Eq, Hash)]
+#[derive(Debug, Clone, Copy)]
+#[binrw::binrw]
 pub struct Quat {
-    pub a: R32,
-    pub b: R32,
-    pub c: R32,
-    pub d: R32,
+    pub a: f32,
+    pub b: f32,
+    pub c: f32,
+    pub d: f32,
 }
 
 #[cfg(feature = "almost")]
 impl PartialEq for Quat {
     fn eq(&self, other: &Self) -> bool {
-        almost::equal(*self.a.as_ref(), *other.a.as_ref())
-            && almost::equal(*self.b.as_ref(), *other.b.as_ref())
-            && almost::equal(*self.c.as_ref(), *other.c.as_ref())
-            && almost::equal(*self.d.as_ref(), *other.d.as_ref())
+        almost::equal(self.a, other.a)
+            && almost::equal(self.b, other.b)
+            && almost::equal(self.c, other.c)
+            && almost::equal(self.d, other.d)
     }
 }
 
-#[cfg(feature = "binrw")]
-const _: () = {
-    impl binrw::BinRead for Quat {
-        type Args = ();
-        fn read_options<R: std::io::Read + std::io::Seek>(
-            reader: &mut R,
-            opts: &binrw::ReadOptions,
-            _: Self::Args,
-        ) -> binrw::BinResult<Self> {
-            Ok(Self {
-                a: f32::from_le_bytes(<[u8; 4]>::read_options(reader, opts, ())?).into(),
-                b: f32::from_le_bytes(<[u8; 4]>::read_options(reader, opts, ())?).into(),
-                c: f32::from_le_bytes(<[u8; 4]>::read_options(reader, opts, ())?).into(),
-                d: f32::from_le_bytes(<[u8; 4]>::read_options(reader, opts, ())?).into(),
-            })
-        }
+impl std::hash::Hash for Quat {
+    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+        b"f".hash(state);
+        (self.a.to_bits()).hash(state);
+        b"f".hash(state);
+        (self.b.to_bits()).hash(state);
+        b"f".hash(state);
+        (self.c.to_bits()).hash(state);
+        b"f".hash(state);
+        (self.d.to_bits()).hash(state);
     }
-
-    impl binrw::BinWrite for Quat {
-        type Args = ();
-        fn write_options<W: std::io::Write + std::io::Seek>(
-            &self,
-            writer: &mut W,
-            opts: &binrw::WriteOptions,
-            _: Self::Args,
-        ) -> binrw::BinResult<()> {
-            self.a
-                .as_ref()
-                .to_le_bytes()
-                .write_options(writer, opts, ())?;
-            self.b
-                .as_ref()
-                .to_le_bytes()
-                .write_options(writer, opts, ())?;
-            self.c
-                .as_ref()
-                .to_le_bytes()
-                .write_options(writer, opts, ())?;
-            self.d
-                .as_ref()
-                .to_le_bytes()
-                .write_options(writer, opts, ())?;
-            Ok(())
-        }
-    }
-};
+}
 
 /// RGBA color (Red/Green/Blue/Alpha).
 #[cfg_attr(feature = "with-serde", derive(Serialize, Deserialize))]
-#[derive(Debug, Clone, Copy, Eq, Hash)]
+#[derive(Debug, Clone, Copy)]
+#[binrw::binrw]
 pub struct Color {
-    pub r: R32,
-    pub g: R32,
-    pub b: R32,
-    pub a: R32,
+    pub r: f32,
+    pub g: f32,
+    pub b: f32,
+    pub a: f32,
 }
 
 #[cfg(feature = "almost")]
 impl PartialEq for Color {
     fn eq(&self, other: &Self) -> bool {
-        almost::equal(*self.r.as_ref(), *other.r.as_ref())
-            && almost::equal(*self.g.as_ref(), *other.g.as_ref())
-            && almost::equal(*self.b.as_ref(), *other.b.as_ref())
-            && almost::equal(*self.a.as_ref(), *other.a.as_ref())
+        almost::equal(self.r, other.r)
+            && almost::equal(self.g, other.g)
+            && almost::equal(self.b, other.b)
+            && almost::equal(self.a, other.a)
     }
 }
 
-#[cfg(feature = "binrw")]
-const _: () = {
-    impl binrw::BinRead for Color {
-        type Args = ();
-        fn read_options<R: std::io::Read + std::io::Seek>(
-            reader: &mut R,
-            opts: &binrw::ReadOptions,
-            _: Self::Args,
-        ) -> binrw::BinResult<Self> {
-            Ok(Self {
-                r: f32::from_le_bytes(<[u8; 4]>::read_options(reader, opts, ())?).into(),
-                g: f32::from_le_bytes(<[u8; 4]>::read_options(reader, opts, ())?).into(),
-                b: f32::from_le_bytes(<[u8; 4]>::read_options(reader, opts, ())?).into(),
-                a: f32::from_le_bytes(<[u8; 4]>::read_options(reader, opts, ())?).into(),
-            })
-        }
+impl std::hash::Hash for Color {
+    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+        b"f".hash(state);
+        (self.r.to_bits()).hash(state);
+        b"f".hash(state);
+        (self.g.to_bits()).hash(state);
+        b"f".hash(state);
+        (self.b.to_bits()).hash(state);
+        b"f".hash(state);
+        (self.a.to_bits()).hash(state);
     }
-
-    impl binrw::BinWrite for Color {
-        type Args = ();
-        fn write_options<W: std::io::Write + std::io::Seek>(
-            &self,
-            writer: &mut W,
-            opts: &binrw::WriteOptions,
-            _: Self::Args,
-        ) -> binrw::BinResult<()> {
-            self.r
-                .as_ref()
-                .to_le_bytes()
-                .write_options(writer, opts, ())?;
-            self.g
-                .as_ref()
-                .to_le_bytes()
-                .write_options(writer, opts, ())?;
-            self.b
-                .as_ref()
-                .to_le_bytes()
-                .write_options(writer, opts, ())?;
-            self.a
-                .as_ref()
-                .to_le_bytes()
-                .write_options(writer, opts, ())?;
-            Ok(())
-        }
-    }
-};
+}
 
 /// Curve (`sead::hostio::curve*`)
 #[cfg_attr(feature = "with-serde", derive(Serialize, Deserialize))]
-#[derive(Debug, Default, Clone, Copy, Eq, Hash)]
+#[derive(Debug, Default, Clone, Copy)]
+#[binrw::binrw]
 pub struct Curve {
     pub a: u32,
     pub b: u32,
-    pub floats: [R32; 30],
+    pub floats: [f32; 30],
 }
 
 #[cfg(feature = "almost")]
@@ -460,45 +302,17 @@ impl PartialEq for Curve {
                 .floats
                 .iter()
                 .zip(other.floats.iter())
-                .all(|(a, b)| almost::equal(*a.as_ref(), *b.as_ref()))
+                .all(|(a, b)| almost::equal(*a, *b))
     }
 }
 
-#[cfg(feature = "binrw")]
-const _: () = {
-    impl binrw::BinRead for Curve {
-        type Args = ();
-        fn read_options<R: std::io::Read + std::io::Seek>(
-            reader: &mut R,
-            options: &binrw::ReadOptions,
-            _: Self::Args,
-        ) -> binrw::BinResult<Self> {
-            let mut curve = Self {
-                a: u32::read_options(reader, options, ())?,
-                b: u32::read_options(reader, options, ())?,
-                floats: Default::default(),
-            };
-            for i in 0..30 {
-                curve.floats[i] = f32::read_options(reader, options, ())?.into();
-            }
-            Ok(curve)
+impl std::hash::Hash for Curve {
+    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+        self.a.hash(state);
+        self.b.hash(state);
+        for f in &self.floats {
+            b"f".hash(state);
+            (f.to_bits()).hash(state);
         }
     }
-
-    impl binrw::BinWrite for Curve {
-        type Args = ();
-        fn write_options<W: std::io::Write + std::io::Seek>(
-            &self,
-            writer: &mut W,
-            options: &binrw::WriteOptions,
-            _: Self::Args,
-        ) -> binrw::BinResult<()> {
-            self.a.write_options(writer, options, ())?;
-            self.b.write_options(writer, options, ())?;
-            for i in 0..30 {
-                (*self.floats[i].as_ref() as u32).write_options(writer, options, ())?;
-            }
-            Ok(())
-        }
-    }
-};
+}

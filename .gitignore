@@ -38,3 +38,5 @@ docs/doxygen/*
 
 /target
 /Cargo.lock
+
+tmp.txt

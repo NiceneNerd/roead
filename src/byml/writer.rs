@@ -227,10 +227,10 @@ impl<'a, W: Write + Seek> WriteContext<'a, W> {
             Byml::Bool(b) => self.write(*b as u32),
             Byml::I32(i) => self.write(*i),
             Byml::U32(u) => self.write(*u),
-            Byml::Float(f) => self.write(*f.as_ref() as u32),
+            Byml::Float(f) => self.write(f.to_bits()),
             Byml::I64(i) => self.write(*i),
             Byml::U64(u) => self.write(*u),
-            Byml::Double(d) => self.write(*d.as_ref() as u64),
+            Byml::Double(d) => self.write(d.to_bits()),
             _ => unreachable!("Invalid value node type"),
         }
     }
