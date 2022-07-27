@@ -10,6 +10,7 @@ pub(crate) enum TagBasedType {
     Null,
 }
 
+#[inline]
 pub(crate) fn get_tag_based_type(tag: &str) -> Option<TagBasedType> {
     match tag {
         "tag:yaml.org,2002:str" | "Str" => Some(TagBasedType::Str),
@@ -47,8 +48,8 @@ fn in_nan(input: &str) -> bool {
     matches!(input, ".nan" | ".NaN" | ".NAN")
 }
 
-/// Deliberately not compliant to the YAML 1.2 standard to get rid of unused features
-/// that harm performance.
+/// Deliberately not compliant to the YAML 1.2 standard to get rid of unused
+/// features that harm performance.
 #[inline]
 pub(crate) fn parse_scalar(
     tag_type: Option<TagBasedType>,
@@ -80,7 +81,8 @@ pub(crate) fn parse_scalar(
                 }
             }
         }
-        // Integer conversions. Not YAML 1.2 compliant: base 8 is not supported as it's not useful.
+        // Integer conversions. Not YAML 1.2 compliant: base 8 is not supported as it's
+        // not useful.
         if tag_type == Some(TagBasedType::Int)
             || (tag_type.is_none() && !value.is_empty() && !is_quoted)
         {
@@ -120,8 +122,10 @@ pub(crate) fn parse_scalar(
     }
 }
 
-fn string_needs_quotes(value: &str) -> bool {
+#[inline]
+pub(crate) fn string_needs_quotes(value: &str) -> bool {
     matches!(value, "true" | "false")
+        || value.starts_with('!')
         || (value.contains('.')
             && (is_infinity(value)
                 || is_negative_infinity(value)
