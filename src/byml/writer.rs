@@ -1,7 +1,7 @@
 use super::*;
 use crate::{
     util::{align, u24},
-    Endian,
+    Endian, Error, Result,
 };
 use binrw::prelude::*;
 use rustc_hash::FxHashMap;
@@ -18,56 +18,51 @@ impl Byml {
         writer: &mut W,
         endian: Endian,
         version: u16,
-    ) -> crate::Result<()> {
+    ) -> Result<()> {
         if !is_valid_version(version) {
-            return Err(BymlError::InvalidVersion(version).into());
+            return Err(Error::InvalidData("Unsupported BYML version (2-4 only)"));
         }
 
         if !matches!(self, Byml::Hash(_) | Byml::Array(_) | Byml::Null) {
-            return Err(BymlError::TypeError(
+            return Err(Error::TypeError(
                 format!("{:?}", self),
-                "Hash, Array, or Null".to_string(),
-            )
-            .into());
+                "Hash, Array, or Null",
+            ));
         }
 
-        let do_write = move || -> Result<(), BymlError> {
-            let mut ctx = WriteContext::new(self, writer, endian);
-            ctx.write(match endian {
-                Endian::Little => b"YB",
-                Endian::Big => b"BY",
-            })?;
-            ctx.write(version)?;
-            ctx.write(0u32)?; // Hash key table offset
-            ctx.write(0u32)?; // String table offset
-            ctx.write(0u32)?; // Root node offset
+        let mut ctx = WriteContext::new(self, writer, endian);
+        ctx.write(match endian {
+            Endian::Little => b"YB",
+            Endian::Big => b"BY",
+        })?;
+        ctx.write(version)?;
+        ctx.write(0u32)?; // Hash key table offset
+        ctx.write(0u32)?; // String table offset
+        ctx.write(0u32)?; // Root node offset
 
-            if let &Byml::Null = self {
-                Ok(())
-            } else {
-                if !ctx.hash_key_table.is_empty() {
-                    let pos = ctx.writer.stream_position()? as u32;
-                    ctx.write_at(pos, 0x4)?;
-                    ctx.write_string_table(ctx.hash_key_table.clone())?;
-                }
-
-                if !ctx.string_table.is_empty() {
-                    let pos = ctx.writer.stream_position()? as u32;
-                    ctx.write_at(pos, 0x8)?;
-                    ctx.write_string_table(ctx.string_table.clone())?;
-                }
-
+        if let &Byml::Null = self {
+            Ok(())
+        } else {
+            if !ctx.hash_key_table.is_empty() {
                 let pos = ctx.writer.stream_position()? as u32;
-                ctx.write_at(pos, 0xC)?;
-                ctx.align()?;
-                ctx.write_container_node(self)?;
-                ctx.align()?;
-                ctx.writer.flush()?;
-                Ok(())
+                ctx.write_at(pos, 0x4)?;
+                ctx.write_string_table(ctx.hash_key_table.clone())?;
             }
-        };
 
-        Ok(do_write()?)
+            if !ctx.string_table.is_empty() {
+                let pos = ctx.writer.stream_position()? as u32;
+                ctx.write_at(pos, 0x8)?;
+                ctx.write_string_table(ctx.string_table.clone())?;
+            }
+
+            let pos = ctx.writer.stream_position()? as u32;
+            ctx.write_at(pos, 0xC)?;
+            ctx.align()?;
+            ctx.write_container_node(self)?;
+            ctx.align()?;
+            ctx.writer.flush()?;
+            Ok(())
+        }
     }
 
     /// Serialize the document to bytes with the specified endianness and

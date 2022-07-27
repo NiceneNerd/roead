@@ -40,30 +40,10 @@
 mod parse;
 mod write;
 use crate::Endian;
-use binrw::{BinRead, BinWrite};
+use binrw::{binrw, BinRead, BinWrite};
 pub use parse::Sarc;
 use thiserror::Error;
 pub use write::SarcWriter;
-
-/// An enum for all SARC-related errors
-#[derive(Error, Debug)]
-#[allow(missing_docs)]
-pub enum SarcError {
-    #[error("File index {0} out of range")]
-    OutOfRange(usize),
-    #[error("Invalid {0} value: \"{1}\"")]
-    InvalidData(String, String),
-    #[error("A string in the name table was not terminated")]
-    UnterminatedStringError,
-    #[error("Invalid UTF file name")]
-    InvalidFileName(#[from] std::str::Utf8Error),
-    #[error(transparent)]
-    BinaryRWError(#[from] binrw::Error),
-    #[error("{0} is not a valid alignment")]
-    InvalidAlignmentError(usize),
-    #[error(transparent)]
-    IOError(#[from] std::io::Error),
-}
 
 /// Provides readonly access to a file that is stored in a SARC archive.
 #[derive(Debug, PartialEq, Eq)]
@@ -150,10 +130,6 @@ impl File<'_> {
     }
 }
 
-const SARC_MAGIC: [u8; 4] = *b"SARC";
-const SFAT_MAGIC: [u8; 4] = *b"SFAT";
-const SFNT_MAGIC: [u8; 4] = *b"SFNT";
-
 #[inline]
 const fn hash_name(multiplier: u32, name: &str) -> u32 {
     let mut hash = 0u32;
@@ -171,9 +147,10 @@ const fn hash_name(multiplier: u32, name: &str) -> u32 {
 }
 
 /// Size = 0x14
-#[derive(Debug, Eq, PartialEq, Copy, Clone, BinRead, BinWrite)]
+#[derive(Debug, Eq, PartialEq, Copy, Clone)]
+#[binrw]
+#[brw(magic = b"SARC")]
 struct ResHeader {
-    magic: [u8; 4],
     header_size: u16,
     bom: Endian,
     file_size: u32,
@@ -183,9 +160,10 @@ struct ResHeader {
 }
 
 /// Size = 0x0C
-#[derive(Debug, Copy, Clone, Eq, PartialEq, BinRead, BinWrite)]
+#[derive(Debug, Copy, Clone, Eq, PartialEq)]
+#[binrw]
+#[brw(magic = b"SFAT")]
 struct ResFatHeader {
-    magic: [u8; 4],
     header_size: u16,
     num_files: u16,
     hash_multiplier: u32,
@@ -200,9 +178,10 @@ struct ResFatEntry {
     data_end: u32,
 }
 
-#[derive(Debug, PartialEq, Eq, Copy, Clone, BinRead, BinWrite)]
+#[derive(Debug, PartialEq, Eq, Copy, Clone)]
+#[binrw]
+#[brw(magic = b"SFNT")]
 struct ResFntHeader {
-    magic: [u8; 4],
     header_size: u16,
     reserved: u16,
 }

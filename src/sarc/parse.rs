@@ -1,6 +1,8 @@
 use super::*;
+use crate::{Error, Result};
 use binrw::{BinRead, BinReaderExt};
 use core::mem::size_of;
+use join_str::jstr;
 use num_integer::Integer;
 use std::{
     borrow::Cow,
@@ -8,12 +10,12 @@ use std::{
     io::Cursor,
 };
 
-pub type Result<T> = core::result::Result<T, SarcError>;
-
 fn find_null(data: &[u8]) -> Result<usize> {
     data.iter()
         .position(|b| b == &0u8)
-        .ok_or(SarcError::UnterminatedStringError)
+        .ok_or(Error::InvalidData(
+            "SARC filename contains unterminated string",
+        ))
 }
 
 #[inline(always)]
@@ -128,53 +130,25 @@ impl<'a> Sarc<'_> {
 
         let mut reader = Cursor::new(data.as_ref());
         reader.set_position(6);
-        let endian: Endian = Endian::read(&mut reader).map_err(SarcError::from)?;
+        let endian: Endian = Endian::read(&mut reader).map_err(Error::from)?;
         reader.set_position(0);
 
         let header: ResHeader = read(endian, &mut reader)?;
-        if header.magic != SARC_MAGIC {
-            return Err(SarcError::InvalidData(
-                "SARC magic".to_owned(),
-                String::from_utf8_lossy(&header.magic).to_string(),
-            )
-            .into());
-        }
         if header.version != 0x0100 {
-            return Err(SarcError::InvalidData(
-                "SARC version".to_owned(),
-                header.version.to_string(),
-            )
-            .into());
+            return Err(Error::InvalidData("Invalid SARC version (expected 0x100)"));
         }
         if header.header_size as usize != 0x14 {
-            return Err(SarcError::InvalidData(
-                "SARC header size".to_owned(),
-                header.header_size.to_string(),
-            )
-            .into());
+            return Err(Error::InvalidData("SARC header wrong size (expected 0x14)"));
         }
 
         let fat_header: ResFatHeader = read(endian, &mut reader)?;
-        if fat_header.magic != SFAT_MAGIC {
-            return Err(SarcError::InvalidData(
-                "SFAT magic".to_owned(),
-                String::from_utf8_lossy(&fat_header.magic).to_string(),
-            )
-            .into());
-        }
         if fat_header.header_size as usize != 0x0C {
-            return Err(SarcError::InvalidData(
-                "SFAT header size".to_owned(),
-                fat_header.header_size.to_string(),
-            )
-            .into());
+            return Err(Error::InvalidData("SFAT header wrong size (expected 0x0C)"));
         }
         if (fat_header.num_files >> 0xE) != 0 {
-            return Err(SarcError::InvalidData(
-                "SFAT file count".to_owned(),
-                fat_header.num_files.to_string(),
-            )
-            .into());
+            return Err(Error::InvalidDataD(jstr!(
+                "Too many files in SARC ({&fat_header.num_files.to_string()})"
+            )));
         }
 
         let num_files = fat_header.num_files;
@@ -185,28 +159,13 @@ impl<'a> Sarc<'_> {
         let fnt_header_offset = entries_offset as usize + 0x10 * num_files as usize;
         reader.set_position(fnt_header_offset as u64);
         let fnt_header: ResFntHeader = read(endian, &mut reader)?;
-        if fnt_header.magic != SFNT_MAGIC {
-            return Err(SarcError::InvalidData(
-                "SFNT magic".to_owned(),
-                String::from_utf8_lossy(&fnt_header.magic).to_string(),
-            )
-            .into());
-        }
         if fnt_header.header_size as usize != 0x08 {
-            return Err(SarcError::InvalidData(
-                "SFNT header size".to_owned(),
-                fnt_header.header_size.to_string(),
-            )
-            .into());
+            return Err(Error::InvalidData("SFNT header wrong size (expected 0x8)"));
         }
 
         let names_offset = reader.position() as u32;
         if data_offset < names_offset {
-            return Err(SarcError::InvalidData(
-                "name table offset".to_owned(),
-                names_offset.to_string(),
-            )
-            .into());
+            return Err(Error::InvalidData("Invalid name table offset in SARC"));
         }
         Ok(Sarc {
             data,
@@ -264,7 +223,9 @@ impl<'a> Sarc<'_> {
     /// Get a file by index. Returns error if index > file count.
     pub fn file_at(&self, index: usize) -> Result<File> {
         if index >= self.num_files as usize {
-            return Err(SarcError::OutOfRange(index));
+            return Err(Error::InvalidDataD(jstr!(
+                "No file in SARC at index {&index.to_string()}"
+            )));
         }
 
         let entry_offset = self.entries_offset as usize + size_of::<ResFatEntry>() * index;

@@ -1,5 +1,5 @@
 use super::*;
-use crate::util::align;
+use crate::{util::align, Result};
 use binrw::prelude::*;
 use rustc_hash::FxHashMap;
 use std::{
@@ -13,59 +13,56 @@ use std::{
 
 impl ParameterIO {
     /// Serialize the parameter IO to binary using the given writer.
-    pub fn write<W: Write + Seek>(&self, writer: W) -> crate::Result<()> {
-        let write = || -> Result<(), AampError> {
-            let mut ctx = WriteContext {
-                writer,
-                list_count: Default::default(),
-                object_count: Default::default(),
-                param_count: Default::default(),
-                param_queue: Default::default(),
-                string_param_queue: Default::default(),
-                offsets: Default::default(),
-                string_offsets: Default::default(),
-                buffer_offsets: Default::default(),
-            };
-            ctx.writer.seek(SeekFrom::Start(0x30))?;
-            ctx.writer.write_le(&self.data_type.as_bytes())?;
-            ctx.writer.write_le(&0u8)?;
-            ctx.align()?;
-            let pio_offset = ctx.writer.stream_position()?;
-            let root = &self.param_root;
-
-            ctx.write_lists(self)?;
-            ctx.write_objects(root)?;
-            ctx.collect_parameters(self);
-            ctx.write_parameters(root)?;
-
-            let data_section_begin = ctx.writer.stream_position()?;
-            ctx.write_data_section()?;
-
-            let string_section_begin = ctx.writer.stream_position()?;
-            ctx.write_string_section()?;
-
-            let unknown_section_begin = ctx.writer.stream_position()?;
-            ctx.align()?;
-
-            let header = ResHeader {
-                version: 2,
-                flags: 3,
-                file_size: ctx.writer.stream_position()? as u32,
-                pio_version: self.version,
-                pio_offset: (pio_offset - 0x30) as u32,
-                list_count: ctx.list_count,
-                object_count: ctx.object_count,
-                param_count: ctx.param_count,
-                data_section_size: (string_section_begin - data_section_begin) as u32,
-                string_section_size: (unknown_section_begin - string_section_begin) as u32,
-                unknown_section_size: 0,
-            };
-            ctx.writer.seek(SeekFrom::Start(0))?;
-            ctx.writer.write_le(&header)?;
-            ctx.writer.flush()?;
-            Ok(())
+    pub fn write<W: Write + Seek>(&self, writer: W) -> Result<()> {
+        let mut ctx = WriteContext {
+            writer,
+            list_count: Default::default(),
+            object_count: Default::default(),
+            param_count: Default::default(),
+            param_queue: Default::default(),
+            string_param_queue: Default::default(),
+            offsets: Default::default(),
+            string_offsets: Default::default(),
+            buffer_offsets: Default::default(),
         };
-        write().map_err(|e| e.into())
+        ctx.writer.seek(SeekFrom::Start(0x30))?;
+        ctx.writer.write_le(&self.data_type.as_bytes())?;
+        ctx.writer.write_le(&0u8)?;
+        ctx.align()?;
+        let pio_offset = ctx.writer.stream_position()?;
+        let root = &self.param_root;
+
+        ctx.write_lists(self)?;
+        ctx.write_objects(root)?;
+        ctx.collect_parameters(self);
+        ctx.write_parameters(root)?;
+
+        let data_section_begin = ctx.writer.stream_position()?;
+        ctx.write_data_section()?;
+
+        let string_section_begin = ctx.writer.stream_position()?;
+        ctx.write_string_section()?;
+
+        let unknown_section_begin = ctx.writer.stream_position()?;
+        ctx.align()?;
+
+        let header = ResHeader {
+            version: 2,
+            flags: 3,
+            file_size: ctx.writer.stream_position()? as u32,
+            pio_version: self.version,
+            pio_offset: (pio_offset - 0x30) as u32,
+            list_count: ctx.list_count,
+            object_count: ctx.object_count,
+            param_count: ctx.param_count,
+            data_section_size: (string_section_begin - data_section_begin) as u32,
+            string_section_size: (unknown_section_begin - string_section_begin) as u32,
+            unknown_section_size: 0,
+        };
+        ctx.writer.seek(SeekFrom::Start(0))?;
+        ctx.writer.write_le(&header)?;
+        ctx.writer.flush()?;
+        Ok(())
     }
 
     /// Serialize the parameter IO to in-memory bytes.

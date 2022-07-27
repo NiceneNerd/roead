@@ -1,32 +1,32 @@
 use super::*;
 use crate::{
     util::{align, u24},
-    Endian,
+    Endian, Error, Result,
 };
 use binrw::{binrw, BinRead, VecArgs};
 use std::io::{Read, Seek, SeekFrom};
 
 impl Byml {
     /// Read a document from a binary reader.
-    pub fn read<R: Read + Seek>(reader: R) -> crate::Result<Byml> {
-        Ok(Parser::new(reader)?.parse()?)
+    pub fn read<R: Read + Seek>(reader: R) -> Result<Byml> {
+        Parser::new(reader)?.parse()
     }
 
     /// Load a document from binary data.
     ///
     /// **Note**: If and only if the `yaz0` feature is enabled, this function
     /// automatically decompresses the SARC when necessary.
-    pub fn from_binary(data: impl AsRef<[u8]>) -> crate::Result<Byml> {
+    pub fn from_binary(data: impl AsRef<[u8]>) -> Result<Byml> {
         #[cfg(feature = "yaz0")]
         {
             if data.as_ref().starts_with(b"Yaz0") {
-                return Ok(Parser::new(std::io::Cursor::new(crate::yaz0::decompress(
+                return Parser::new(std::io::Cursor::new(crate::yaz0::decompress(
                     data.as_ref(),
                 )?))?
-                .parse()?);
+                .parse();
             }
         }
-        Ok(Parser::new(std::io::Cursor::new(data.as_ref()))?.parse()?)
+        Parser::new(std::io::Cursor::new(data.as_ref()))?.parse()
     }
 }
 
@@ -99,17 +99,14 @@ struct StringTableParser {
 }
 
 impl StringTableParser {
-    fn new<R: Read + Seek>(offset: u32, reader: &mut BinReader<R>) -> Result<Self, BymlError> {
+    fn new<R: Read + Seek>(offset: u32, reader: &mut BinReader<R>) -> Result<Self> {
         if offset == 0 {
             Ok(Self::default())
         } else {
             let type_: NodeType = reader.read_at(offset as u64)?;
             let num_entries: crate::util::u24 = reader.read()?;
             if type_ != NodeType::StringTable {
-                return Err(BymlError::TypeError(
-                    format!("{:?}", type_),
-                    format!("{:?}", NodeType::StringTable),
-                ));
+                return Err(Error::TypeError(format!("{:?}", type_), "string table"));
             }
             Ok(Self {
                 offset,
@@ -118,13 +115,9 @@ impl StringTableParser {
         }
     }
 
-    fn get_string<R: Read + Seek>(
-        &self,
-        index: u32,
-        reader: &mut BinReader<R>,
-    ) -> Result<String, BymlError> {
+    fn get_string<R: Read + Seek>(&self, index: u32, reader: &mut BinReader<R>) -> Result<String> {
         if index >= self.size {
-            return Err(BymlError::ParseError("Invalid string table entry index"));
+            return Err(Error::InvalidData("Invalid string table entry index"));
         }
         let offset: u32 = reader.read_at((self.offset + 4 + 4 * index) as u64)?;
         let next_offset: u32 = reader.read()?;
@@ -148,9 +141,9 @@ struct Parser<R: Read + Seek> {
 }
 
 impl<R: Read + Seek> Parser<R> {
-    fn new(mut reader: R) -> Result<Self, BymlError> {
+    fn new(mut reader: R) -> Result<Self> {
         if reader.stream_len()? < 0x10 {
-            return Err(BymlError::ParseError("Insufficient data for header"));
+            return Err(Error::InvalidData("Insufficient data for header"));
         }
         let header = ResHeader::read(&mut reader)?;
         let endian = if &header.magic == b"BY" {
@@ -159,9 +152,7 @@ impl<R: Read + Seek> Parser<R> {
             Endian::Little
         };
         if !is_valid_version(header.inner.version) {
-            return Err(BymlError::ParseError(
-                "Unsupported BYML version (2 or 3 only)",
-            ));
+            return Err(Error::InvalidData("Unsupported BYML version (2 or 3 only)"));
         }
         let mut reader = BinReader::new(reader, endian);
         Ok(Self {
@@ -175,7 +166,7 @@ impl<R: Read + Seek> Parser<R> {
         })
     }
 
-    fn parse(&mut self) -> Result<Byml, BymlError> {
+    fn parse(&mut self) -> Result<Byml> {
         if self.root_node_offset == 0 {
             Ok(Byml::Null)
         } else {
@@ -183,11 +174,10 @@ impl<R: Read + Seek> Parser<R> {
         }
     }
 
-    fn parse_value_node(&mut self, offset: u32, node_type: NodeType) -> Result<Byml, BymlError> {
+    fn parse_value_node(&mut self, offset: u32, node_type: NodeType) -> Result<Byml> {
         let raw: u32 = self.reader.read_at(offset as u64)?;
 
-        let mut read_long =
-            || -> Result<u64, BymlError> { Ok(self.reader.read_at(offset as u64)?) };
+        let mut read_long = || -> Result<u64> { Ok(self.reader.read_at(offset as u64)?) };
 
         let value = match node_type {
             NodeType::String => Byml::String(self.string_table.get_string(raw, &mut self.reader)?),
@@ -216,11 +206,7 @@ impl<R: Read + Seek> Parser<R> {
         Ok(value)
     }
 
-    fn parse_container_child_node(
-        &mut self,
-        offset: u32,
-        node_type: NodeType,
-    ) -> Result<Byml, BymlError> {
+    fn parse_container_child_node(&mut self, offset: u32, node_type: NodeType) -> Result<Byml> {
         if is_container_type(node_type) {
             let container_offset = self.reader.read_at(offset as u64)?;
             self.parse_container_node(container_offset)
@@ -229,7 +215,7 @@ impl<R: Read + Seek> Parser<R> {
         }
     }
 
-    fn parse_array_node(&mut self, offset: u32, size: u32) -> Result<Byml, BymlError> {
+    fn parse_array_node(&mut self, offset: u32, size: u32) -> Result<Byml> {
         let mut array = Vec::with_capacity(size as usize);
         let values_offset = offset + 4 + align(size, 4);
         for i in 0..size {
@@ -240,7 +226,7 @@ impl<R: Read + Seek> Parser<R> {
         Ok(Byml::Array(array))
     }
 
-    fn parse_hash_node(&mut self, offset: u32, size: u32) -> Result<Byml, BymlError> {
+    fn parse_hash_node(&mut self, offset: u32, size: u32) -> Result<Byml> {
         #[cfg(feature = "im-rc")]
         let mut hash = Hash::new();
         #[cfg(not(feature = "im-rc"))]
@@ -260,7 +246,7 @@ impl<R: Read + Seek> Parser<R> {
         Ok(Byml::Hash(hash))
     }
 
-    fn parse_container_node(&mut self, offset: u32) -> Result<Byml, BymlError> {
+    fn parse_container_node(&mut self, offset: u32) -> Result<Byml> {
         let node_type: NodeType = self.reader.read_at(offset as u64)?;
         let size: u24 = self.reader.read()?;
         match node_type {

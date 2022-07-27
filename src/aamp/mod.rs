@@ -34,19 +34,6 @@ use indexmap::IndexMap;
 use serde::{Deserialize, Serialize};
 use smartstring::alias::String;
 
-#[allow(missing_docs)]
-#[derive(Debug, thiserror::Error)]
-pub enum AampError {
-    #[error("{0}")]
-    InvalidData(&'static str),
-    #[error(transparent)]
-    IoError(#[from] std::io::Error),
-    #[error(transparent)]
-    BinaryRWError(#[from] binrw::Error),
-    #[error("Invalid string")]
-    BadString(#[from] std::str::Utf8Error),
-}
-
 type ParameterStructureMap<V> =
     IndexMap<Name, V, std::hash::BuildHasherDefault<rustc_hash::FxHasher>>;
 

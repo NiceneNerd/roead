@@ -3,16 +3,6 @@
 use crate::{Error, Result};
 use std::borrow::Cow;
 
-/// Error type for Yaz0 handling.
-#[allow(missing_docs)]
-#[derive(Debug, thiserror::Error)]
-pub enum Yaz0Error {
-    #[error("Buffer too small to decompress: only {0} bytes, need {1}.")]
-    InsufficientBuffer(usize, usize),
-    #[error(transparent)]
-    CxxError(#[from] cxx::Exception),
-}
-
 /// The header of Yaz0 compressed data.
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 #[repr(C)]
@@ -43,15 +33,15 @@ pub fn decompress(data: impl AsRef<[u8]>) -> Result<Vec<u8>> {
     if data.len() < 0x16 {
         return Err(Error::InsufficientData(data.len(), 0x16));
     }
-    let header = ffi::GetHeader(data).map_err(Yaz0Error::from)?;
+    let header = ffi::GetHeader(data)?;
     if &header.magic != b"Yaz0" {
-        return Err(Error::InvalidMagic(
+        return Err(Error::BadMagic(
             String::from_utf8_lossy(header.magic.as_slice()).to_string(),
             "Yaz0",
         ));
     }
     let mut out = vec![0; header.uncompressed_size as usize];
-    ffi::DecompressIntoBuffer(data, &mut out).map_err(Yaz0Error::from)?;
+    ffi::DecompressIntoBuffer(data, &mut out)?;
     Ok(out)
 }
 
@@ -62,21 +52,21 @@ pub fn decompress_into(data: impl AsRef<[u8]>, mut buffer: impl AsMut<[u8]>) -> 
     if data.len() < 0x16 {
         return Err(Error::InsufficientData(data.len(), 0x16));
     }
-    let header: Header = ffi::GetHeader(data).map_err(Yaz0Error::from)?;
+    let header: Header = ffi::GetHeader(data)?;
     if &header.magic != b"Yaz0" {
-        return Err(Error::InvalidMagic(
+        return Err(Error::BadMagic(
             String::from_utf8_lossy(header.magic.as_slice()).to_string(),
             "Yaz0",
         ));
     }
     let buffer = buffer.as_mut();
     if buffer.len() < header.uncompressed_size as usize {
-        return Err(Error::Yaz0Error(Yaz0Error::InsufficientBuffer(
+        return Err(Error::InsufficientData(
             buffer.len(),
             header.uncompressed_size as usize,
-        )));
+        ));
     }
-    ffi::DecompressIntoBuffer(data, buffer).map_err(Yaz0Error::from)?;
+    ffi::DecompressIntoBuffer(data, buffer)?;
     Ok(header.uncompressed_size as usize)
 }
 
@@ -90,9 +80,7 @@ pub fn decompress_into(data: impl AsRef<[u8]>, mut buffer: impl AsMut<[u8]>) -> 
 /// data. **Do not use this function on untrusted data.**
 pub unsafe fn decompress_unchecked(data: impl AsRef<[u8]>, mut buffer: impl AsMut<[u8]>) -> usize {
     let data = data.as_ref();
-    ffi::DecompressUnsafe(data, buffer.as_mut())
-        .map_err(Yaz0Error::from)
-        .unwrap_unchecked();
+    ffi::DecompressUnsafe(data, buffer.as_mut()).unwrap_unchecked();
     u32::from_be_bytes(data.get_unchecked(0x4..0x8).try_into().unwrap_unchecked()) as usize
 }
 
@@ -104,7 +92,7 @@ pub fn decompress_if(data: &[u8]) -> Cow<'_, [u8]> {
     if data.len() < 0x16 {
         return Cow::Borrowed(data);
     }
-    if let Ok(header) = ffi::GetHeader(data).map_err(Yaz0Error::from) {
+    if let Ok(header) = ffi::GetHeader(data) {
         if &header.magic != b"Yaz0" {
             return Cow::Borrowed(data);
         }

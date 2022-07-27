@@ -53,6 +53,7 @@
 //! # }
 //! ```
 mod writer;
+#[cfg(feature = "yaml")]
 mod yaml;
 use enum_as_inner::EnumAsInner;
 use smartstring::alias::String;

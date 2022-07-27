@@ -1,5 +1,5 @@
 use super::*;
-use crate::Endian;
+use crate::{Endian, Error, Result};
 use binrw::{io::Write, BinReaderExt, BinWrite};
 use cached::proc_macro::cached;
 use num_integer::Integer;
@@ -11,8 +11,6 @@ use std::io::{Cursor, Seek, SeekFrom};
 const FACTORY_INFO: &str = include_str!("../../data/botw_resource_factory_info.tsv");
 const AGLENV_INFO: &str = include_str!("../../data/aglenv_file_info.json");
 const HASH_MULTIPLIER: u32 = 0x65;
-
-type Result<T> = core::result::Result<T, SarcError>;
 
 impl BinWrite for Endian {
     type Args = ();
@@ -254,7 +252,6 @@ impl SarcWriter {
     pub fn write<W: Write + Seek>(&mut self, writer: &mut W) -> Result<()> {
         writer.seek(SeekFrom::Start(0x14))?;
         ResFatHeader {
-            magic: SFAT_MAGIC,
             header_size: 0x0C,
             num_files: self.files.len() as u16,
             hash_multiplier: self.hash_multiplier,
@@ -286,7 +283,6 @@ impl SarcWriter {
         }
 
         ResFntHeader {
-            magic: SFNT_MAGIC,
             header_size: 0x8,
             reserved: 0,
         }
@@ -313,7 +309,6 @@ impl SarcWriter {
         let file_size = writer.stream_position()? as u32;
         writer.seek(SeekFrom::Start(0))?;
         ResHeader {
-            magic: SARC_MAGIC,
             header_size: 0x14,
             bom: self.endian,
             file_size,
@@ -334,7 +329,7 @@ impl SarcWriter {
     /// * `alignment` - Data alignment (must be a power of 2)
     pub fn add_alignment_requirement(&mut self, ext: String, alignment: usize) -> Result<()> {
         if !is_valid_alignment(alignment) {
-            return Err(SarcError::InvalidAlignmentError(alignment));
+            return Err(Error::InvalidData("Invalid alignment requirement"));
         }
         self.alignment_map.insert(ext, alignment);
         Ok(())
@@ -388,7 +383,7 @@ impl SarcWriter {
     /// Set the minimum data alignment
     pub fn set_min_alignment(&mut self, alignment: usize) -> Result<()> {
         if !is_valid_alignment(alignment) {
-            return Err(SarcError::InvalidAlignmentError(alignment));
+            return Err(Error::InvalidData("Invalid minimum SARC file alignment"));
         }
         self.min_alignment = alignment;
         Ok(())

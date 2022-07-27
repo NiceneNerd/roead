@@ -2,6 +2,7 @@
 #![deny(missing_docs)]
 #![feature(const_slice_index)]
 #![feature(seek_stream_len)]
+#![feature(let_chains)]
 #[cfg(feature = "aamp")]
 pub mod aamp;
 #[cfg(feature = "byml")]
@@ -10,6 +11,7 @@ pub mod byml;
 pub mod sarc;
 pub mod types;
 mod util;
+#[cfg(feature = "yaml")]
 mod yaml;
 #[cfg(feature = "yaz0")]
 pub mod yaz0;
@@ -18,22 +20,32 @@ pub mod yaz0;
 #[derive(Debug, thiserror::Error)]
 #[allow(missing_docs)]
 pub enum Error {
-    #[error("Incorrect magic: found `{0}`, expected `{1}`.")]
-    InvalidMagic(String, &'static str),
+    #[error("Bad magic value: found `{0}`, expected `{1}`.")]
+    BadMagic(String, &'static str),
     #[error("Data too short: found {0:#x} bytes, expected >= {1:#x}.")]
     InsufficientData(usize, usize),
-    #[cfg(feature = "byml")]
+    #[error("{0}")]
+    InvalidData(&'static str),
+    #[error("{0}")]
+    InvalidDataD(String),
+    #[error("Found {0}, expected {1}")]
+    TypeError(String, &'static str),
     #[error(transparent)]
-    BymlError(#[from] byml::BymlError),
-    #[cfg(feature = "aamp")]
+    Io(#[from] std::io::Error),
+    #[cfg(feature = "binrw")]
     #[error(transparent)]
-    AampError(#[from] aamp::AampError),
+    BinarySerde(#[from] binrw::Error),
+    #[error(transparent)]
+    InvalidUtf8(#[from] std::str::Utf8Error),
+    #[cfg(feature = "yaml")]
+    #[error(transparent)]
+    InvalidNumber(#[from] lexical::Error),
+    #[cfg(feature = "yaml")]
+    #[error("Parsing YAML failed: {0}")]
+    InvalidYaml(#[from] ryml::Error),
     #[cfg(feature = "yaz0")]
     #[error(transparent)]
-    Yaz0Error(#[from] yaz0::Yaz0Error),
-    #[cfg(feature = "sarc")]
-    #[error(transparent)]
-    SarcError(#[from] sarc::SarcError),
+    Yaz0Error(#[from] cxx::Exception),
     #[error("{0}")]
     Any(String),
 }
@@ -56,10 +68,6 @@ type Result<T> = std::result::Result<T, Error>;
 
 impl Clone for Error {
     fn clone(&self) -> Self {
-        match self {
-            #[cfg(feature = "yaz0")]
-            Error::Yaz0Error(e) => Error::Any(join_str::jstr!("Yaz0Error: {&e.to_string()}")),
-            other => other.clone(),
-        }
+        todo!()
     }
 }

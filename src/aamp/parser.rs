@@ -1,28 +1,29 @@
 use super::*;
+use crate::{Error, Result};
 use binrw::prelude::*;
 use std::io::{Read, Seek};
 
 impl ParameterIO {
     /// Read a parameter archive from a binary reader.
-    pub fn read<R: Read + Seek>(reader: R) -> crate::Result<ParameterIO> {
-        Ok(Parser::new(reader)?.parse()?)
+    pub fn read<R: Read + Seek>(reader: R) -> Result<ParameterIO> {
+        Parser::new(reader)?.parse()
     }
 
     /// Load a parameter archive from binary data.
     ///
     /// **Note**: If and only if the `yaz0` feature is enabled, this function
     /// automatically decompresses the data when necessary.
-    pub fn from_binary(data: impl AsRef<[u8]>) -> crate::Result<ParameterIO> {
+    pub fn from_binary(data: impl AsRef<[u8]>) -> Result<ParameterIO> {
         #[cfg(feature = "yaz0")]
         {
             if data.as_ref().starts_with(b"Yaz0") {
-                return Ok(Parser::new(std::io::Cursor::new(crate::yaz0::decompress(
+                return Parser::new(std::io::Cursor::new(crate::yaz0::decompress(
                     data.as_ref(),
                 )?))?
-                .parse()?);
+                .parse();
             }
         }
-        Ok(Parser::new(std::io::Cursor::new(data.as_ref()))?.parse()?)
+        Parser::new(std::io::Cursor::new(data.as_ref()))?.parse()
     }
 }
 
@@ -33,23 +34,23 @@ struct Parser<R: Read + Seek> {
 }
 
 impl<R: Read + Seek> Parser<R> {
-    fn new(mut reader: R) -> Result<Self, AampError> {
+    fn new(mut reader: R) -> Result<Self> {
         if reader.stream_len()? < 0x30 {
-            return Err(AampError::InvalidData("Incomplete parameter archive"));
+            return Err(Error::InvalidData("Incomplete parameter archive"));
         }
         let header = ResHeader::read(&mut reader)?;
         if header.version != 2 {
-            return Err(AampError::InvalidData(
+            return Err(Error::InvalidData(
                 "Only version 2 parameter archives are supported",
             ));
         }
         if header.flags & 1 << 0 != 1 << 0 {
-            return Err(AampError::InvalidData(
+            return Err(Error::InvalidData(
                 "Only little endian parameter archives are supported",
             ));
         }
         if header.flags & 1 << 1 != 1 << 1 {
-            return Err(AampError::InvalidData(
+            return Err(Error::InvalidData(
                 "Only UTF-8 parameter archives are supported",
             ));
         }
@@ -60,10 +61,10 @@ impl<R: Read + Seek> Parser<R> {
         })
     }
 
-    fn parse(&mut self) -> Result<ParameterIO, AampError> {
+    fn parse(&mut self) -> Result<ParameterIO> {
         let (root_name, param_root) = self.parse_list(self.header.pio_offset + 0x30)?;
         if root_name != ROOT_KEY {
-            Err(AampError::InvalidData(
+            Err(Error::InvalidData(
                 "No param root found in parameter archive",
             ))
         } else {
@@ -79,18 +80,18 @@ impl<R: Read + Seek> Parser<R> {
     }
 
     #[inline]
-    fn seek(&mut self, offset: u32) -> Result<(), AampError> {
+    fn seek(&mut self, offset: u32) -> Result<()> {
         self.reader.seek(std::io::SeekFrom::Start(offset as u64))?;
         Ok(())
     }
 
     #[inline]
-    fn read<T: BinRead<Args = ()>>(&mut self) -> Result<T, AampError> {
+    fn read<T: BinRead<Args = ()>>(&mut self) -> Result<T> {
         Ok(self.reader.read_le()?)
     }
 
     #[inline]
-    fn read_null_string(&mut self) -> Result<String, AampError> {
+    fn read_null_string(&mut self) -> Result<String> {
         let mut string_ = [0u8; 0x256];
         let mut c: u8 = self.read()?;
         let mut len = 0;
@@ -103,7 +104,7 @@ impl<R: Read + Seek> Parser<R> {
     }
 
     #[inline]
-    fn read_at<T: BinRead<Args = ()>>(&mut self, offset: u32) -> Result<T, AampError> {
+    fn read_at<T: BinRead<Args = ()>>(&mut self, offset: u32) -> Result<T> {
         let old_pos = self.reader.stream_position()? as u32;
         self.seek(offset)?;
         let val = self.read()?;
@@ -111,10 +112,7 @@ impl<R: Read + Seek> Parser<R> {
         Ok(val)
     }
 
-    fn read_buffer<T: BinRead<Args = ()> + Copy>(
-        &mut self,
-        offset: u32,
-    ) -> Result<Vec<T>, AampError> {
+    fn read_buffer<T: BinRead<Args = ()> + Copy>(&mut self, offset: u32) -> Result<Vec<T>> {
         let size = self.read_at::<u32>(offset - 4)?;
         let buf = Vec::<T>::read_options(
             &mut self.reader,
@@ -125,7 +123,7 @@ impl<R: Read + Seek> Parser<R> {
     }
 
     #[inline]
-    fn read_float_buffer(&mut self, offset: u32) -> Result<Vec<f32>, AampError> {
+    fn read_float_buffer(&mut self, offset: u32) -> Result<Vec<f32>> {
         let size = self.read_at::<u32>(offset - 4)?;
         let mut buf = Vec::<f32>::with_capacity(size as usize);
         for _ in 0..size {
@@ -134,7 +132,7 @@ impl<R: Read + Seek> Parser<R> {
         Ok(buf)
     }
 
-    fn parse_parameter(&mut self, offset: u32) -> Result<(Name, Parameter), AampError> {
+    fn parse_parameter(&mut self, offset: u32) -> Result<(Name, Parameter)> {
         self.seek(offset)?;
         let info: ResParameter = self.read()?;
         let data_offset = info.data_rel_offset.as_u32() * 4 + offset;
@@ -165,18 +163,18 @@ impl<R: Read + Seek> Parser<R> {
         Ok((info.name, value))
     }
 
-    fn parse_object(&mut self, offset: u32) -> Result<(Name, ParameterObject), AampError> {
+    fn parse_object(&mut self, offset: u32) -> Result<(Name, ParameterObject)> {
         self.seek(offset)?;
         let info: ResParameterObj = self.read()?;
         let offset = info.params_rel_offset as u32 * 4 + offset;
         let params = (0..info.param_count)
             .into_iter()
             .map(|i| self.parse_parameter(offset + 0x8 * i as u32))
-            .collect::<Result<_, AampError>>()?;
+            .collect::<Result<_>>()?;
         Ok((info.name, params))
     }
 
-    fn parse_list(&mut self, offset: u32) -> Result<(Name, ParameterList), AampError> {
+    fn parse_list(&mut self, offset: u32) -> Result<(Name, ParameterList)> {
         self.seek(offset)?;
         let info: ResParameterList = self.read()?;
         let lists_offset = info.lists_rel_offset as u32 * 4 + offset;
@@ -185,11 +183,11 @@ impl<R: Read + Seek> Parser<R> {
             lists: (0..info.list_count)
                 .into_iter()
                 .map(|i| self.parse_list(lists_offset + 0xC * i as u32))
-                .collect::<Result<_, AampError>>()?,
+                .collect::<Result<_>>()?,
             objects: (0..info.object_count)
                 .into_iter()
                 .map(|i| self.parse_object(objects_offset + 0x8 * i as u32))
-                .collect::<Result<_, AampError>>()?,
+                .collect::<Result<_>>()?,
         };
         Ok((info.name, plist))
     }
