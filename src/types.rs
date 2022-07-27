@@ -133,7 +133,7 @@ impl<const N: usize> binrw::BinRead for FixedSafeString<N> {
 #[cfg_attr(feature = "with-serde", derive(Serialize, Deserialize))]
 #[allow(missing_docs)]
 #[derive(Debug, Clone, Copy)]
-#[binrw::binrw]
+#[cfg_attr(feature = "binrw", binrw::binrw)]
 pub struct Vector2f {
     pub x: f32,
     pub y: f32,
@@ -157,7 +157,7 @@ impl std::hash::Hash for Vector2f {
 #[cfg_attr(feature = "with-serde", derive(Serialize, Deserialize))]
 #[allow(missing_docs)]
 #[derive(Debug, Clone, Copy)]
-#[binrw::binrw]
+#[cfg_attr(feature = "binrw", binrw::binrw)]
 pub struct Vector3f {
     pub x: f32,
     pub y: f32,
@@ -188,7 +188,7 @@ impl std::hash::Hash for Vector3f {
 #[cfg_attr(feature = "with-serde", derive(Serialize, Deserialize))]
 #[allow(missing_docs)]
 #[derive(Debug, Clone, Copy)]
-#[binrw::binrw]
+#[cfg_attr(feature = "binrw", binrw::binrw)]
 pub struct Vector4f {
     pub x: f32,
     pub y: f32,
@@ -223,7 +223,7 @@ impl std::hash::Hash for Vector4f {
 #[cfg_attr(feature = "with-serde", derive(Serialize, Deserialize))]
 #[allow(missing_docs)]
 #[derive(Debug, Clone, Copy)]
-#[binrw::binrw]
+#[cfg_attr(feature = "binrw", binrw::binrw)]
 pub struct Quat {
     pub a: f32,
     pub b: f32,
@@ -258,7 +258,7 @@ impl std::hash::Hash for Quat {
 #[cfg_attr(feature = "with-serde", derive(Serialize, Deserialize))]
 #[allow(missing_docs)]
 #[derive(Debug, Clone, Copy)]
-#[binrw::binrw]
+#[cfg_attr(feature = "binrw", binrw::binrw)]
 pub struct Color {
     pub r: f32,
     pub g: f32,
@@ -293,7 +293,7 @@ impl std::hash::Hash for Color {
 #[cfg_attr(feature = "with-serde", derive(Serialize, Deserialize))]
 #[allow(missing_docs)]
 #[derive(Debug, Default, Clone, Copy)]
-#[binrw::binrw]
+#[cfg_attr(feature = "binrw", binrw::binrw)]
 pub struct Curve {
     pub a: u32,
     pub b: u32,

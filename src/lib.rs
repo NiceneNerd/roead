@@ -43,6 +43,9 @@ pub enum Error {
     #[cfg(feature = "yaml")]
     #[error("Parsing YAML failed: {0}")]
     InvalidYaml(#[from] ryml::Error),
+    #[cfg(feature = "yaml")]
+    #[error("Parsing YAML binary data failed: {0}")]
+    InvalidYamlBinary(#[from] base64::DecodeError),
     #[cfg(feature = "yaz0")]
     #[error(transparent)]
     Yaz0Error(#[from] cxx::Exception),

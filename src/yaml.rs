@@ -21,14 +21,15 @@ pub(crate) fn get_tag_based_type(tag: &str) -> Option<TagBasedType> {
     }
 }
 
-pub(crate) enum ScalarValue {
+pub(crate) enum Scalar {
     Null,
     Bool(bool),
-    Int(u64),
+    Int(i64),
     Float(f64),
     String(smartstring::alias::String),
 }
 
+#[inline]
 fn is_infinity(input: &str) -> bool {
     matches!(
         input,
@@ -36,23 +37,26 @@ fn is_infinity(input: &str) -> bool {
     )
 }
 
+#[inline]
 fn is_negative_infinity(input: &str) -> bool {
     matches!(input, "-.inf" | "-.Inf" | "-.INF")
 }
 
+#[inline]
 fn in_nan(input: &str) -> bool {
     matches!(input, ".nan" | ".NaN" | ".NAN")
 }
 
 /// Deliberately not compliant to the YAML 1.2 standard to get rid of unused features
 /// that harm performance.
+#[inline]
 pub(crate) fn parse_scalar(
     tag_type: Option<TagBasedType>,
     value: &str,
     is_quoted: bool,
-) -> Result<ScalarValue> {
+) -> Result<Scalar> {
     if tag_type == Some(TagBasedType::Bool) || matches!(value, "true" | "false") {
-        Ok(ScalarValue::Bool(&value[..1] == "t"))
+        Ok(Scalar::Bool(&value[..1] == "t"))
     } else {
         // Floating-point conversions.
         let is_possible_double = value.contains('.');
@@ -60,14 +64,14 @@ pub(crate) fn parse_scalar(
             || (tag_type.is_none() && is_possible_double && !is_quoted)
         {
             if is_infinity(value) {
-                return Ok(ScalarValue::Float(f64::INFINITY));
+                return Ok(Scalar::Float(f64::INFINITY));
             } else if is_negative_infinity(value) {
-                return Ok(ScalarValue::Float(f64::NEG_INFINITY));
+                return Ok(Scalar::Float(f64::NEG_INFINITY));
             } else if in_nan(value) {
-                return Ok(ScalarValue::Float(f64::NAN));
+                return Ok(Scalar::Float(f64::NAN));
             } else {
                 match lexical::parse(value.as_bytes()) {
-                    Ok(v) => return Ok(ScalarValue::Float(v)),
+                    Ok(v) => return Ok(Scalar::Float(v)),
                     Err(_) => {
                         if tag_type == Some(TagBasedType::Float) {
                             return Err(Error::InvalidDataD(jstr!("Invalid float: {value}")));
@@ -80,26 +84,38 @@ pub(crate) fn parse_scalar(
         if tag_type == Some(TagBasedType::Int)
             || (tag_type.is_none() && !value.is_empty() && !is_quoted)
         {
-            match lexical::parse(value).or_else(|_| {
-                lexical::parse_with_options::<
-                    u64,
-                    _,
-                    { lexical::NumberFormatBuilder::hexadecimal() },
-                >(value.trim_start_matches("0x"), &lexical::ParseIntegerOptions::default())
-            }) {
-                Ok(v) => return Ok(ScalarValue::Int(v)),
+            match lexical::parse(value) {
+                Ok(v) => return Ok(Scalar::Int(v)),
                 Err(_) => {
                     if tag_type == Some(TagBasedType::Int) {
-                        return Err(Error::InvalidDataD(jstr!("Invalid int: {value}")));
+                        if value.starts_with("0x") {
+                            match lexical::parse_with_options::<
+                                i64,
+                                _,
+                                { lexical::NumberFormatBuilder::hexadecimal() },
+                            >(
+                                value.trim_start_matches("0x"),
+                                &lexical::ParseIntegerOptions::default(),
+                            ) {
+                                Ok(v) => return Ok(Scalar::Int(v)),
+                                Err(_) => {
+                                    return Err(Error::InvalidDataD(jstr!(
+                                        "Invalid integer: {value}"
+                                    )))
+                                }
+                            }
+                        }
+                    } else if tag_type == Some(TagBasedType::Int) {
+                        return Err(Error::InvalidDataD(jstr!("Invalid integer: {value}")));
                     }
                 }
             }
         }
         if tag_type == Some(TagBasedType::Null) || matches!(value, "null" | "~" | "NULL" | "Null") {
-            Ok(ScalarValue::Null)
+            Ok(Scalar::Null)
         } else {
             // Fall back to treating the value as a string.
-            Ok(ScalarValue::String(value.into()))
+            Ok(Scalar::String(value.into()))
         }
     }
 }

@@ -125,6 +125,12 @@ impl<'a> From<&'a str> for BymlIndex<'a> {
     }
 }
 
+impl<'a> From<&'a String> for BymlIndex<'a> {
+    fn from(s: &'a String) -> Self {
+        Self::HashIdx(s)
+    }
+}
+
 impl<'a> From<usize> for BymlIndex<'a> {
     fn from(idx: usize) -> Self {
         Self::ArrayIdx(idx)
@@ -178,6 +184,12 @@ impl PartialEq for Byml {
             (Byml::Null, Byml::Null) => true,
             _ => false,
         }
+    }
+}
+
+impl PartialEq<Byml> for &Byml {
+    fn eq(&self, other: &Byml) -> bool {
+        self == other
     }
 }
 
@@ -271,13 +283,13 @@ impl Byml {
 #[cfg(test)]
 pub(self) static FILES: &[&str] = &[
     "A-1_Dynamic",
-    "ActorInfo.product",
     "EventInfo.product",
     "GameROMPlayer",
     "LevelSensor",
     "MainFieldLocation",
     "MainFieldStatic",
     "Preset0_Field",
+    "ActorInfo.product",
 ];
 
 #[cfg(test)]
