@@ -21,6 +21,7 @@ rustc-hash = "1.1.0"
 ryml = { version = "0.1.4", optional = true }
 serde = { version = "1.0.139", features = ["derive"], optional = true }
 serde_json = { version = "1.0.82", optional = true }
+sprintf = { version = "0.1.2", optional = true }
 smartstring = { version = "1.0.1", optional = true}
 thiserror = "1.0.31"
 
@@ -36,6 +37,6 @@ aamp = ["binrw", "enumflags2", "enum-as-inner", "smartstring", "indexmap", "almo
 byml = ["binrw", "enum-as-inner", "smartstring", "almost"]
 sarc = ["binrw", "num-integer", "serde", "serde_json", "cached"]
 yaz0 = ["cxx", "cxx-build"]
-yaml = ["ryml", "lexical", "base64"]
+yaml = ["ryml", "lexical", "base64", "sprintf"]
 with-serde = ["serde", "smartstring/serde", "im-rc/serde", "indexmap/serde"]
 default = ["aamp", "byml", "sarc", "yaz0"]

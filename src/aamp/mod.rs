@@ -1,7 +1,7 @@
 //! Port of the `oead::aamp` module.
 //!
-//! Only version 2, little endian and UTF-8 binary parameter archives are supported.  
-//! All parameter types including buffers are supported.  
+//! Only version 2, little endian and UTF-8 binary parameter archives are
+//! supported. All parameter types including buffers are supported.  
 //! The YAML output is compatible with the pure Python aamp library.
 //!
 //! The main type is the `ParameterIO`, which will usually be constructed
@@ -25,6 +25,8 @@
 //! # }
 //! ```
 mod parser;
+#[cfg(feature = "yaml")]
+mod text;
 mod writer;
 use crate::{types::*, util::u24};
 use binrw::binrw;
@@ -465,8 +467,8 @@ pub trait ParameterListing {
     fn object_mut<N: Into<Name>>(&self, name: N) -> Option<&mut ParameterObject>;
 }
 
-/// [`Parameter`] list. This is essentially a dictionary of parameter objects and
-/// a dictionary of parameter lists.
+/// [`Parameter`] list. This is essentially a dictionary of parameter objects
+/// and a dictionary of parameter lists.
 #[cfg_attr(feature = "with-serde", derive(Serialize, Deserialize))]
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub struct ParameterList {
