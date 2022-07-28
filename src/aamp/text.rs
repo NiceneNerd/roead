@@ -1,15 +1,15 @@
 use super::*;
 use crate::{yaml::*, Error, Result};
 use once_cell::sync::Lazy;
-use parking_lot::Mutex;
+use parking_lot::RwLock;
 use rustc_hash::FxHashMap;
 use ryml::*;
 use smartstring::alias::String;
 use std::{
-    borrow::Cow,
+    borrow::{Borrow, Cow},
     cell::RefCell,
     collections::hash_map::{Entry, VacantEntry},
-    sync::{Arc, RwLock},
+    sync::Arc,
 };
 
 static NAMES: &str = include_str!("../../data/botw_hashed_names.txt");
@@ -91,7 +91,7 @@ macro_rules! free_cow {
 /// strings from Breath of the Wild’s executable.
 #[derive(Debug, Default)]
 pub struct NameTable<'a> {
-    names: RefCell<FxHashMap<u32, Cow<'a, str>>>,
+    names: RwLock<FxHashMap<u32, Cow<'a, str>>>,
     numbered_names: Vec<&'a str>,
 }
 
@@ -100,7 +100,7 @@ impl<'a> NameTable<'a> {
     pub fn new(botw_strings: bool) -> NameTable<'a> {
         if botw_strings {
             Self {
-                names: RefCell::new(NAMES.lines().map(|n| (hash_name(n), n.into())).collect()),
+                names: RwLock::new(NAMES.lines().map(|n| (hash_name(n), n.into())).collect()),
                 numbered_names: NUMBERED_NAMES.lines().collect(),
             }
         } else {
@@ -112,14 +112,14 @@ impl<'a> NameTable<'a> {
     pub fn add_name(&self, name: impl Into<Cow<'a, str>>) {
         let name = name.into();
         let hash = hash_name(&name);
-        self.names.borrow_mut().entry(hash).or_insert(name);
+        self.names.write().entry(hash).or_insert(name);
     }
 
     /// Add a known string to the name table if you already know the hash (to
     /// avoid computing it).
     pub fn add_name_with_hash(&self, name: impl Into<Cow<'a, str>>, hash: u32) {
         self.names
-            .borrow_mut()
+            .write()
             .entry(hash)
             .or_insert_with(|| name.into());
     }
@@ -128,7 +128,7 @@ impl<'a> NameTable<'a> {
     pub fn add_name_str<'s: 'a>(&'a self, name: &'s str) {
         let hash = hash_name(name);
         self.names
-            .borrow_mut()
+            .write()
             .entry(hash)
             .or_insert_with(|| name.into());
     }
@@ -138,12 +138,7 @@ impl<'a> NameTable<'a> {
     ///
     /// The table is automatically updated with any newly found names if an
     /// indice-based guess was necessary.
-    pub fn get_name<'b>(
-        &'b self,
-        hash: u32,
-        index: usize,
-        parent_hash: u32,
-    ) -> Option<&Cow<'a, str>> {
+    pub fn get_name(&self, hash: u32, index: usize, parent_hash: u32) -> Option<&Cow<'_, str>> {
         fn test_names<'a: 'b, 'b>(
             entry: VacantEntry<'b, u32, Cow<'a, str>>,
             hash: u32,
@@ -167,7 +162,7 @@ impl<'a> NameTable<'a> {
             Err(entry)
         }
 
-        let mut names = self.names.borrow_mut();
+        let mut names = self.names.write();
         let parent_name = names.get(&parent_hash).map(|c| free_cow!(c, 'a));
         match names.entry(hash) {
             Entry::Occupied(entry) => Some(free_cow!(entry.get(), 'a)),
@@ -216,15 +211,68 @@ impl<'a> NameTable<'a> {
     }
 }
 
-static DEFAULT_NAME_TABLE: Lazy<Arc<Mutex<NameTable<'static>>>> =
-    Lazy::new(|| Arc::new(Mutex::new(NameTable::new(true))));
+static DEFAULT_NAME_TABLE: Lazy<Arc<NameTable<'static>>> =
+    Lazy::new(|| Arc::new(NameTable::new(true)));
 
 /// Returns the default instance of the name table, which is automatically
 /// populated with Breath of the Wild strings. It is initialised on first use
 /// and has interior mutability.
-pub fn get_default_name_table(
-) -> parking_lot::lock_api::MutexGuard<'static, parking_lot::RawMutex, NameTable<'static>> {
-    DEFAULT_NAME_TABLE.lock()
+pub fn get_default_name_table() -> &'static Lazy<Arc<NameTable<'static>>> {
+    &DEFAULT_NAME_TABLE
+}
+
+#[inline(always)]
+fn recognize_tag(tag: &str) -> Option<TagBasedType> {
+    match tag {
+        "!str32" | "!str64" | "!str256" => Some(TagBasedType::Str),
+        "!u" => Some(TagBasedType::Int),
+        _ => None,
+    }
+}
+
+fn scalar_to_value(tag: &str, scalar: Scalar) -> Result<Parameter> {
+    Ok(match scalar {
+        Scalar::String(s) => match tag {
+            "!str32" => Parameter::String32(s.into()),
+            "!str64" => Parameter::String64(s.into()),
+            "!str256" => Parameter::String256(s.into()),
+            _ => Parameter::StringRef(s),
+        },
+        Scalar::Int(i) => {
+            if tag == "!u" {
+                Parameter::U32(i as u32)
+            } else {
+                Parameter::Int(i as i32)
+            }
+        }
+        Scalar::Float(f) => Parameter::F32(f as f32),
+        Scalar::Bool(b) => Parameter::Bool(b),
+        Scalar::Null => return Err(Error::InvalidData("AAMP does not support null values")),
+    })
+}
+
+#[inline(always)]
+fn parse_num<'a, 't, T: lexical::FromLexical>(
+    node: &NodeRef<'a, 't, '_, &'t Tree<'a>>,
+) -> Result<T> {
+    Ok(T::from_lexical(node.val()?.as_bytes())?)
+}
+
+macro_rules! impl_from_node_for_struct {
+    ($type:tt, $($field:tt),+) => {
+        impl<'a, 't, 'k, 'r> TryFrom<&'r NodeRef<'a, 't, 'k, &'t Tree<'a>>> for $type {
+            fn try_from(node: &'r NodeRef<'a, 't, 'k, &'t Tree<'a>>) -> Result<Self, ()>
+            {
+                let mut iter = node.iter()?;
+                let result = $type {
+                    $(
+                        $field: parse_num(iter.next()?)?,
+                    )+
+                };
+                Ok(result)
+            }
+        }
+    };
 }
 
 struct Parser<'a>(Tree<'a>);
@@ -247,14 +295,11 @@ mod tests {
 
     #[test]
     fn test_names() {
+        let table = get_default_name_table();
         let parent_hash: u32 = 2814088591;
+        assert_eq!(table.get_name(parent_hash, 0, 0).unwrap(), "AI");
         let hash: u32 = 2157271501;
         let index: usize = 35;
-        assert_eq!(
-            get_default_name_table()
-                .get_name(hash, index, parent_hash)
-                .unwrap(),
-            "AI_35"
-        );
+        assert_eq!(table.get_name(hash, index, parent_hash).unwrap(), "AI_35");
     }
 }
