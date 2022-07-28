@@ -26,8 +26,8 @@
 //! # }
 //! ```
 //!
-//! A number of convenience getters are available which return a result for a variant value:
-//! ```
+//! A number of convenience getters are available which return a result for a
+//! variant value: ```
 //! # use roead::byml::Byml;
 //! # fn docttest() -> Result<(), Box<dyn std::error::Error>> {
 //! # let some_data = b"BYML";
@@ -37,12 +37,12 @@
 //! # }
 //! ```
 //!
-//! Most of the node types are fairly self-explanatory. Arrays are implemented as `Vec<Byml>`, and
-//! hash nodes as `FxHashMap<String, Byml>`.
+//! Most of the node types are fairly self-explanatory. Arrays are implemented
+//! as `Vec<Byml>`, and hash nodes as `FxHashMap<String, Byml>`.
 //!
-//! For convenience, a `Byml` *known* to be an array or hash node can be indexed. **Panics if the
-//! node has the wrong type, the index has the wrong type, or the index is not found**.
-//! ```
+//! For convenience, a `Byml` *known* to be an array or hash node can be
+//! indexed. **Panics if the node has the wrong type, the index has the wrong
+//! type, or the index is not found**. ```
 //! # use roead::byml::Byml;
 //! # fn docttest() -> Result<(), Box<dyn std::error::Error>> {
 //! let buf: Vec<u8> = std::fs::read("test/byml/ActorInfo.product.byml")?;
@@ -52,9 +52,9 @@
 //! # Ok(())
 //! # }
 //! ```
-mod writer;
 #[cfg(feature = "yaml")]
-mod yaml;
+mod text;
+mod writer;
 use enum_as_inner::EnumAsInner;
 use smartstring::alias::String;
 mod parser;

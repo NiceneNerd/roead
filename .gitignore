@@ -22,6 +22,7 @@ build/
 perf.data
 perf.data.old
 .gdb_history
+flamegraph.svg
 
 test/files/TwnObj_HyruleCastle_A.Tex.sbfres
 

@@ -42,7 +42,6 @@ mod write;
 use crate::Endian;
 use binrw::{binrw, BinRead, BinWrite};
 pub use parse::Sarc;
-use thiserror::Error;
 pub use write::SarcWriter;
 
 /// Provides readonly access to a file that is stored in a SARC archive.
