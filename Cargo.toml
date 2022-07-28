@@ -18,7 +18,7 @@ join_str = "0.1.0"
 lexical = { version = "6.1.1", optional = true, features = ["power-of-two"] }
 num-integer = { version = "0.1.45", optional = true }
 rustc-hash = "1.1.0"
-ryml = { version = "0.1.3", optional = true }
+ryml = { version = "0.1.4", optional = true }
 serde = { version = "1.0.139", features = ["derive"], optional = true }
 serde_json = { version = "1.0.82", optional = true }
 smartstring = { version = "1.0.1", optional = true}
