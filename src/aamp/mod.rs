@@ -35,6 +35,8 @@ use indexmap::IndexMap;
 #[cfg(feature = "with-serde")]
 use serde::{Deserialize, Serialize};
 use smartstring::alias::String;
+#[cfg(feature = "yaml")]
+pub use text::{get_default_name_table, NameTable};
 
 type ParameterStructureMap<V> =
     IndexMap<Name, V, std::hash::BuildHasherDefault<rustc_hash::FxHasher>>;
