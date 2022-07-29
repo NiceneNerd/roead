@@ -11,11 +11,12 @@
 //! # fn doctest() -> std::result::Result<(), Box<dyn std::error::Error>> {
 //! let data = std::fs::read("test/aamp/Lizalfos.bphysics")?;
 //! let pio = ParameterIO::from_binary(&data)?; // Parse AAMP from binary data
+//! // A parameter IO is to an extent interchangeable with its root list.
 //! for (hash, list) in pio.lists().iter() {
 //!     // Do stuff with lists
 //! }
 //! if let Some(demo_obj) = pio.object("DemoAIActionIdx") { // Access a parameter object
-//!     for (hash, parameter) in demo_obj.params() {
+//!     for (hash, parameter) in demo_obj.iter() {
 //!         // Do stuff with parameters
 //!     }
 //! }
@@ -24,6 +25,12 @@
 //! # Ok(())
 //! # }
 //! ```
+//!
+//! All parameter map structures ([`ParameterObject`], [`ParameterObjectMap`],
+//! [`ParameterListMap`]) can take either a name or a hash for key-based
+//! operations, and likewise can be indexed by the same. As usual, indexing into
+//! a non-existent key will panic.
+mod names;
 mod parser;
 #[cfg(feature = "yaml")]
 mod text;
@@ -32,11 +39,10 @@ use crate::{types::*, util::u24};
 use binrw::binrw;
 use from_variants::FromVariants;
 use indexmap::IndexMap;
+pub use names::{get_default_name_table, NameTable};
 #[cfg(feature = "with-serde")]
 use serde::{Deserialize, Serialize};
 use smartstring::alias::String;
-#[cfg(feature = "yaml")]
-pub use text::{get_default_name_table, NameTable};
 use variantly::Variantly;
 
 type ParameterStructureMap<V> =
@@ -400,11 +406,83 @@ macro_rules! impl_map_wrapper {
             pub fn insert<N: Into<Name>>(&mut self, key: N, value: $valtype) {
                 self.0.insert(key.into(), value);
             }
+
+            /// Get an entry value by name or hash.
+            #[inline(always)]
+            pub fn get<N: Into<Name>>(&self, key: N) -> Option<&$valtype> {
+                self.0.get(&key.into())
+            }
+
+            /// Get an entry value mutably by name or hash.
+            #[inline(always)]
+            pub fn get_mut<N: Into<Name>>(&mut self, key: N) -> Option<&mut $valtype> {
+                self.0.get_mut(&key.into())
+            }
+
+            /// Get a full entry by name or hash.
+            #[inline(always)]
+            pub fn entry<N: Into<Name>>(&mut self, key: N) -> indexmap::map::Entry<Name, $valtype> {
+                self.0.entry(key.into())
+            }
+
+            /// Iterate entries.
+            #[inline(always)]
+            pub fn iter(&self) -> impl Iterator<Item = (&Name, &$valtype)> {
+                self.0.iter()
+            }
+
+            /// Iterate entries mutably.
+            #[inline(always)]
+            pub fn iter_mut(&mut self) -> impl Iterator<Item = (&Name, &mut $valtype)> {
+                self.0.iter_mut()
+            }
+
+            #[cfg(feature = "yaml")]
+            /// Iterate entries by name (this is potentially rather expensive,
+            /// as the name for each hash must be looked up from the default
+            /// name table). It returns a [`Result`](`std::result::Result`) for
+            /// each name, with the found name as the success value or the hash
+            /// as the error value.
+            ///
+            /// This is only available with the `yaml` feature.
+            #[inline(always)]
+            pub fn iter_by_name(
+                &self,
+            ) -> impl Iterator<
+                Item = (
+                    std::result::Result<&'static std::borrow::Cow<'static, str>, u32>,
+                    &$valtype,
+                ),
+            > {
+                let table = crate::aamp::get_default_name_table();
+                self.0.iter().map(|(hash, val)| {
+                    (
+                        match table.get_name(hash.0, 0, 0) {
+                            Some(name) => Ok(name),
+                            None => Err(hash.0),
+                        },
+                        val,
+                    )
+                })
+            }
         }
 
         impl<N: Into<Name>> FromIterator<(N, $valtype)> for $type {
             fn from_iter<T: IntoIterator<Item = (N, $valtype)>>(iter: T) -> Self {
                 Self(iter.into_iter().map(|(k, v)| (k.into(), v)).collect())
+            }
+        }
+
+        impl<N: Into<Name>> std::ops::Index<N> for $type {
+            type Output = $valtype;
+            fn index(&self, name: N) -> &$valtype {
+                self.0.get(&name.into()).unwrap()
+            }
+        }
+
+        impl<N: Into<Name>> std::ops::IndexMut<N> for $type {
+            fn index_mut(&mut self, name: N) -> &mut $valtype {
+                self.0.get_mut(&name.into()).unwrap()
             }
         }
     };
@@ -436,17 +514,25 @@ pub trait ParameterListing {
     /// Returns a mutable map of parameter lists.
     fn lists_mut(&mut self) -> &mut ParameterListMap;
     /// Get a parameter list by name or hash.
-    fn list<N: Into<Name>>(&self, name: N) -> Option<&ParameterList>;
+    fn list<N: Into<Name>>(&self, name: N) -> Option<&ParameterList> {
+        self.lists().get(name.into())
+    }
     /// Get a mutable reference to a parameter list by name or hash.
-    fn list_mut<N: Into<Name>>(&self, name: N) -> Option<&mut ParameterList>;
+    fn list_mut<N: Into<Name>>(&mut self, name: N) -> Option<&mut ParameterList> {
+        self.lists_mut().get_mut(name.into())
+    }
     /// Returns a map of parameter objects.
     fn objects(&self) -> &ParameterObjectMap;
     /// Returns a mutable map of parameter objects.
     fn objects_mut(&mut self) -> &mut ParameterObjectMap;
     /// Get a parameter object by name or hash.
-    fn object<N: Into<Name>>(&self, name: N) -> Option<&ParameterObject>;
+    fn object<N: Into<Name>>(&self, name: N) -> Option<&ParameterObject> {
+        self.objects().get(name.into())
+    }
     /// Get a mutable reference to a parameter object by name or hash.
-    fn object_mut<N: Into<Name>>(&self, name: N) -> Option<&mut ParameterObject>;
+    fn object_mut<N: Into<Name>>(&mut self, name: N) -> Option<&mut ParameterObject> {
+        self.objects_mut().get_mut(name.into())
+    }
 }
 
 /// [`Parameter`] list. This is essentially a dictionary of parameter objects
@@ -458,6 +544,28 @@ pub struct ParameterList {
     pub objects: ParameterObjectMap,
     /// Map of child parameter lists.
     pub lists: ParameterListMap,
+}
+
+impl ParameterListing for ParameterList {
+    #[inline(always)]
+    fn lists(&self) -> &ParameterListMap {
+        &self.lists
+    }
+
+    #[inline(always)]
+    fn lists_mut(&mut self) -> &mut ParameterListMap {
+        &mut self.lists
+    }
+
+    #[inline(always)]
+    fn objects(&self) -> &ParameterObjectMap {
+        &self.objects
+    }
+
+    #[inline(always)]
+    fn objects_mut(&mut self) -> &mut ParameterObjectMap {
+        &mut self.objects
+    }
 }
 
 const ROOT_KEY: Name = Name::from_str("param_root");
@@ -473,4 +581,22 @@ pub struct ParameterIO {
     pub data_type: String,
     /// Root parameter list.
     pub param_root: ParameterList,
+}
+
+impl ParameterListing for ParameterIO {
+    fn lists(&self) -> &ParameterListMap {
+        &self.param_root.lists
+    }
+
+    fn lists_mut(&mut self) -> &mut ParameterListMap {
+        &mut self.param_root.lists
+    }
+
+    fn objects(&self) -> &ParameterObjectMap {
+        &self.param_root.objects
+    }
+
+    fn objects_mut(&mut self) -> &mut ParameterObjectMap {
+        &mut self.param_root.objects
+    }
 }

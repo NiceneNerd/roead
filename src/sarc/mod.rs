@@ -1,4 +1,4 @@
-//! Provides for reading and writing SARC archives.
+//! Port of the `oead::sarc` module.
 //!
 //! Unlike the other modules in this crate, this does not provide bindings to
 //! `oead` but is a port of its SARC implementation. Why? Because SARC is a

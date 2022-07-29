@@ -35,10 +35,10 @@ jwalk = "0.6.0"
 # roead = "0.12.2"
 
 [features]
-aamp = ["binrw", "enumflags2", "variantly", "from_variants", "smartstring", "indexmap", "almost"]
+aamp = ["binrw", "enumflags2", "variantly", "from_variants", "smartstring", "indexmap", "almost", "parking_lot", "once_cell"]
 byml = ["binrw", "variantly", "from_variants", "smartstring", "almost"]
 sarc = ["binrw", "num-integer", "serde", "serde_json", "cached"]
 yaz0 = ["cxx", "cxx-build"]
-yaml = ["ryml", "lexical", "base64", "once_cell", "parking_lot"]
+yaml = ["ryml", "lexical", "base64"]
 with-serde = ["serde", "smartstring/serde", "im-rc/serde", "indexmap/serde"]
 default = ["aamp", "byml", "sarc", "yaz0"]
