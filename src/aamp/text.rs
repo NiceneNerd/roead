@@ -1,6 +1,6 @@
 use super::*;
 use crate::{types::*, yaml::*, Error, Result};
-use lexical::{FromLexical, FromLexicalWithOptions};
+use lexical::{FromLexical, FromLexicalWithOptions, ToLexical, ToLexicalWithOptions};
 use once_cell::sync::Lazy;
 use parking_lot::RwLock;
 use rustc_hash::FxHashMap;
@@ -447,6 +447,136 @@ fn read_parameter_io<'a, 't, 'k, 'r>(
         },
     };
     Ok(pio)
+}
+
+macro_rules! fill_node_from_struct {
+    ($node:expr, $struct:expr, $($field:tt),+) => {{
+        $node.change_type(ryml::NodeType::Seq | ryml::NodeType::WipStyleFlowSl)?;
+        $(
+            let mut _child = $node.append_child()?;
+            _child.set_val(&lexical::to_string($struct.$field))?;
+        )+
+    }};
+}
+
+fn write_curves<'a, 't, 'k, const N: usize>(
+    mut node: NodeRef<'a, 't, 'k, &'t mut Tree<'a>>,
+    curves: &[Curve; N],
+) -> Result<()> {
+    node.change_type(ryml::NodeType::Seq | ryml::NodeType::WipStyleFlowSl)?;
+    node.set_val_tag("!curve")?;
+    for curve in curves {
+        let mut a = node.append_child()?;
+        a.set_val(&lexical::to_string(curve.a))?;
+        let mut b = node.append_child()?;
+        b.set_val(&lexical::to_string(curve.b))?;
+        for float in curve.floats {
+            let mut f = node.append_child()?;
+            f.set_val(&lexical::to_string(float))?;
+        }
+    }
+    Ok(())
+}
+
+#[inline]
+fn write_buf<'a, 't, 'k, T: ToLexical + ToLexicalWithOptions>(
+    mut node: NodeRef<'a, 't, 'k, &'t mut Tree<'a>>,
+    buf: &[T],
+    use_hex: bool,
+) -> Result<()> {
+    node.change_type(ryml::NodeType::Seq | ryml::NodeType::WipStyleFlowSl)?;
+    for val in buf {
+        let mut child = node.append_child()?;
+        let val = if use_hex {
+            format_hex!(val)
+        } else {
+            lexical::to_string(*val)
+        };
+        child.set_val(&val)?;
+    }
+    Ok(())
+}
+
+fn write_parameter<'a, 't, 'k>(
+    param: &Parameter,
+    mut node: NodeRef<'a, 't, 'k, &'t mut Tree<'a>>,
+) -> Result<()> {
+    match param {
+        Parameter::Bool(b) => node.set_val(if *b { "true" } else { "false" })?,
+        Parameter::F32(f) => node.set_val(&lexical::to_string(*f))?,
+        Parameter::Int(i) => node.set_val(&lexical::to_string(*i))?,
+        Parameter::Vec2(v) => fill_node_from_struct!(node, v, x, y),
+        Parameter::Vec3(v) => fill_node_from_struct!(node, v, x, y, z),
+        Parameter::Vec4(v) => fill_node_from_struct!(node, v, x, y, z, t),
+        Parameter::Color(c) => fill_node_from_struct!(node, c, r, g, b, a),
+        Parameter::String32(s) => {
+            node.set_val_tag("!str32")?;
+            node.set_val(s)?;
+        }
+        Parameter::String64(s) => {
+            node.set_val_tag("!str64")?;
+            node.set_val(s)?;
+        }
+        Parameter::Curve1(c) => write_curves(node, c)?,
+        Parameter::Curve2(c) => write_curves(node, c)?,
+        Parameter::Curve3(c) => write_curves(node, c)?,
+        Parameter::Curve4(c) => write_curves(node, c)?,
+        Parameter::BufferInt(buf) => {
+            node.set_val_tag("!buffer_int")?;
+            write_buf(node, buf, false)?;
+        }
+        Parameter::BufferF32(buf) => {
+            node.set_val_tag("!buffer_f32")?;
+            write_buf(node, buf, true)?;
+        }
+        Parameter::String256(s) => {
+            node.set_val_tag("!str256")?;
+            node.set_val(s)?;
+        }
+        Parameter::Quat(q) => fill_node_from_struct!(node, q, a, b, c, d),
+        Parameter::U32(u) => {
+            node.set_val_tag("!u")?;
+            node.set_val(&format_hex!(u))?;
+        }
+        Parameter::BufferU32(buf) => {
+            node.set_val_tag("!buffer_u32")?;
+            write_buf(node, buf, true)?;
+        }
+        Parameter::BufferBinary(buf) => {
+            node.set_val_tag("!buffer_binary")?;
+            write_buf(node, buf, true)?;
+        }
+        Parameter::StringRef(s) => node.set_val(s)?,
+    }
+    Ok(())
+}
+
+fn write_parameter_object<'a, 't, 'k>(
+    param: &ParameterObject,
+    parent_hash: u32,
+    mut node: NodeRef<'a, 't, 'k, &'t mut Tree<'a>>,
+) -> Result<()> {
+    node.change_type(ryml::NodeType::Map)?;
+    for (i, (key, val)) in param.0.iter().enumerate() {
+        let mut child = node.append_child()?;
+        if let Some(name) = get_default_name_table().get_name(key.0, i, parent_hash) {
+            child.set_key(name)?;
+        } else {
+            child.set_key(&lexical::to_string(key.0))?;
+        }
+        write_parameter(val, child)?;
+    }
+    Ok(())
+}
+
+fn write_parameter_list<'a, 't, 'k>(
+    param: &ParameterList,
+    parent_hash: u32,
+    mut node: NodeRef<'a, 't, 'k, &'t mut Tree<'a>>,
+) -> Result<()> {
+    node.change_type(ryml::NodeType::Map)?;
+    todo!("write param list");
+    Ok(())
 }
 
 #[cfg(test)]

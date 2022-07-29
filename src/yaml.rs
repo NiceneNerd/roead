@@ -134,3 +134,17 @@ pub(crate) fn string_needs_quotes(value: &str) -> bool {
         || lexical::parse::<u64, &[u8]>(value.as_bytes()).is_ok()
         || value == "null"
 }
+
+macro_rules! format_hex {
+    ($val:expr) => {
+        [
+            "0x",
+            &lexical::to_string_with_options::<_, { lexical::NumberFormatBuilder::hexadecimal() }>(
+                *$val,
+                &Default::default(),
+            ),
+        ]
+        .join("")
+    };
+}
+pub(crate) use format_hex;

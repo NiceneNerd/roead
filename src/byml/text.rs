@@ -173,11 +173,11 @@ impl<'a, 'b> Emitter<'a, 'b> {
                     dest_node.set_val_tag("!l").unwrap();
                 }
                 Byml::U32(u) => {
-                    dest_node.set_val(&lexical::to_string(*u)).unwrap();
+                    dest_node.set_val(&format_hex!(u)).unwrap();
                     dest_node.set_val_tag("!u").unwrap();
                 }
                 Byml::U64(u) => {
-                    dest_node.set_val(&lexical::to_string(*u)).unwrap();
+                    dest_node.set_val(&format_hex!(u)).unwrap();
                     dest_node.set_val_tag("!ul").unwrap();
                 }
                 Byml::Null => dest_node.set_val("null").unwrap(),
