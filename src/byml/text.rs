@@ -250,7 +250,6 @@ mod test {
             .unwrap();
             let byml = Byml::from_text(text).unwrap();
             let text = byml.to_text().unwrap();
-            std::fs::write("tmp.yml", &text).unwrap();
             let byml = Byml::from_text(text).unwrap();
             assert_eq!(byml, byml);
         }
