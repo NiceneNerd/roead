@@ -1,5 +1,5 @@
 use super::*;
-use crate::{yaml::*, Error, Result};
+use crate::{types::*, yaml::*, Error, Result};
 use once_cell::sync::Lazy;
 use parking_lot::RwLock;
 use rustc_hash::FxHashMap;
@@ -261,12 +261,16 @@ fn parse_num<'a, 't, T: lexical::FromLexical>(
 macro_rules! impl_from_node_for_struct {
     ($type:tt, $($field:tt),+) => {
         impl<'a, 't, 'k, 'r> TryFrom<&'r NodeRef<'a, 't, 'k, &'t Tree<'a>>> for $type {
-            fn try_from(node: &'r NodeRef<'a, 't, 'k, &'t Tree<'a>>) -> Result<Self, ()>
+            type Error = Error;
+            fn try_from(node: &'r NodeRef<'a, 't, 'k, &'t Tree<'a>>) -> Result<Self>
             {
                 let mut iter = node.iter()?;
                 let result = $type {
                     $(
-                        $field: parse_num(iter.next()?)?,
+                        $field: parse_num(
+                            &iter.next()
+                                .ok_or(Error::InvalidData(concat!(stringify!($type), " missing field", stringify!($field))))?
+                        )?,
                     )+
                 };
                 Ok(result)
@@ -274,19 +278,56 @@ macro_rules! impl_from_node_for_struct {
         }
     };
 }
+impl_from_node_for_struct!(Vector2f, x, y);
+impl_from_node_for_struct!(Vector3f, x, y, z);
+impl_from_node_for_struct!(Vector4f, x, y, z, t);
+impl_from_node_for_struct!(Quat, a, b, c, d);
+impl_from_node_for_struct!(Color, r, g, b, a);
 
-struct Parser<'a>(Tree<'a>);
-
-impl<'a> Parser<'a> {
-    fn new(text: &str) -> Result<Self> {
-        Ok(Self(Tree::parse(text)?))
+fn read_curves<'a, 't, 'k, 'r, const N: usize>(
+    node: &'r NodeRef<'a, 't, 'k, &'t Tree<'a>>,
+) -> Result<[Curve; N]> {
+    let mut iter = node.iter()?;
+    let mut curves = [Curve::default(); N];
+    for curve in curves {
+        curve.a = parse_num(
+            &iter
+                .next()
+                .ok_or(Error::InvalidData("YAML curve missing a"))?,
+        )?;
+        curve.b = parse_num(
+            &iter
+                .next()
+                .ok_or(Error::InvalidData("YAML curve missing a"))?,
+        )?;
+        for f in curve.floats {
+            f = parse_num(
+                &iter
+                    .next()
+                    .ok_or(Error::InvalidData("YAML curve missing a float"))?,
+            )?;
+        }
     }
+    Ok(curves)
+}
 
-    // fn parse_parameter()
+#[inline(always)]
+fn read_buf<'a, 't, T: lexical::FromLexical>(
+    node: &NodeRef<'a, 't, '_, &'t Tree<'a>>,
+) -> Result<Vec<T>> {
+    node.iter()?
+        .map(|node| parse_num(&node))
+        .collect::<Result<_>>()
+}
 
-    fn parse(self) -> Result<ParameterIO> {
-        todo!()
+fn parse_parameter<'a, 't, 'k, 'r>(
+    node: &'r NodeRef<'a, 't, 'k, &'t Tree<'a>>,
+) -> Result<Parameter> {
+    if !node.is_valid() {
+        return Err(Error::InvalidData("Invalid YAML node for parameter"));
     }
+    let tag = node.val_tag().unwrap_or("");
+    if node.is_seq()? {}
 }
 
 #[cfg(test)]
