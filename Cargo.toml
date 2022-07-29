@@ -21,7 +21,6 @@ enumflags2 = { version = "0.7.5", optional = true }
 from_variants = { version = "1.0.0", optional = true }
 variantly = { git = "https://github.com/NiceneNerd/variantly", rev = "523630f00f57fa168f9091e646c7bf4c2c1ed357", optional = true } #version = "0.2.0", optional = true }
 indexmap = { version = "1.9.1", optional = true }
-im-rc = { version = "15.1.0", optional = true }
 join_str = "0.1.0"
 lexical = { version = "6.1.1", optional = true, features = ["power-of-two"] }
 once_cell = { version = "1.13.0", optional = true }
@@ -56,5 +55,5 @@ byml = ["binrw", "variantly", "from_variants", "smartstring", "almost"]
 sarc = ["binrw", "num-integer", "serde", "serde_json", "cached"]
 yaz0 = ["cxx", "cxx-build"]
 yaml = ["ryml", "lexical", "base64"]
-with-serde = ["serde", "smartstring/serde", "im-rc/serde", "indexmap/serde"]
+with-serde = ["serde", "smartstring/serde", "indexmap/serde"]
 default = ["aamp", "byml", "sarc", "yaz0"]
