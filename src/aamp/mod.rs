@@ -30,13 +30,14 @@ mod text;
 mod writer;
 use crate::{types::*, util::u24};
 use binrw::binrw;
-use enum_as_inner::EnumAsInner;
+use from_variants::FromVariants;
 use indexmap::IndexMap;
 #[cfg(feature = "with-serde")]
 use serde::{Deserialize, Serialize};
 use smartstring::alias::String;
 #[cfg(feature = "yaml")]
 pub use text::{get_default_name_table, NameTable};
+use variantly::Variantly;
 
 type ParameterStructureMap<V> =
     IndexMap<Name, V, std::hash::BuildHasherDefault<rustc_hash::FxHasher>>;
@@ -78,7 +79,7 @@ pub const fn hash_name(name: &str) -> u32 {
 #[macro_export]
 macro_rules! h {
     ($name:expr) => {
-        ::roead::aamp::hash_name($name)
+        $crate::aamp::hash_name($name)
     };
 }
 
@@ -173,7 +174,7 @@ struct ResParameterList {
 /// efficient.
 #[cfg_attr(feature = "with-serde", derive(Serialize, Deserialize))]
 #[allow(clippy::derive_hash_xor_eq)]
-#[derive(Debug, Clone, EnumAsInner)]
+#[derive(Debug, Clone, Variantly, FromVariants)]
 pub enum Parameter {
     /// Boolean.
     Bool(bool),
@@ -379,74 +380,53 @@ impl Name {
     }
 }
 
+macro_rules! impl_map_wrapper {
+    ($type:tt, $valtype:tt) => {
+        impl $type {
+            /// Return the number of entries.
+            #[inline(always)]
+            pub fn len(&self) -> usize {
+                self.0.len()
+            }
+
+            /// Returns `true` if the map is empty.
+            #[inline(always)]
+            pub fn is_empty(&self) -> bool {
+                self.0.is_empty()
+            }
+
+            /// Insert a new entry.
+            #[inline(always)]
+            pub fn insert<N: Into<Name>>(&mut self, key: N, value: $valtype) {
+                self.0.insert(key.into(), value);
+            }
+        }
+
+        impl<N: Into<Name>> FromIterator<(N, $valtype)> for $type {
+            fn from_iter<T: IntoIterator<Item = (N, $valtype)>>(iter: T) -> Self {
+                Self(iter.into_iter().map(|(k, v)| (k.into(), v)).collect())
+            }
+        }
+    };
+}
+
 /// [`Parameter`] object. This is essentially a dictionary of parameters.
 #[cfg_attr(feature = "with-serde", derive(Serialize, Deserialize))]
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub struct ParameterObject(pub ParameterStructureMap<Parameter>);
-
-impl ParameterObject {
-    /// Return the number of parameters in the object.
-    pub fn len(&self) -> usize {
-        self.0.len()
-    }
-
-    /// Returns true if the object is empty.
-    pub fn is_empty(&self) -> bool {
-        self.0.is_empty()
-    }
-}
-
-impl<N: Into<Name>> FromIterator<(N, Parameter)> for ParameterObject {
-    fn from_iter<T: IntoIterator<Item = (N, Parameter)>>(iter: T) -> Self {
-        Self(iter.into_iter().map(|(k, v)| (k.into(), v)).collect())
-    }
-}
+impl_map_wrapper!(ParameterObject, Parameter);
 
 /// Newtype map of parameter objects.
 #[cfg_attr(feature = "with-serde", derive(Serialize, Deserialize))]
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub struct ParameterObjectMap(pub ParameterStructureMap<ParameterObject>);
-
-impl ParameterObjectMap {
-    /// Return the number of parameter objects in the map.
-    pub fn len(&self) -> usize {
-        self.0.len()
-    }
-
-    /// Returns true if the map is empty.
-    pub fn is_empty(&self) -> bool {
-        self.0.is_empty()
-    }
-}
-
-impl<N: Into<Name>> FromIterator<(N, ParameterObject)> for ParameterObjectMap {
-    fn from_iter<T: IntoIterator<Item = (N, ParameterObject)>>(iter: T) -> Self {
-        Self(iter.into_iter().map(|(k, v)| (k.into(), v)).collect())
-    }
-}
+impl_map_wrapper!(ParameterObjectMap, ParameterObject);
 
 /// Newtype map of parameter lists.
 #[cfg_attr(feature = "with-serde", derive(Serialize, Deserialize))]
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub struct ParameterListMap(pub ParameterStructureMap<ParameterList>);
-
-impl ParameterListMap {
-    /// Return the number of parameter lists in the map.
-    pub fn len(&self) -> usize {
-        self.0.len()
-    }
-
-    /// Returns true if the map is empty.
-    pub fn is_empty(&self) -> bool {
-        self.0.is_empty()
-    }
-}
-
-impl<N: Into<Name>> FromIterator<(N, ParameterList)> for ParameterListMap {
-    fn from_iter<T: IntoIterator<Item = (N, ParameterList)>>(iter: T) -> Self {
-        Self(iter.into_iter().map(|(k, v)| (k.into(), v)).collect())
-    }
-}
+impl_map_wrapper!(ParameterListMap, ParameterList);
 
 /// Trait abstracting over [`ParameterList`] and [`ParameterIO`]. Useful since
 /// a parameter IO is all but interchangeable with the root list.

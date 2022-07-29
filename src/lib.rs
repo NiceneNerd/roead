@@ -1,5 +1,4 @@
 //! TODO: Docs
-#![deny(missing_docs)]
 #![feature(const_slice_index)]
 #![feature(seek_stream_len)]
 #![feature(let_chains)]
@@ -18,7 +17,7 @@ pub mod yaz0;
 
 /// Error type for this crate.
 #[derive(Debug, thiserror::Error)]
-#[allow(missing_docs)]
+
 pub enum Error {
     #[error("Bad magic value: found `{0}`, expected `{1}`.")]
     BadMagic(String, &'static str),

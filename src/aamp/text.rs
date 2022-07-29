@@ -1,5 +1,6 @@
 use super::*;
 use crate::{types::*, yaml::*, Error, Result};
+use lexical::{FromLexical, FromLexicalWithOptions};
 use once_cell::sync::Lazy;
 use parking_lot::RwLock;
 use rustc_hash::FxHashMap;
@@ -11,6 +12,15 @@ use std::{
     collections::hash_map::{Entry, VacantEntry},
     sync::Arc,
 };
+
+impl ParameterIO {
+    /// Parse ParameterIO from YAML text.
+    pub fn from_text(text: impl AsRef<str>) -> Result<Self> {
+        let tree = Tree::parse(text.as_ref())?;
+        let root_ref = tree.root_ref()?;
+        read_parameter_io(&root_ref)
+    }
+}
 
 static NAMES: &str = include_str!("../../data/botw_hashed_names.txt");
 static NUMBERED_NAMES: &str = include_str!("../../data/botw_numbered_names.txt");
@@ -252,10 +262,22 @@ fn scalar_to_value(tag: &str, scalar: Scalar) -> Result<Parameter> {
 }
 
 #[inline(always)]
-fn parse_num<'a, 't, T: lexical::FromLexical>(
-    node: &NodeRef<'a, 't, '_, &'t Tree<'a>>,
-) -> Result<T> {
-    Ok(T::from_lexical(node.val()?.as_bytes())?)
+fn parse_num<'a, 't, T>(node: &NodeRef<'a, 't, '_, &'t Tree<'a>>) -> Result<T>
+where
+    T: FromLexicalWithOptions + FromLexical,
+{
+    let val = node.val()?;
+    match T::from_lexical(val.as_bytes()) {
+        Ok(v) => Ok(v),
+        Err(_) => {
+            let opts = T::Options::default();
+            Ok(T::from_lexical_with_options::<
+                { lexical::NumberFormatBuilder::hexadecimal() },
+            >(
+                val.trim_start_matches("0x").as_bytes(), &opts
+            )?)
+        }
+    }
 }
 
 macro_rules! impl_from_node_for_struct {
@@ -289,7 +311,7 @@ fn read_curves<'a, 't, 'k, 'r, const N: usize>(
 ) -> Result<[Curve; N]> {
     let mut iter = node.iter()?;
     let mut curves = [Curve::default(); N];
-    for curve in curves {
+    for curve in &mut curves {
         curve.a = parse_num(
             &iter
                 .next()
@@ -300,8 +322,8 @@ fn read_curves<'a, 't, 'k, 'r, const N: usize>(
                 .next()
                 .ok_or(Error::InvalidData("YAML curve missing a"))?,
         )?;
-        for f in curve.floats {
-            f = parse_num(
+        for f in &mut curve.floats {
+            *f = parse_num(
                 &iter
                     .next()
                     .ok_or(Error::InvalidData("YAML curve missing a float"))?,
@@ -312,7 +334,7 @@ fn read_curves<'a, 't, 'k, 'r, const N: usize>(
 }
 
 #[inline(always)]
-fn read_buf<'a, 't, T: lexical::FromLexical>(
+fn read_buf<'a, 't, T: FromLexical + FromLexicalWithOptions>(
     node: &NodeRef<'a, 't, '_, &'t Tree<'a>>,
 ) -> Result<Vec<T>> {
     node.iter()?
@@ -327,11 +349,110 @@ fn parse_parameter<'a, 't, 'k, 'r>(
         return Err(Error::InvalidData("Invalid YAML node for parameter"));
     }
     let tag = node.val_tag().unwrap_or("");
-    if node.is_seq()? {}
+    let param = if node.is_seq()? {
+        match tag {
+            "!vec2" => Vector2f::try_from(node)?.into(),
+            "!vec3" => Vector3f::try_from(node)?.into(),
+            "!vec4" => Vector4f::try_from(node)?.into(),
+            "!quat" => Quat::try_from(node)?.into(),
+            "!color" => Color::try_from(node)?.into(),
+            "!curve" => match node.num_children()? {
+                32 => read_curves::<1>(node)?.into(),
+                64 => read_curves::<2>(node)?.into(),
+                96 => read_curves::<3>(node)?.into(),
+                128 => read_curves::<4>(node)?.into(),
+                _ => return Err(Error::InvalidData("Invalid curve: wrong number of values")),
+            },
+            "!buffer_int" => read_buf::<i32>(node)?.into(),
+            "!buffer_f32" => read_buf::<f32>(node)?.into(),
+            "!buffer_u32" => read_buf::<u32>(node)?.into(),
+            "!buffer_binary" => read_buf::<u8>(node)?.into(),
+            _ => {
+                return Err(Error::InvalidData(
+                    "Invalid parameter: sequence without known tag",
+                ))
+            }
+        }
+    } else {
+        let tag_type = recognize_tag(tag).or_else(|| get_tag_based_type(tag));
+        scalar_to_value(tag, parse_scalar(tag_type, node.val()?, node.is_quoted()?)?)?
+    };
+    Ok(param)
+}
+
+#[rustfmt::skip]
+macro_rules! read_map {
+    ($node:expr, $m:expr, $fn:expr) => {
+        if !$node.is_map()? {
+            return Err(Error::InvalidData("Expected map node"));
+        }
+
+        for child in $node.iter()? {
+            let key = child.key()?;
+            let value = $fn(&child)?;
+            if !$node.is_key_quoted()?
+                && let Ok(hash) = lexical::parse::<u64, &str>(key)
+            {
+                $m.insert(hash as u32, value);
+            } else {
+                $m.insert(hash_name(key), value);
+            }
+        }
+    };
+}
+
+fn read_parameter_object<'a, 't, 'k, 'r>(
+    node: &'r NodeRef<'a, 't, 'k, &'t Tree<'a>>,
+) -> Result<ParameterObject> {
+    if !node.is_valid() {
+        return Err(Error::InvalidData("Invalid YAML node for parameter object"));
+    }
+    let mut param_object = ParameterObject::default();
+    read_map!(node, param_object, parse_parameter);
+    Ok(param_object)
+}
+
+fn read_parameter_list<'a, 't, 'k, 'r>(
+    node: &'r NodeRef<'a, 't, 'k, &'t Tree<'a>>,
+) -> Result<ParameterList> {
+    if !node.is_valid() {
+        return Err(Error::InvalidData("Invalid YAML node for parameter list"));
+    }
+    let mut param_list = ParameterList::default();
+    let lists = node.get("lists")?;
+    let objects = node.get("objects")?;
+    read_map!(&objects, param_list.objects, read_parameter_object);
+    read_map!(&lists, param_list.lists, read_parameter_list);
+    Ok(param_list)
+}
+
+fn read_parameter_io<'a, 't, 'k, 'r>(
+    node: &'r NodeRef<'a, 't, 'k, &'t Tree<'a>>,
+) -> Result<ParameterIO> {
+    if !node.is_valid() {
+        return Err(Error::InvalidData("Invalid YAML node for parameter IO"));
+    }
+    let pio = ParameterIO {
+        version: {
+            let ver = node.get("version")?;
+            parse_num(&ver)?
+        },
+        data_type: {
+            let dt = node.get("type")?;
+            dt.val()?.into()
+        },
+        param_root: {
+            let pr = node.get("param_root")?;
+            read_parameter_list(&pr)?
+        },
+    };
+    Ok(pio)
 }
 
 #[cfg(test)]
 mod tests {
+    use crate::h;
+
     use super::*;
 
     #[test]
@@ -342,5 +463,22 @@ mod tests {
         let hash: u32 = 2157271501;
         let index: usize = 35;
         assert_eq!(table.get_name(hash, index, parent_hash).unwrap(), "AI_35");
+    }
+
+    #[test]
+    fn parse() {
+        let text = std::fs::read_to_string("test/aamp/test.yml").unwrap();
+        let pio = ParameterIO::from_text(&text).unwrap();
+        dbg!(&pio);
+        assert_eq!(
+            pio.param_root
+                .objects
+                .0
+                .get(&Name::from_str("TestContent"))
+                .unwrap()
+                .0
+                .get(&Name::from_str("Bool_0")),
+            Some(&Parameter::Bool(true))
+        );
     }
 }

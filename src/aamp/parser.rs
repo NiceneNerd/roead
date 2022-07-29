@@ -201,8 +201,10 @@ mod tests {
         for file in jwalk::WalkDir::new("test/aamp")
             .into_iter()
             .filter_map(|f| {
-                f.ok()
-                    .and_then(|f| f.file_type().is_file().then(|| f.path()))
+                f.ok().and_then(|f| {
+                    (f.file_type().is_file() && !f.file_name().to_str().unwrap().ends_with("yml"))
+                        .then(|| f.path())
+                })
             })
         {
             println!("{}", file.display());

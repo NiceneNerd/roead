@@ -176,11 +176,11 @@ impl<'pio, W: Write + Seek> WriteContext<'pio, W> {
         // the majority of binary parameter archives the order is determined
         // with a rather convoluted algorithm:
         //
-        // * First, process all of the parameter IO's objects (i.e. add all
-        //   their parameters to the parameter queue).
+        // * First, process all of the parameter IO's objects (i.e. add all their
+        //   parameters to the parameter queue).
         // * Recursively collect all objects for child lists. For lists, object
-        //   processing happens after recursively processing child lists;
-        //   however every 2 lists one object from the parent list is processed.
+        //   processing happens after recursively processing child lists; however every
+        //   2 lists one object from the parent list is processed.
         fn do_collect<'ctx, 'pio, W: Write + Seek>(
             ctx: Rc<Mutex<&mut WriteContext<'pio, W>>>,
             list: &'pio ParameterList,
@@ -212,7 +212,8 @@ impl<'pio, W: Write + Seek> WriteContext<'pio, W> {
                 && list.objects.0.keys().next() == Some(&Name::from_str("DemoAIActionIdx"));
 
             if process_top_objects_first && !is_botw_aiprog {
-                // Again this is probably a hack but it is required for matching BoneControl documents...
+                // Again this is probably a hack but it is required for matching BoneControl
+                // documents...
                 let mut i = 0;
                 while object.borrow().is_some() && i < 7 {
                     process_one_object();
@@ -387,8 +388,10 @@ mod tests {
         for file in jwalk::WalkDir::new("test/aamp")
             .into_iter()
             .filter_map(|f| {
-                f.ok()
-                    .and_then(|f| f.file_type().is_file().then(|| f.path()))
+                f.ok().and_then(|f| {
+                    (f.file_type().is_file() && !f.file_name().to_str().unwrap().ends_with("yml"))
+                        .then(|| f.path())
+                })
             })
         {
             println!("{}", file.display());

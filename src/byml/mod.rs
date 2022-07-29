@@ -27,12 +27,13 @@
 //! ```
 //!
 //! A number of convenience getters are available which return a result for a
-//! variant value: ```
+//! variant value:
+//! ```
 //! # use roead::byml::Byml;
 //! # fn docttest() -> Result<(), Box<dyn std::error::Error>> {
 //! # let some_data = b"BYML";
 //! let doc = Byml::from_binary(some_data)?;
-//! let hash = doc.as_hash().unwrap();
+//! let hash = doc.hash().unwrap();
 //! # Ok(())
 //! # }
 //! ```
@@ -47,16 +48,17 @@
 //! # fn docttest() -> Result<(), Box<dyn std::error::Error>> {
 //! let buf: Vec<u8> = std::fs::read("test/byml/ActorInfo.product.byml")?;
 //! let actor_info = Byml::from_binary(&buf)?;
-//! assert_eq!(actor_info["Actors"].as_array().unwrap().len(), 7934);
-//! assert_eq!(*actor_info["Hashes"][0].as_i32().unwrap(), 31119);
+//! assert_eq!(actor_info["Actors"].array_ref().unwrap().len(), 7934);
+//! assert_eq!(actor_info["Hashes"][0].i32().unwrap(), 31119);
 //! # Ok(())
 //! # }
 //! ```
 #[cfg(feature = "yaml")]
 mod text;
 mod writer;
-use enum_as_inner::EnumAsInner;
+use from_variants::FromVariants;
 use smartstring::alias::String;
+use variantly::Variantly;
 mod parser;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -89,7 +91,6 @@ const fn is_valid_version(version: u16) -> bool {
     version >= 2 && version <= 4
 }
 
-#[allow(missing_docs)]
 #[derive(Debug, thiserror::Error)]
 pub enum BymlError {
     #[error("Invalid version: {0}")]
@@ -139,7 +140,7 @@ impl<'a> From<usize> for BymlIndex<'a> {
 
 /// Represents a Nintendo binary YAML (BYML) document or node.
 #[cfg_attr(feature = "with-serde", derive(serde::Serialize, serde::Deserialize))]
-#[derive(Debug, Clone, EnumAsInner)]
+#[derive(Debug, Clone, Variantly, FromVariants)]
 pub enum Byml {
     /// String value.
     String(String),
@@ -300,16 +301,16 @@ mod tests {
     fn accessors() {
         let mut actorinfo =
             Byml::from_binary(std::fs::read("test/byml/ActorInfo.product.byml").unwrap()).unwrap();
-        let actorinfo_hash = actorinfo.as_hash_mut().unwrap();
+        let actorinfo_hash = actorinfo.hash_mut().unwrap();
         for obj in actorinfo_hash
             .get_mut("Actors")
             .unwrap()
-            .as_array_mut()
+            .array_mut()
             .unwrap()
         {
-            let hash = obj.as_hash_mut().unwrap();
-            *hash.get_mut("name").unwrap().as_string_mut().unwrap() = "test".into();
-            assert_eq!(hash["name"].as_string().unwrap(), "test");
+            let hash = obj.hash_mut().unwrap();
+            *hash.get_mut("name").unwrap().string_mut().unwrap() = "test".into();
+            assert_eq!(hash["name"].string_ref().unwrap(), "test");
         }
     }
 }

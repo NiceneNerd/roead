@@ -3,7 +3,7 @@ use crate::{yaml::*, Error, Result};
 use ryml::{NodeRef, Tree};
 
 impl Byml {
-    #[allow(missing_docs)]
+    /// Parse BYML document from YAML text.
     pub fn from_text(text: impl AsRef<str>) -> Result<Byml> {
         Parser::new(text.as_ref()).unwrap().parse()
     }
@@ -229,10 +229,10 @@ mod test {
             let binary_byml = Byml::from_binary(bytes).unwrap();
             if byml != binary_byml {
                 for (v1, v2) in byml["Actors"]
-                    .as_array()
+                    .array_ref()
                     .unwrap()
                     .iter()
-                    .zip(binary_byml["Actors"].as_array().unwrap().iter())
+                    .zip(binary_byml["Actors"].array_ref().unwrap().iter())
                 {
                     assert_eq!(v1, v2);
                 }
