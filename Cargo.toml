@@ -9,7 +9,15 @@ repository = "https://github.com/NiceneNerd/roead"
 keywords = ["Nintendo", "aamp", "byml", "sarc", "yaz0"]
 categories = ["game-development", "parsing"]
 edition = "2021"
-exclude = ["/test"]
+exclude = [
+    "/test",
+    "/lib/zlib-ng/infcover.dir",
+    "/lib/zlib-ng/makecrct.dir",
+    "/lib/zlib-ng/makefixed.dir",
+    "/lib/zlib-ng/maketrees.dir",
+    "/lib/zlib-ng/switchlevels.dir",
+    "/lib/zlib-ng/x64"
+]
 
 [dependencies]
 almost = { version = "0.2.0", optional = true }
