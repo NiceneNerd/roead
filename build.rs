@@ -22,24 +22,15 @@ fn main() {
         .flag("-w")
         .flag_if_supported("-std=c++17")
         .include("src/include")
-        .include("lib/abseil")
-        .include("lib/EasyIterator/include")
-        .include("lib/libyaml")
         .include("lib/nonstd")
-        .include("lib/ordered-map/include")
-        .include("lib/pybind11")
-        .include("lib/rapidyaml/src")
-        .include("lib/rapidyaml/ext/c4core/src")
-        .include("lib/rapidyaml/ext/c4core/ext")
         .include("lib/zlib-ng")
         .flag_if_supported("-static");
     if cfg!(windows) {
-        builder
-            .flag_if_supported("/std:c++17")
-            .flag_if_supported("/W4")
-            .flag_if_supported("/wd4244")
-            .flag_if_supported("/wd4127")
-            .flag_if_supported("/Zc:__cplusplus");
+        builder.flag_if_supported("/std:c++17");
+        // .flag_if_supported("/W4")
+        // .flag_if_supported("/wd4244")
+        // .flag_if_supported("/wd4127")
+        // .flag_if_supported("/Zc:__cplusplus");
     } else {
         builder
             .flag_if_supported("-fcolor-diagnostics")
