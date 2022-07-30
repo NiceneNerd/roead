@@ -26,17 +26,21 @@ fn main() {
         .include("lib/zlib-ng")
         .flag_if_supported("-static");
     if cfg!(windows) {
-        builder.flag_if_supported("/std:c++17");
-        // .flag_if_supported("/W4")
-        // .flag_if_supported("/wd4244")
-        // .flag_if_supported("/wd4127")
-        // .flag_if_supported("/Zc:__cplusplus");
+        builder.flag_if_supported("/std:c++17")
+            .flag_if_supported("/W4")
+            .flag_if_supported("/wd4244")
+            .flag_if_supported("/wd4127")
+            .flag_if_supported("/Zc:__cplusplus");
+        println!("cargo:rustc-link-search=native=lib/zlib-ng/Debug");
+        println!("cargo:rustc-link-search=native=lib/zlib-ng/Release");
+        println!("cargo:rustc-link-lib=static=zlibd");
     } else {
         builder
             .flag_if_supported("-fcolor-diagnostics")
             .flag_if_supported("-Wall")
             .flag_if_supported("-Wextra")
             .flag_if_supported("-fno-plt");
+        println!("cargo:rustc-link-lib=static=zlib");
     }
     builder.compile("roead");
     println!("cargo:rerun-if-changed=src/include/oead");
@@ -44,7 +48,6 @@ fn main() {
     println!("cargo:rerun-if-changed=src/yaz0.cpp");
     println!("cargo:rerun-if-changed=src/include/oead/yaz0.h");
     println!("cargo:rustc-link-search=native=lib/zlib-ng");
-    println!("cargo:rustc-link-lib=static=zlib");
 }
 
 #[cfg(not(feature = "yaz0"))]

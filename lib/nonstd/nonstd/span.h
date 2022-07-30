@@ -18,6 +18,7 @@ http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2019/n4820.pdf
 #include <type_traits>
 
 #ifndef TCB_SPAN_NO_EXCEPTIONS
+#include <exception>
 // Attempt to discover whether we're being compiled with exception support
 #if !(defined(__cpp_exceptions) || defined(__EXCEPTIONS) || defined(_CPPUNWIND))
 #define TCB_SPAN_NO_EXCEPTIONS
@@ -27,7 +28,6 @@ http://www.open-std.org/jtc1/sc22/wg21/docs/papers/2019/n4820.pdf
 #ifndef TCB_SPAN_NO_EXCEPTIONS
 #include <cstdio>
 #include <stdexcept>
-#include <exception>
 #endif
 
 // Various feature test macros

@@ -24,7 +24,6 @@
 #include <zlib-ng.h>
 
 #include <oead/util/binary_reader.h>
-#include <oead/yaz0.h>
 #include <roead/src/yaz0.rs.h>
 
 namespace oead::yaz0 {
