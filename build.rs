@@ -19,7 +19,6 @@ fn main() {
     let mut builder = cxx_build::bridge("src/yaz0.rs");
     builder
         .file("src/yaz0.cpp")
-        .compiler("clang++")
         .flag("-w")
         .flag_if_supported("-std=c++17")
         .include("src/include")
@@ -36,6 +35,7 @@ fn main() {
         .flag_if_supported("-static");
     if cfg!(windows) {
         builder
+            .flag_if_supported("/std:c++17")
             .flag_if_supported("/W4")
             .flag_if_supported("/wd4244")
             .flag_if_supported("/wd4127")
