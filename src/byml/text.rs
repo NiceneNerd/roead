@@ -138,7 +138,9 @@ impl<'a, 'b> Emitter<'a, 'b> {
                 } else {
                     dest_node.change_type(ryml::NodeType::Map).unwrap();
                 }
-                for (key, value) in hash {
+                let mut map_items = hash.iter().collect::<Vec<_>>();
+                map_items.sort_by(|a, b| a.0.cmp(b.0));
+                for (key, value) in map_items {
                     let mut node = dest_node.append_child().unwrap();
                     node.set_key(key).unwrap();
                     if string_needs_quotes(key) {
@@ -229,10 +231,10 @@ mod test {
             let binary_byml = Byml::from_binary(bytes).unwrap();
             if byml != binary_byml {
                 for (v1, v2) in byml["Actors"]
-                    .array_ref()
+                    .as_array()
                     .unwrap()
                     .iter()
-                    .zip(binary_byml["Actors"].array_ref().unwrap().iter())
+                    .zip(binary_byml["Actors"].as_array().unwrap().iter())
                 {
                     assert_eq!(v1, v2);
                 }
@@ -250,6 +252,7 @@ mod test {
             .unwrap();
             let byml = Byml::from_text(text).unwrap();
             let text = byml.to_text().unwrap();
+            println!("{}", &text);
             let byml = Byml::from_text(text).unwrap();
             assert_eq!(byml, byml);
         }

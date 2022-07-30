@@ -37,13 +37,13 @@ mod text;
 mod writer;
 use crate::{types::*, util::u24};
 use binrw::binrw;
+use enum_as_inner::EnumAsInner;
 use from_variants::FromVariants;
 use indexmap::IndexMap;
 pub use names::{get_default_name_table, NameTable};
 #[cfg(feature = "with-serde")]
 use serde::{Deserialize, Serialize};
 use smartstring::alias::String;
-use variantly::Variantly;
 
 type ParameterStructureMap<V> =
     IndexMap<Name, V, std::hash::BuildHasherDefault<rustc_hash::FxHasher>>;
@@ -180,7 +180,7 @@ struct ResParameterList {
 /// efficient.
 #[cfg_attr(feature = "with-serde", derive(Serialize, Deserialize))]
 #[allow(clippy::derive_hash_xor_eq)]
-#[derive(Debug, Clone, Variantly, FromVariants)]
+#[derive(Debug, Clone, EnumAsInner, FromVariants)]
 pub enum Parameter {
     /// Boolean.
     Bool(bool),
