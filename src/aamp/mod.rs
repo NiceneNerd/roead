@@ -565,6 +565,10 @@ pub trait ParameterListing {
     fn list_mut<N: Into<Name>>(&mut self, name: N) -> Option<&mut ParameterList> {
         self.lists_mut().get_mut(name.into())
     }
+    /// Set a parameter list by name or hash.
+    fn set_list<N: Into<Name>>(&mut self, name: N, list: ParameterList) {
+        self.lists_mut().insert(name.into(), list);
+    }
     /// Returns a map of parameter objects.
     fn objects(&self) -> &ParameterObjectMap;
     /// Returns a mutable map of parameter objects.
@@ -576,6 +580,10 @@ pub trait ParameterListing {
     /// Get a mutable reference to a parameter object by name or hash.
     fn object_mut<N: Into<Name>>(&mut self, name: N) -> Option<&mut ParameterObject> {
         self.objects_mut().get_mut(name.into())
+    }
+    /// Set a parameter object by name or hash.
+    fn set_object<N: Into<Name>>(&mut self, name: N, object: ParameterObject) {
+        self.objects_mut().insert(name.into(), object);
     }
 }
 
