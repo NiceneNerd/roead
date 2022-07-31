@@ -374,6 +374,18 @@ impl From<u32> for Name {
     }
 }
 
+impl std::borrow::Borrow<u32> for Name {
+    fn borrow(&self) -> &u32 {
+        &self.0
+    }
+}
+
+impl AsRef<u32> for Name {
+    fn as_ref(&self) -> &u32 {
+        &self.0
+    }
+}
+
 impl Name {
     /// The CRC32 hash of the name.
     pub fn hash(&self) -> u32 {
@@ -405,6 +417,12 @@ macro_rules! impl_map_wrapper {
             #[inline(always)]
             pub fn insert<N: Into<Name>>(&mut self, key: N, value: $valtype) {
                 self.0.insert(key.into(), value);
+            }
+
+            /// Insert multiple entries from an iterator.
+            #[inline(always)]
+            pub fn extend<I: IntoIterator<Item = (Name, $valtype)>>(&mut self, iter: I) {
+                self.0.extend(iter);
             }
 
             /// Get an entry value by name or hash.
@@ -494,6 +512,32 @@ macro_rules! impl_map_wrapper {
 pub struct ParameterObject(pub ParameterStructureMap<Parameter>);
 impl_map_wrapper!(ParameterObject, Parameter);
 
+impl ParameterObject {
+    /// Create a new empty parameter object.
+    pub fn new() -> Self {
+        Default::default()
+    }
+
+    /// Builder-like method to add a new parameter.
+    pub fn with_parameter<N: Into<Name>>(
+        mut self,
+        name: N,
+        parameter: Parameter,
+    ) -> ParameterObject {
+        self.0.insert(name.into(), parameter);
+        self
+    }
+
+    /// Builder-like method to add multiple parameters from an iterator.
+    pub fn with_parameters<N: Into<Name>, I: IntoIterator<Item = (N, Parameter)>>(
+        mut self,
+        iter: I,
+    ) -> ParameterObject {
+        self.0.extend(iter.into_iter().map(|(k, v)| (k.into(), v)));
+        self
+    }
+}
+
 /// Newtype map of parameter objects.
 #[cfg_attr(feature = "with-serde", derive(Serialize, Deserialize))]
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
@@ -568,6 +612,45 @@ impl ParameterListing for ParameterList {
     }
 }
 
+impl ParameterList {
+    /// Create a new empty parameter list.
+    pub fn new() -> Self {
+        Default::default()
+    }
+
+    /// Builder-like method to add a new parameter object.
+    pub fn with_object<N: Into<Name>>(mut self, name: N, object: ParameterObject) -> ParameterList {
+        self.objects.insert(name.into(), object);
+        self
+    }
+
+    /// Builder-like method to add multiple parameter objects from an iterator.
+    pub fn with_objects<N: Into<Name>, I: IntoIterator<Item = (N, ParameterObject)>>(
+        mut self,
+        iter: I,
+    ) -> ParameterList {
+        self.objects
+            .extend(iter.into_iter().map(|(k, v)| (k.into(), v)));
+        self
+    }
+
+    /// Builder-like method to add a new parameter list.
+    pub fn with_list<N: Into<Name>>(mut self, name: N, list: ParameterList) -> ParameterList {
+        self.lists.insert(name.into(), list);
+        self
+    }
+
+    /// Builder-like method to add multiple parameter lists from an iterator.
+    pub fn with_lists<N: Into<Name>, I: IntoIterator<Item = (N, ParameterList)>>(
+        mut self,
+        iter: I,
+    ) -> ParameterList {
+        self.lists
+            .extend(iter.into_iter().map(|(k, v)| (k.into(), v)));
+        self
+    }
+}
+
 const ROOT_KEY: Name = Name::from_str("param_root");
 
 /// [`Parameter`] IO. This is the root parameter list and the only structure
@@ -598,5 +681,68 @@ impl ParameterListing for ParameterIO {
 
     fn objects_mut(&mut self) -> &mut ParameterObjectMap {
         &mut self.param_root.objects
+    }
+}
+
+impl ParameterIO {
+    /// Create a new empty parameter IO.
+    pub fn new() -> Self {
+        Self {
+            version: 0,
+            data_type: "xml".into(),
+            param_root: Default::default(),
+        }
+    }
+
+    /// Builder-like method to set the data type.
+    pub fn with_data_type(mut self, data_type: impl Into<String>) -> ParameterIO {
+        self.data_type = data_type.into();
+        self
+    }
+
+    /// Builder-like method to set the data version.
+    pub fn with_version(mut self, version: u32) -> ParameterIO {
+        self.version = version;
+        self
+    }
+
+    /// Builder-like method to add a new parameter object.
+    pub fn with_object<N: Into<Name>>(mut self, name: N, object: ParameterObject) -> ParameterIO {
+        self.param_root.objects.insert(name.into(), object);
+        self
+    }
+
+    /// Builder-like method to add multiple parameter objects from an iterator.
+    pub fn with_objects<N: Into<Name>, I: IntoIterator<Item = (N, ParameterObject)>>(
+        mut self,
+        iter: I,
+    ) -> ParameterIO {
+        self.param_root
+            .objects
+            .extend(iter.into_iter().map(|(k, v)| (k.into(), v)));
+        self
+    }
+
+    /// Builder-like method to add a new parameter list.
+    pub fn with_list<N: Into<Name>>(mut self, name: N, list: ParameterList) -> ParameterIO {
+        self.param_root.lists.insert(name.into(), list);
+        self
+    }
+
+    /// Builder-like method to add multiple parameter lists from an iterator.
+    pub fn with_lists<N: Into<Name>, I: IntoIterator<Item = (N, ParameterList)>>(
+        mut self,
+        iter: I,
+    ) -> ParameterIO {
+        self.param_root
+            .lists
+            .extend(iter.into_iter().map(|(k, v)| (k.into(), v)));
+        self
+    }
+
+    /// Builder-like method to set the root parameter list.
+    pub fn with_root(mut self, list: ParameterList) -> ParameterIO {
+        self.param_root = list;
+        self
     }
 }

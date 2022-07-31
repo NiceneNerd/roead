@@ -113,6 +113,14 @@ impl Hash for Sarc<'_> {
     }
 }
 
+impl<'a, S: std::borrow::Borrow<str>> std::ops::Index<S> for Sarc<'a> {
+    type Output = [u8];
+
+    fn index(&self, index: S) -> &Self::Output {
+        self.get_data(index.borrow()).unwrap().unwrap()
+    }
+}
+
 impl<'a> Sarc<'_> {
     /// Parses a SARC archive from binary data.
     ///
@@ -198,8 +206,8 @@ impl<'a> Sarc<'_> {
         self.endian
     }
 
-    /// Get a file by name
-    pub fn get_file(&self, file: &str) -> Result<Option<File>> {
+    #[inline(always)]
+    fn find_file(&self, file: &str) -> Result<Option<usize>> {
         if self.num_files == 0 {
             return Ok(None);
         }
@@ -214,10 +222,30 @@ impl<'a> Sarc<'_> {
             match needle_hash.cmp(&hash) {
                 std::cmp::Ordering::Less => b = m - 1,
                 std::cmp::Ordering::Greater => a = m + 1,
-                std::cmp::Ordering::Equal => return Ok(Some(self.file_at(m as usize)?)),
+                std::cmp::Ordering::Equal => return Ok(Some(m as usize)),
             }
         }
         Ok(None)
+    }
+
+    /// Get a file by name
+    pub fn get_file(&self, file: &str) -> Result<Option<File>> {
+        let file_index = self.find_file(file)?;
+        file_index.map(|i| self.file_at(i)).transpose()
+    }
+
+    /// Get file data by name.
+    pub fn get_data(&self, file: &str) -> Result<Option<&[u8]>> {
+        let file_index = self.find_file(file)?;
+        file_index
+            .map(|i| -> Result<&[u8]> {
+                let entry_offset = self.entries_offset as usize + size_of::<ResFatEntry>() * i;
+                let entry: ResFatEntry =
+                    read(self.endian, &mut Cursor::new(&self.data[entry_offset..]))?;
+                Ok(&self.data[(self.data_offset + entry.data_begin) as usize
+                    ..(self.data_offset + entry.data_end) as usize])
+            })
+            .transpose()
     }
 
     /// Get a file by index. Returns error if index > file count.
@@ -263,7 +291,8 @@ impl<'a> Sarc<'_> {
         }
     }
 
-    /// Guess the minimum data alignment for files that are stored in the archive
+    /// Guess the minimum data alignment for files that are stored in the
+    /// archive
     pub fn guess_min_alignment(&self) -> usize {
         const MIN_ALIGNMENT: u32 = 4;
         let mut gcd = MIN_ALIGNMENT;

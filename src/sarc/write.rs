@@ -59,7 +59,7 @@ fn get_agl_env_alignment_requirements() -> Vec<(String, usize)> {
     serde_json::from_str::<Vec<AglEnvInfo>>(AGLENV_INFO)
         .unwrap()
         .into_iter()
-        .filter_map(|e| (e.align >= 0).then(|| (e.align as usize, e)))
+        .filter_map(|e| (e.align >= 0).then_some((e.align as usize, e)))
         .flat_map(|(align, entry)| [(entry.ext, align), (entry.bext, align)].into_iter())
         .collect()
 }
@@ -231,8 +231,9 @@ impl SarcWriter {
         }
     }
 
-    /// Write a SARC archive to an in-memory buffer using the specified endianness.
-    /// Default alignment requirements may be automatically added.
+    /// Write a SARC archive to an in-memory buffer using the specified
+    /// endianness. Default alignment requirements may be automatically
+    /// added.
     pub fn to_binary(&mut self) -> Vec<u8> {
         let est_size: usize = 0x14
             + 0x0C
@@ -247,8 +248,9 @@ impl SarcWriter {
         buf
     }
 
-    /// Write a SARC archive to a Write + Seek writer using the specified endianness.
-    /// Default alignment requirements may be automatically added.
+    /// Write a SARC archive to a Write + Seek writer using the specified
+    /// endianness. Default alignment requirements may be automatically
+    /// added.
     pub fn write<W: Write + Seek>(&mut self, writer: &mut W) -> Result<()> {
         writer.seek(SeekFrom::Start(0x14))?;
         ResFatHeader {

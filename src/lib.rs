@@ -1,7 +1,6 @@
 //! TODO: Docs
 #![feature(const_slice_index)]
 #![feature(seek_stream_len)]
-#![feature(let_chains)]
 #[cfg(feature = "aamp")]
 pub mod aamp;
 #[cfg(feature = "byml")]

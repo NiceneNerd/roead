@@ -66,7 +66,7 @@ impl<const N: usize> From<&str> for FixedSafeString<N> {
     fn from(s: &str) -> Self {
         let mut data = [0; N];
         let len = std::cmp::min(N, s.len());
-        (&mut data[..len]).copy_from_slice(&s.as_bytes()[..len]);
+        data[..len].copy_from_slice(&s.as_bytes()[..len]);
         Self { data, len }
     }
 }

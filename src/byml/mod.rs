@@ -164,6 +164,12 @@ pub enum Byml {
     Null,
 }
 
+impl Default for Byml {
+    fn default() -> Self {
+        Self::Null
+    }
+}
+
 impl PartialEq for Byml {
     fn eq(&self, other: &Self) -> bool {
         match (self, other) {
