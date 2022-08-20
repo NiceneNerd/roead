@@ -56,8 +56,7 @@
 #[cfg(feature = "yaml")]
 mod text;
 mod writer;
-use enum_as_inner::EnumAsInner;
-use from_variants::FromVariants;
+use crate::{Error, Result};
 use smartstring::alias::String;
 mod parser;
 
@@ -136,7 +135,7 @@ impl<'a> From<usize> for BymlIndex<'a> {
 
 /// Represents a Nintendo binary YAML (BYML) document or node.
 #[cfg_attr(feature = "with-serde", derive(serde::Serialize, serde::Deserialize))]
-#[derive(Debug, Clone, EnumAsInner, FromVariants)]
+#[derive(Debug, Clone)]
 pub enum Byml {
     /// String value.
     String(String),
@@ -162,6 +161,525 @@ pub enum Byml {
     Double(f64),
     /// Null value.
     Null,
+}
+
+impl Byml {
+    fn type_name(&self) -> String {
+        match self {
+            Byml::String(_) => "String".into(),
+            Byml::BinaryData(_) => "Binary".into(),
+            Byml::Array(_) => "Array".into(),
+            Byml::Hash(_) => "Hash".into(),
+            Byml::Bool(_) => "Bool".into(),
+            Byml::I32(_) => "I32".into(),
+            Byml::Float(_) => "Float".into(),
+            Byml::U32(_) => "U32".into(),
+            Byml::I64(_) => "I64".into(),
+            Byml::U64(_) => "U64".into(),
+            Byml::Double(_) => "Double".into(),
+            Byml::Null => "Null".into(),
+        }
+    }
+
+    /// Checks if the BYML node is a null node
+    pub fn is_null(&self) -> bool {
+        matches!(self, Self::Null)
+    }
+
+    /// Get a reference to the inner bool value.
+    pub fn as_bool(&self) -> Result<bool> {
+        if let Self::Bool(v) = self {
+            Ok(*v)
+        } else {
+            Err(Error::TypeError(self.type_name(), "Bool"))
+        }
+    }
+
+    /// Get a reference to the inner i32 value.
+    pub fn as_i32(&self) -> Result<i32> {
+        if let Self::I32(v) = self {
+            Ok(*v)
+        } else {
+            Err(Error::TypeError(self.type_name(), "I32"))
+        }
+    }
+
+    /// Get a reference to the inner u32 value.
+    pub fn as_u32(&self) -> Result<u32> {
+        if let Self::U32(v) = self {
+            Ok(*v)
+        } else {
+            Err(Error::TypeError(self.type_name(), "U32"))
+        }
+    }
+
+    /// Get a reference to the inner i64 value.
+    pub fn as_i64(&self) -> Result<i64> {
+        if let Self::I64(v) = self {
+            Ok(*v)
+        } else {
+            Err(Error::TypeError(self.type_name(), "I64"))
+        }
+    }
+
+    /// Get a reference to the inner u64 value.
+    pub fn as_u64(&self) -> Result<u64> {
+        if let Self::U64(v) = self {
+            Ok(*v)
+        } else {
+            Err(Error::TypeError(self.type_name(), "U64"))
+        }
+    }
+
+    /// Get a reference to the inner f32 value.
+    pub fn as_float(&self) -> Result<f32> {
+        if let Self::Float(v) = self {
+            Ok(*v)
+        } else {
+            Err(Error::TypeError(self.type_name(), "Float"))
+        }
+    }
+
+    /// Get a reference to the inner f64 value.
+    pub fn as_double(&self) -> Result<f64> {
+        if let Self::Double(v) = self {
+            Ok(*v)
+        } else {
+            Err(Error::TypeError(self.type_name(), "Double"))
+        }
+    }
+
+    /// Get a reference to the inner string value.
+    pub fn as_string(&self) -> Result<&String> {
+        if let Self::String(v) = self {
+            Ok(v)
+        } else {
+            Err(Error::TypeError(self.type_name(), "String"))
+        }
+    }
+
+    /// Get a reference to the inner byte slice.
+    pub fn as_binary_data(&self) -> Result<&[u8]> {
+        if let Self::BinaryData(v) = self {
+            Ok(v.as_slice())
+        } else {
+            Err(Error::TypeError(self.type_name(), "BinaryData"))
+        }
+    }
+
+    /// Get a reference to the inner array of BYML nodes.
+    pub fn as_array(&self) -> Result<&[Byml]> {
+        if let Self::Array(v) = self {
+            Ok(v.as_slice())
+        } else {
+            Err(Error::TypeError(self.type_name(), "Array"))
+        }
+    }
+
+    /// Get a reference to the inner hash map of BYML nodes.
+    pub fn as_hash(&self) -> Result<&Hash> {
+        if let Self::Hash(v) = self {
+            Ok(v)
+        } else {
+            Err(Error::TypeError(self.type_name(), "Hash"))
+        }
+    }
+
+    /// Get a mutable reference to the inner string value.
+    pub fn as_mut_string(&mut self) -> Result<&mut String> {
+        if let Self::String(v) = self {
+            Ok(v)
+        } else {
+            Err(Error::TypeError(self.type_name(), "String"))
+        }
+    }
+
+    /// Get a mutable reference to the inner bool value.
+    pub fn as_mut_bool(&mut self) -> Result<&mut bool> {
+        if let Self::Bool(v) = self {
+            Ok(v)
+        } else {
+            Err(Error::TypeError(self.type_name(), "Bool"))
+        }
+    }
+
+    /// Get a mutable reference to the inner i32 value.
+    pub fn as_mut_i32(&mut self) -> Result<&mut i32> {
+        if let Self::I32(v) = self {
+            Ok(v)
+        } else {
+            Err(Error::TypeError(self.type_name(), "I32"))
+        }
+    }
+
+    /// Get a mutable reference to the inner u32 value.
+    pub fn as_mut_u32(&mut self) -> Result<&mut u32> {
+        if let Self::U32(v) = self {
+            Ok(v)
+        } else {
+            Err(Error::TypeError(self.type_name(), "U32"))
+        }
+    }
+
+    /// Get a mutable reference to the inner i64 value.
+    pub fn as_mut_i64(&mut self) -> Result<&mut i64> {
+        if let Self::I64(v) = self {
+            Ok(v)
+        } else {
+            Err(Error::TypeError(self.type_name(), "I64"))
+        }
+    }
+
+    /// Get a mutable reference to the inner u64 value.
+    pub fn as_mut_u64(&mut self) -> Result<&mut u64> {
+        if let Self::U64(v) = self {
+            Ok(v)
+        } else {
+            Err(Error::TypeError(self.type_name(), "U64"))
+        }
+    }
+
+    /// Get a mutable reference to the inner f32 value.
+    pub fn as_mut_float(&mut self) -> Result<&mut f32> {
+        if let Self::Float(v) = self {
+            Ok(v)
+        } else {
+            Err(Error::TypeError(self.type_name(), "Float"))
+        }
+    }
+
+    /// Get a mutable reference to the inner f64 value.
+    pub fn as_mut_double(&mut self) -> Result<&mut f64> {
+        if let Self::Double(v) = self {
+            Ok(v)
+        } else {
+            Err(Error::TypeError(self.type_name(), "Double"))
+        }
+    }
+
+    /// Get a mutable reference to the inner byte slice.
+    pub fn as_mut_binary_data(&mut self) -> Result<&mut [u8]> {
+        if let Self::BinaryData(v) = self {
+            Ok(v.as_mut_slice())
+        } else {
+            Err(Error::TypeError(self.type_name(), "BinaryData"))
+        }
+    }
+
+    /// Get a mutable reference to the inner array of BYML nodes.
+    pub fn as_mut_array(&mut self) -> Result<&mut [Byml]> {
+        if let Self::Array(v) = self {
+            Ok(v.as_mut_slice())
+        } else {
+            Err(Error::TypeError(self.type_name(), "Array"))
+        }
+    }
+
+    /// Get a mutable reference to the inner hash map of BYML nodes.
+    pub fn as_mut_hash(&mut self) -> Result<&mut Hash> {
+        if let Self::Hash(v) = self {
+            Ok(v)
+        } else {
+            Err(Error::TypeError(self.type_name(), "Hash"))
+        }
+    }
+
+    /// Extract the inner string value.
+    pub fn into_string(self) -> Result<String> {
+        if let Self::String(v) = self {
+            Ok(v)
+        } else {
+            Err(Error::TypeError(self.type_name(), "String"))
+        }
+    }
+
+    /// Extract the inner bool value.
+    pub fn into_bool(self) -> Result<bool> {
+        if let Self::Bool(v) = self {
+            Ok(v)
+        } else {
+            Err(Error::TypeError(self.type_name(), "Bool"))
+        }
+    }
+
+    /// Extract the inner i32 value.
+    pub fn into_i32(self) -> Result<i32> {
+        if let Self::I32(v) = self {
+            Ok(v)
+        } else {
+            Err(Error::TypeError(self.type_name(), "I32"))
+        }
+    }
+
+    /// Extract the inner u32 value.
+    pub fn into_u32(self) -> Result<u32> {
+        if let Self::U32(v) = self {
+            Ok(v)
+        } else {
+            Err(Error::TypeError(self.type_name(), "U32"))
+        }
+    }
+
+    /// Extract the inner i64 value.
+    pub fn into_i64(self) -> Result<i64> {
+        if let Self::I64(v) = self {
+            Ok(v)
+        } else {
+            Err(Error::TypeError(self.type_name(), "I64"))
+        }
+    }
+
+    /// Extract the inner u64 value.
+    pub fn into_u64(self) -> Result<u64> {
+        if let Self::U64(v) = self {
+            Ok(v)
+        } else {
+            Err(Error::TypeError(self.type_name(), "U64"))
+        }
+    }
+
+    /// Extract the inner f32 value.
+    pub fn into_float(self) -> Result<f32> {
+        if let Self::Float(v) = self {
+            Ok(v)
+        } else {
+            Err(Error::TypeError(self.type_name(), "Float"))
+        }
+    }
+
+    /// Extract the inner f64 value.
+    pub fn into_double(self) -> Result<f64> {
+        if let Self::Double(v) = self {
+            Ok(v)
+        } else {
+            Err(Error::TypeError(self.type_name(), "Double"))
+        }
+    }
+
+    /// Extract the inner byte slice value.
+    pub fn into_binary_data(self) -> Result<Vec<u8>> {
+        if let Self::BinaryData(v) = self {
+            Ok(v)
+        } else {
+            Err(Error::TypeError(self.type_name(), "BinaryData"))
+        }
+    }
+
+    /// Extract the inner Byml array value.
+    pub fn into_array(self) -> Result<Vec<Byml>> {
+        if let Self::Array(v) = self {
+            Ok(v)
+        } else {
+            Err(Error::TypeError(self.type_name(), "Array"))
+        }
+    }
+
+    /// Extract the inner hash value.
+    pub fn into_hash(self) -> Result<Hash> {
+        if let Self::Hash(v) = self {
+            Ok(v)
+        } else {
+            Err(Error::TypeError(self.type_name(), "Hash"))
+        }
+    }
+}
+
+impl From<bool> for Byml {
+    fn from(value: bool) -> Self {
+        Self::Bool(value)
+    }
+}
+
+impl TryFrom<Byml> for bool {
+    type Error = Byml;
+
+    fn try_from(value: Byml) -> std::result::Result<Self, Self::Error> {
+        match value {
+            Byml::Bool(v) => Ok(v),
+            _ => Err(value),
+        }
+    }
+}
+
+impl From<i32> for Byml {
+    fn from(value: i32) -> Self {
+        Self::I32(value)
+    }
+}
+
+impl TryFrom<Byml> for i32 {
+    type Error = Byml;
+
+    fn try_from(value: Byml) -> std::result::Result<Self, Self::Error> {
+        match value {
+            Byml::I32(v) => Ok(v),
+            _ => Err(value),
+        }
+    }
+}
+
+impl From<u32> for Byml {
+    fn from(value: u32) -> Self {
+        Self::U32(value)
+    }
+}
+
+impl TryFrom<Byml> for u32 {
+    type Error = Byml;
+
+    fn try_from(value: Byml) -> std::result::Result<Self, Self::Error> {
+        match value {
+            Byml::U32(v) => Ok(v),
+            _ => Err(value),
+        }
+    }
+}
+
+impl From<i64> for Byml {
+    fn from(value: i64) -> Self {
+        Self::I64(value)
+    }
+}
+
+impl TryFrom<Byml> for i64 {
+    type Error = Byml;
+
+    fn try_from(value: Byml) -> std::result::Result<Self, Self::Error> {
+        match value {
+            Byml::I64(v) => Ok(v),
+            _ => Err(value),
+        }
+    }
+}
+
+impl From<u64> for Byml {
+    fn from(value: u64) -> Self {
+        Self::U64(value)
+    }
+}
+
+impl TryFrom<Byml> for u64 {
+    type Error = Byml;
+    fn try_from(value: Byml) -> std::result::Result<Self, Self::Error> {
+        match value {
+            Byml::U64(v) => Ok(v),
+            _ => Err(value),
+        }
+    }
+}
+
+impl From<f32> for Byml {
+    fn from(value: f32) -> Self {
+        Self::Float(value)
+    }
+}
+
+impl TryFrom<Byml> for f32 {
+    type Error = Byml;
+    fn try_from(value: Byml) -> std::result::Result<Self, Self::Error> {
+        match value {
+            Byml::Float(v) => Ok(v),
+            _ => Err(value),
+        }
+    }
+}
+
+impl From<f64> for Byml {
+    fn from(value: f64) -> Self {
+        Self::Double(value)
+    }
+}
+
+impl TryFrom<Byml> for f64 {
+    type Error = Byml;
+    fn try_from(value: Byml) -> std::result::Result<Self, Self::Error> {
+        match value {
+            Byml::Double(v) => Ok(v),
+            _ => Err(value),
+        }
+    }
+}
+
+impl From<Vec<u8>> for Byml {
+    fn from(value: Vec<u8>) -> Self {
+        Self::BinaryData(value)
+    }
+}
+
+impl TryFrom<Byml> for Vec<u8> {
+    type Error = Byml;
+    fn try_from(value: Byml) -> std::result::Result<Self, Self::Error> {
+        match value {
+            Byml::BinaryData(v) => Ok(v),
+            _ => Err(value),
+        }
+    }
+}
+
+impl From<Vec<Byml>> for Byml {
+    fn from(value: Vec<Byml>) -> Self {
+        Self::Array(value)
+    }
+}
+
+impl TryFrom<Byml> for Vec<Byml> {
+    type Error = Byml;
+    fn try_from(value: Byml) -> std::result::Result<Self, Self::Error> {
+        match value {
+            Byml::Array(v) => Ok(v),
+            _ => Err(value),
+        }
+    }
+}
+
+impl From<Hash> for Byml {
+    fn from(value: Hash) -> Self {
+        Self::Hash(value)
+    }
+}
+
+impl TryFrom<Byml> for Hash {
+    type Error = Byml;
+    fn try_from(value: Byml) -> std::result::Result<Self, Self::Error> {
+        match value {
+            Byml::Hash(v) => Ok(v),
+            _ => Err(value),
+        }
+    }
+}
+
+impl From<&str> for Byml {
+    fn from(value: &str) -> Self {
+        Self::String(value.into())
+    }
+}
+
+impl From<String> for Byml {
+    fn from(value: String) -> Self {
+        Self::String(value)
+    }
+}
+
+impl TryFrom<Byml> for String {
+    type Error = Byml;
+    fn try_from(value: Byml) -> std::result::Result<Self, Self::Error> {
+        match value {
+            Byml::String(v) => Ok(v),
+            _ => Err(value),
+        }
+    }
+}
+
+impl From<&[u8]> for Byml {
+    fn from(value: &[u8]) -> Self {
+        Self::BinaryData(value.to_vec())
+    }
+}
+
+impl From<&[Byml]> for Byml {
+    fn from(value: &[Byml]) -> Self {
+        Self::Array(value.to_vec())
+    }
 }
 
 impl Default for Byml {
@@ -303,15 +821,15 @@ mod tests {
     fn accessors() {
         let mut actorinfo =
             Byml::from_binary(std::fs::read("test/byml/ActorInfo.product.byml").unwrap()).unwrap();
-        let actorinfo_hash = actorinfo.as_hash_mut().unwrap();
+        let actorinfo_hash = actorinfo.as_mut_hash().unwrap();
         for obj in actorinfo_hash
             .get_mut("Actors")
             .unwrap()
-            .as_array_mut()
+            .as_mut_array()
             .unwrap()
         {
-            let hash = obj.as_hash_mut().unwrap();
-            *hash.get_mut("name").unwrap().as_string_mut().unwrap() = "test".into();
+            let hash = obj.as_mut_hash().unwrap();
+            *hash.get_mut("name").unwrap().as_mut_string().unwrap() = "test".into();
             assert_eq!(hash["name"].as_string().unwrap(), "test");
         }
     }

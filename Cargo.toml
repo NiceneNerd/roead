@@ -1,7 +1,7 @@
 [package]
 name = "roead"
 description = "Rust bindings for oead C++ library for common Nintendo formats"
-version = "0.15.2"
+version = "0.15.3"
 authors = ["Caleb Smith <c.smith@tuta.io>"]
 license = "GPL-3.0-or-later"
 readme = "README.md"
@@ -27,7 +27,6 @@ cached = { version = "0.37.0", optional = true }
 cxx = { version = "1.0.71", optional = true }
 enumflags2 = { version = "0.7.5", optional = true }
 from_variants = { version = "1.0.0", optional = true }
-enum-as-inner = { version = "0.5.0", optional = true }
 indexmap = { version = "1.9.1", optional = true }
 join_str = "0.1.0"
 lexical = { version = "6.1.1", optional = true, features = ["power-of-two"] }
@@ -51,7 +50,6 @@ jwalk = "0.6.0"
 aamp = [
     "binrw",
     "enumflags2",
-    "enum-as-inner",
     "from_variants",
     "smartstring",
     "indexmap",
@@ -59,7 +57,7 @@ aamp = [
     "parking_lot",
     "once_cell",
 ]
-byml = ["binrw", "enum-as-inner", "from_variants", "smartstring", "almost"]
+byml = ["binrw", "from_variants", "smartstring", "almost"]
 sarc = ["binrw", "num-integer", "serde", "serde_json", "cached"]
 yaz0 = ["cxx", "cxx-build"]
 yaml = ["ryml", "lexical", "base64"]

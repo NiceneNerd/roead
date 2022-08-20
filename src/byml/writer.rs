@@ -25,7 +25,7 @@ impl Byml {
 
         if !matches!(self, Byml::Hash(_) | Byml::Array(_) | Byml::Null) {
             return Err(Error::TypeError(
-                format!("{:?}", self),
+                format!("{:?}", self).into(),
                 "Hash, Array, or Null",
             ));
         }
@@ -66,7 +66,8 @@ impl Byml {
     }
 
     /// Serialize the document to bytes with the specified endianness and
-    /// default version (2). This can only be done for Null, Array, or Hash nodes.
+    /// default version (2). This can only be done for Null, Array, or Hash
+    /// nodes.
     pub fn to_binary(&self, endian: Endian) -> Vec<u8> {
         let mut buf = Vec::new();
         self.write(&mut Cursor::new(&mut buf), endian, 2).unwrap();

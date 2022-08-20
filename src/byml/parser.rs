@@ -107,7 +107,10 @@ impl StringTableParser {
             let type_: NodeType = reader.read_at(offset as u64)?;
             let num_entries: crate::util::u24 = reader.read()?;
             if type_ != NodeType::StringTable {
-                return Err(Error::TypeError(format!("{:?}", type_), "string table"));
+                return Err(Error::TypeError(
+                    format!("{:?}", type_).into(),
+                    "string table",
+                ));
             }
             Ok(Self {
                 offset,

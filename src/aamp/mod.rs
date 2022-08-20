@@ -35,10 +35,8 @@ mod parser;
 #[cfg(feature = "yaml")]
 mod text;
 mod writer;
-use crate::{types::*, util::u24};
+use crate::{types::*, util::u24, Error, Result};
 use binrw::binrw;
-use enum_as_inner::EnumAsInner;
-use from_variants::FromVariants;
 use indexmap::IndexMap;
 pub use names::{get_default_name_table, NameTable};
 #[cfg(feature = "with-serde")]
@@ -180,7 +178,7 @@ struct ResParameterList {
 /// efficient.
 #[cfg_attr(feature = "with-serde", derive(Serialize, Deserialize))]
 #[allow(clippy::derive_hash_xor_eq)]
-#[derive(Debug, Clone, EnumAsInner, FromVariants)]
+#[derive(Debug, Clone)]
 pub enum Parameter {
     /// Boolean.
     Bool(bool),
@@ -224,6 +222,895 @@ pub enum Parameter {
     BufferBinary(Vec<u8>),
     /// String (no length limit).
     StringRef(String),
+}
+
+impl Parameter {
+    fn type_name(&self) -> String {
+        match self {
+            Parameter::Bool(_) => "Bool".into(),
+            Parameter::F32(_) => "F32".into(),
+            Parameter::Int(_) => "Int".into(),
+            Parameter::Vec2(_) => "Vec2".into(),
+            Parameter::Vec3(_) => "Vec3".into(),
+            Parameter::Vec4(_) => "Vec4".into(),
+            Parameter::Color(_) => "Color".into(),
+            Parameter::String32(_) => "String32".into(),
+            Parameter::String64(_) => "String64".into(),
+            Parameter::Curve1(_) => "Curve1".into(),
+            Parameter::Curve2(_) => "Curve2".into(),
+            Parameter::Curve3(_) => "Curve3".into(),
+            Parameter::Curve4(_) => "Curve4".into(),
+            Parameter::BufferInt(_) => "BufferInt".into(),
+            Parameter::BufferF32(_) => "BufferF32".into(),
+            Parameter::String256(_) => "String256".into(),
+            Parameter::Quat(_) => "Quat".into(),
+            Parameter::U32(_) => "U32".into(),
+            Parameter::BufferU32(_) => "BufferU32".into(),
+            Parameter::BufferBinary(_) => "BufferBinary".into(),
+            Parameter::StringRef(_) => "StringRef".into(),
+        }
+    }
+
+    /// Get the inner bool value.
+    pub fn as_bool(&self) -> Result<bool> {
+        match self {
+            Parameter::Bool(b) => Ok(*b),
+            _ => Err(Error::TypeError(self.type_name(), "Bool")),
+        }
+    }
+
+    /// Get a mutable reference to the inner bool.
+    pub fn as_mut_bool(&mut self) -> Result<&mut bool> {
+        match self {
+            Parameter::Bool(value) => Ok(value),
+            _ => Err(Error::TypeError(self.type_name(), "bool")),
+        }
+    }
+
+    /// Extract the inner bool value.
+    pub fn into_bool(self) -> Result<bool> {
+        match self {
+            Parameter::Bool(value) => Ok(value),
+            _ => Err(Error::TypeError(self.type_name(), "bool")),
+        }
+    }
+
+    /// Get the inner f32 value.
+    pub fn as_f32(&self) -> Result<f32> {
+        match self {
+            Parameter::F32(f) => Ok(*f),
+            _ => Err(Error::TypeError(self.type_name(), "F32")),
+        }
+    }
+
+    /// Get a mutable reference to the inner f32.
+    pub fn as_mut_f32(&mut self) -> Result<&mut f32> {
+        match self {
+            Parameter::F32(value) => Ok(value),
+            _ => Err(Error::TypeError(self.type_name(), "f32")),
+        }
+    }
+
+    /// Extract the inner f32 value.
+    pub fn into_f32(self) -> Result<f32> {
+        match self {
+            Parameter::F32(value) => Ok(value),
+            _ => Err(Error::TypeError(self.type_name(), "f32")),
+        }
+    }
+
+    /// Get the inner i32 value.
+    pub fn as_int(&self) -> Result<i32> {
+        match self {
+            Parameter::Int(i) => Ok(*i),
+            _ => Err(Error::TypeError(self.type_name(), "Int")),
+        }
+    }
+
+    /// Get a mutable reference to the inner i32.
+    pub fn as_mut_int(&mut self) -> Result<&mut i32> {
+        match self {
+            Parameter::Int(value) => Ok(value),
+            _ => Err(Error::TypeError(self.type_name(), "i32")),
+        }
+    }
+
+    /// Extract the inner i32 value.
+    pub fn into_int(self) -> Result<i32> {
+        match self {
+            Parameter::Int(value) => Ok(value),
+            _ => Err(Error::TypeError(self.type_name(), "i32")),
+        }
+    }
+
+    /// Get the inner Vector2f value.
+    pub fn as_vec2(&self) -> Result<&Vector2f> {
+        match self {
+            Parameter::Vec2(v) => Ok(v),
+            _ => Err(Error::TypeError(self.type_name(), "Vec2")),
+        }
+    }
+
+    /// Get a mutable reference to the inner Vector2f.
+    pub fn as_mut_vec2(&mut self) -> Result<&mut Vector2f> {
+        match self {
+            Parameter::Vec2(value) => Ok(value),
+            _ => Err(Error::TypeError(self.type_name(), "vec2")),
+        }
+    }
+
+    /// Extract the inner Vector2f value.
+    pub fn into_vec2(self) -> Result<Vector2f> {
+        match self {
+            Parameter::Vec2(value) => Ok(value),
+            _ => Err(Error::TypeError(self.type_name(), "vec2")),
+        }
+    }
+
+    /// Get the inner Vector3f value.
+    pub fn as_vec3(&self) -> Result<&Vector3f> {
+        match self {
+            Parameter::Vec3(v) => Ok(v),
+            _ => Err(Error::TypeError(self.type_name(), "Vec3")),
+        }
+    }
+
+    /// Get a mutable reference to the inner Vector3f.
+    pub fn as_mut_vec3(&mut self) -> Result<&mut Vector3f> {
+        match self {
+            Parameter::Vec3(value) => Ok(value),
+            _ => Err(Error::TypeError(self.type_name(), "vec3")),
+        }
+    }
+
+    /// Extract the inner Vector3f value.
+    pub fn into_vec3(self) -> Result<Vector3f> {
+        match self {
+            Parameter::Vec3(value) => Ok(value),
+            _ => Err(Error::TypeError(self.type_name(), "vec3")),
+        }
+    }
+
+    /// Get the inner Vector4f value.
+    pub fn as_vec4(&self) -> Result<&Vector4f> {
+        match self {
+            Parameter::Vec4(v) => Ok(v),
+            _ => Err(Error::TypeError(self.type_name(), "Vec4")),
+        }
+    }
+
+    /// Get a mutable reference to the inner Vector4f.
+    pub fn as_mut_vec4(&mut self) -> Result<&mut Vector4f> {
+        match self {
+            Parameter::Vec4(value) => Ok(value),
+            _ => Err(Error::TypeError(self.type_name(), "vec4")),
+        }
+    }
+
+    /// Extract the inner Vector4f value.
+    pub fn into_vec4(self) -> Result<Vector4f> {
+        match self {
+            Parameter::Vec4(value) => Ok(value),
+            _ => Err(Error::TypeError(self.type_name(), "vec4")),
+        }
+    }
+
+    /// Get the inner BufferF32 value.
+    pub fn as_buffer_f32(&self) -> Result<&[f32]> {
+        match self {
+            Parameter::BufferF32(v) => Ok(v),
+            _ => Err(Error::TypeError(self.type_name(), "BufferF32")),
+        }
+    }
+
+    /// Get a mutable reference to the inner BufferF32.
+    pub fn as_mut_buffer_f32(&mut self) -> Result<&mut Vec<f32>> {
+        match self {
+            Parameter::BufferF32(value) => Ok(value),
+            _ => Err(Error::TypeError(self.type_name(), "Vec<f32>")),
+        }
+    }
+
+    /// Extract the inner BufferF32 value.
+    pub fn into_buffer_f32(self) -> Result<Vec<f32>> {
+        match self {
+            Parameter::BufferF32(value) => Ok(value),
+            _ => Err(Error::TypeError(self.type_name(), "Vec<f32>")),
+        }
+    }
+
+    /// Get the inner BufferI32 value.
+    pub fn as_buffer_int(&self) -> Result<&[i32]> {
+        match self {
+            Parameter::BufferInt(v) => Ok(v),
+            _ => Err(Error::TypeError(self.type_name(), "BufferI32")),
+        }
+    }
+
+    /// Get a mutable reference to the inner BufferI32.
+    pub fn as_mut_buffer_int(&mut self) -> Result<&mut Vec<i32>> {
+        match self {
+            Parameter::BufferInt(value) => Ok(value),
+            _ => Err(Error::TypeError(self.type_name(), "Vec<i32>")),
+        }
+    }
+
+    /// Extract the inner BufferI32 value.
+    pub fn into_buffer_int(self) -> Result<Vec<i32>> {
+        match self {
+            Parameter::BufferInt(value) => Ok(value),
+            _ => Err(Error::TypeError(self.type_name(), "Vec<i32>")),
+        }
+    }
+
+    /// Get the inner color value.
+    pub fn as_color(&self) -> Result<&Color> {
+        match self {
+            Parameter::Color(v) => Ok(v),
+            _ => Err(Error::TypeError(self.type_name(), "Color")),
+        }
+    }
+
+    /// Get a mutable reference to the inner color.
+    pub fn as_mut_color(&mut self) -> Result<&mut Color> {
+        match self {
+            Parameter::Color(value) => Ok(value),
+            _ => Err(Error::TypeError(self.type_name(), "color")),
+        }
+    }
+
+    /// Extract the inner color value.
+    pub fn into_color(self) -> Result<Color> {
+        match self {
+            Parameter::Color(value) => Ok(value),
+            _ => Err(Error::TypeError(self.type_name(), "color")),
+        }
+    }
+
+    /// Get the inner String32 value.
+    pub fn as_string32(&self) -> Result<&FixedSafeString<32>> {
+        match self {
+            Parameter::String32(v) => Ok(v),
+            _ => Err(Error::TypeError(self.type_name(), "String32")),
+        }
+    }
+
+    /// Get a mutable reference to the inner String32.
+    pub fn as_mut_string32(&mut self) -> Result<&mut FixedSafeString<32>> {
+        match self {
+            Parameter::String32(value) => Ok(value),
+            _ => Err(Error::TypeError(self.type_name(), "FixedSafeString<32>")),
+        }
+    }
+
+    /// Extract the inner String32 value.
+    pub fn into_string32(self) -> Result<FixedSafeString<32>> {
+        match self {
+            Parameter::String32(value) => Ok(value),
+            _ => Err(Error::TypeError(self.type_name(), "FixedSafeString<32>")),
+        }
+    }
+
+    /// Get the inner String64 value.
+    pub fn as_string64(&self) -> Result<&FixedSafeString<64>> {
+        match self {
+            Parameter::String64(v) => Ok(v),
+            _ => Err(Error::TypeError(self.type_name(), "String64")),
+        }
+    }
+
+    /// Get a mutable reference to the inner String64.
+    pub fn as_mut_string64(&mut self) -> Result<&mut FixedSafeString<64>> {
+        match self {
+            Parameter::String64(value) => Ok(value),
+            _ => Err(Error::TypeError(self.type_name(), "FixedSafeString<64>")),
+        }
+    }
+
+    /// Extract the inner String64 value.
+    pub fn into_string64(self) -> Result<FixedSafeString<64>> {
+        match self {
+            Parameter::String64(value) => Ok(value),
+            _ => Err(Error::TypeError(self.type_name(), "FixedSafeString<64>")),
+        }
+    }
+
+    /// Get the inner String256 value.
+    pub fn as_string256(&self) -> Result<&FixedSafeString<256>> {
+        match self {
+            Parameter::String256(v) => Ok(v),
+            _ => Err(Error::TypeError(self.type_name(), "String256")),
+        }
+    }
+
+    /// Get a mutable reference to the inner String256.
+    pub fn as_mut_string256(&mut self) -> Result<&mut FixedSafeString<256>> {
+        match self {
+            Parameter::String256(value) => Ok(value),
+            _ => Err(Error::TypeError(self.type_name(), "FixedSafeString<256>")),
+        }
+    }
+
+    /// Extract the inner String256 value.
+    pub fn into_string256(self) -> Result<FixedSafeString<256>> {
+        match self {
+            Parameter::String256(value) => Ok(value),
+            _ => Err(Error::TypeError(self.type_name(), "FixedSafeString<256>")),
+        }
+    }
+
+    /// Get the inner Curve1 value.
+    pub fn as_curve1(&self) -> Result<&[Curve; 1]> {
+        match self {
+            Parameter::Curve1(v) => Ok(v),
+            _ => Err(Error::TypeError(self.type_name(), "Curve1")),
+        }
+    }
+
+    /// Get a mutable reference to the inner Curve1.
+    pub fn as_mut_curve1(&mut self) -> Result<&mut [Curve; 1]> {
+        match self {
+            Parameter::Curve1(value) => Ok(value),
+            _ => Err(Error::TypeError(self.type_name(), "[Curve; 1]")),
+        }
+    }
+
+    /// Extract the inner Curve1 value.
+    pub fn into_curve1(self) -> Result<[Curve; 1]> {
+        match self {
+            Parameter::Curve1(value) => Ok(value),
+            _ => Err(Error::TypeError(self.type_name(), "[Curve; 1]")),
+        }
+    }
+
+    /// Get the inner Curve2 value.
+    pub fn as_curve2(&self) -> Result<&[Curve; 2]> {
+        match self {
+            Parameter::Curve2(v) => Ok(v),
+            _ => Err(Error::TypeError(self.type_name(), "Curve2")),
+        }
+    }
+
+    /// Get a mutable reference to the inner Curve2.
+    pub fn as_mut_curve2(&mut self) -> Result<&mut [Curve; 2]> {
+        match self {
+            Parameter::Curve2(value) => Ok(value),
+            _ => Err(Error::TypeError(self.type_name(), "[Curve; 2]")),
+        }
+    }
+
+    /// Extract the inner Curve2 value.
+    pub fn into_curve2(self) -> Result<[Curve; 2]> {
+        match self {
+            Parameter::Curve2(value) => Ok(value),
+            _ => Err(Error::TypeError(self.type_name(), "[Curve; 2]")),
+        }
+    }
+
+    /// Get the inner Curve3 value.
+    pub fn as_curve3(&self) -> Result<&[Curve; 3]> {
+        match self {
+            Parameter::Curve3(v) => Ok(v),
+            _ => Err(Error::TypeError(self.type_name(), "Curve3")),
+        }
+    }
+
+    /// Get a mutable reference to the inner Curve3.
+    pub fn as_mut_curve3(&mut self) -> Result<&mut [Curve; 3]> {
+        match self {
+            Parameter::Curve3(value) => Ok(value),
+            _ => Err(Error::TypeError(self.type_name(), "[Curve; 3]")),
+        }
+    }
+
+    /// Extract the inner Curve3 value.
+    pub fn into_curve3(self) -> Result<[Curve; 3]> {
+        match self {
+            Parameter::Curve3(value) => Ok(value),
+            _ => Err(Error::TypeError(self.type_name(), "[Curve; 3]")),
+        }
+    }
+
+    /// Get the inner Curve4 value.
+    pub fn as_curve4(&self) -> Result<&[Curve; 4]> {
+        match self {
+            Parameter::Curve4(v) => Ok(v),
+            _ => Err(Error::TypeError(self.type_name(), "Curve4")),
+        }
+    }
+
+    /// Get a mutable reference to the inner Curve4.
+    pub fn as_mut_curve4(&mut self) -> Result<&mut [Curve; 4]> {
+        match self {
+            Parameter::Curve4(value) => Ok(value),
+            _ => Err(Error::TypeError(self.type_name(), "[Curve; 4]")),
+        }
+    }
+
+    /// Extract the inner Curve4 value.
+    pub fn into_curve4(self) -> Result<[Curve; 4]> {
+        match self {
+            Parameter::Curve4(value) => Ok(value),
+            _ => Err(Error::TypeError(self.type_name(), "[Curve; 4]")),
+        }
+    }
+
+    /// Get the inner Quat value.
+    pub fn as_quat(&self) -> Result<&Quat> {
+        match self {
+            Parameter::Quat(v) => Ok(v),
+            _ => Err(Error::TypeError(self.type_name(), "Quat")),
+        }
+    }
+
+    /// Get a mutable reference to the inner Quat.
+    pub fn as_mut_quat(&mut self) -> Result<&mut Quat> {
+        match self {
+            Parameter::Quat(value) => Ok(value),
+            _ => Err(Error::TypeError(self.type_name(), "Quat")),
+        }
+    }
+
+    /// Extract the inner Quat value.
+    pub fn into_quat(self) -> Result<Quat> {
+        match self {
+            Parameter::Quat(value) => Ok(value),
+            _ => Err(Error::TypeError(self.type_name(), "Quat")),
+        }
+    }
+
+    /// Get the inner u32 value.
+    pub fn as_u32(&self) -> Result<u32> {
+        match self {
+            Parameter::U32(v) => Ok(*v),
+            _ => Err(Error::TypeError(self.type_name(), "u32")),
+        }
+    }
+
+    /// Get a mutable reference to the inner u32.
+    pub fn as_mut_u32(&mut self) -> Result<&mut u32> {
+        match self {
+            Parameter::U32(value) => Ok(value),
+            _ => Err(Error::TypeError(self.type_name(), "u32")),
+        }
+    }
+
+    /// Extract the inner u32 value.
+    pub fn into_u32(self) -> Result<u32> {
+        match self {
+            Parameter::U32(value) => Ok(value),
+            _ => Err(Error::TypeError(self.type_name(), "u32")),
+        }
+    }
+
+    /// Get the inner u32 buffer value.
+    pub fn as_buffer_u32(&self) -> Result<&[u32]> {
+        match self {
+            Parameter::BufferU32(v) => Ok(v),
+            _ => Err(Error::TypeError(self.type_name(), "BufferU32")),
+        }
+    }
+
+    /// Get a mutable reference to the inner u32 buffer.
+    pub fn as_mut_buffer_u32(&mut self) -> Result<&mut [u32]> {
+        match self {
+            Parameter::BufferU32(value) => Ok(value),
+            _ => Err(Error::TypeError(self.type_name(), "Vec<u32>")),
+        }
+    }
+
+    /// Extract the inner u32 buffer value.
+    pub fn into_buffer_u32(self) -> Result<Vec<u32>> {
+        match self {
+            Parameter::BufferU32(value) => Ok(value),
+            _ => Err(Error::TypeError(self.type_name(), "Vec<u32>")),
+        }
+    }
+
+    /// Get the inner binary buffer value.
+    pub fn as_buffer_binary(&self) -> Result<&[u8]> {
+        match self {
+            Parameter::BufferBinary(v) => Ok(v),
+            _ => Err(Error::TypeError(self.type_name(), "BufferBinary")),
+        }
+    }
+
+    /// Get a mutable reference to the inner binary buffer.
+    pub fn as_mut_buffer_binary(&mut self) -> Result<&mut [u8]> {
+        match self {
+            Parameter::BufferBinary(value) => Ok(value),
+            _ => Err(Error::TypeError(self.type_name(), "Vec<u8>")),
+        }
+    }
+
+    /// Extract the inner binary buffer value.
+    pub fn into_buffer_binary(self) -> Result<Vec<u8>> {
+        match self {
+            Parameter::BufferBinary(value) => Ok(value),
+            _ => Err(Error::TypeError(self.type_name(), "Vec<u8>")),
+        }
+    }
+
+    /// Get the inner string value.
+    pub fn as_string_ref(&self) -> Result<&str> {
+        match self {
+            Parameter::StringRef(v) => Ok(v),
+            _ => Err(Error::TypeError(self.type_name(), "String")),
+        }
+    }
+
+    /// Get a mutable reference to the inner string.
+    pub fn as_mut_string_ref(&mut self) -> Result<&mut str> {
+        match self {
+            Parameter::StringRef(value) => Ok(value),
+            _ => Err(Error::TypeError(self.type_name(), "string")),
+        }
+    }
+
+    /// Extract the inner string value.
+    pub fn into_string_ref(self) -> Result<String> {
+        match self {
+            Parameter::StringRef(value) => Ok(value),
+            _ => Err(Error::TypeError(self.type_name(), "string")),
+        }
+    }
+}
+
+impl From<bool> for Parameter {
+    fn from(value: bool) -> Self {
+        Parameter::Bool(value)
+    }
+}
+
+impl TryFrom<Parameter> for bool {
+    type Error = Parameter;
+
+    fn try_from(value: Parameter) -> std::result::Result<Self, Self::Error> {
+        match value {
+            Parameter::Bool(v) => Ok(v),
+            _ => Err(value),
+        }
+    }
+}
+
+impl From<f32> for Parameter {
+    fn from(value: f32) -> Self {
+        Parameter::F32(value)
+    }
+}
+
+impl TryFrom<Parameter> for f32 {
+    type Error = Parameter;
+
+    fn try_from(value: Parameter) -> std::result::Result<Self, Self::Error> {
+        match value {
+            Parameter::F32(v) => Ok(v),
+            _ => Err(value),
+        }
+    }
+}
+
+impl From<i32> for Parameter {
+    fn from(value: i32) -> Self {
+        Parameter::Int(value)
+    }
+}
+
+impl TryFrom<Parameter> for i32 {
+    type Error = Parameter;
+
+    fn try_from(value: Parameter) -> std::result::Result<Self, Self::Error> {
+        match value {
+            Parameter::Int(v) => Ok(v),
+            _ => Err(value),
+        }
+    }
+}
+
+impl From<Vector2f> for Parameter {
+    fn from(value: Vector2f) -> Self {
+        Parameter::Vec2(value)
+    }
+}
+
+impl TryFrom<Parameter> for Vector2f {
+    type Error = Parameter;
+
+    fn try_from(value: Parameter) -> std::result::Result<Self, Self::Error> {
+        match value {
+            Parameter::Vec2(v) => Ok(v),
+            _ => Err(value),
+        }
+    }
+}
+
+impl From<Vector3f> for Parameter {
+    fn from(value: Vector3f) -> Self {
+        Parameter::Vec3(value)
+    }
+}
+
+impl TryFrom<Parameter> for Vector3f {
+    type Error = Parameter;
+
+    fn try_from(value: Parameter) -> std::result::Result<Self, Self::Error> {
+        match value {
+            Parameter::Vec3(v) => Ok(v),
+            _ => Err(value),
+        }
+    }
+}
+
+impl From<Vector4f> for Parameter {
+    fn from(value: Vector4f) -> Self {
+        Parameter::Vec4(value)
+    }
+}
+
+impl TryFrom<Parameter> for Vector4f {
+    type Error = Parameter;
+
+    fn try_from(value: Parameter) -> std::result::Result<Self, Self::Error> {
+        match value {
+            Parameter::Vec4(v) => Ok(v),
+            _ => Err(value),
+        }
+    }
+}
+
+impl From<Color> for Parameter {
+    fn from(value: Color) -> Self {
+        Parameter::Color(value)
+    }
+}
+
+impl TryFrom<Parameter> for Color {
+    type Error = Parameter;
+
+    fn try_from(value: Parameter) -> std::result::Result<Self, Self::Error> {
+        match value {
+            Parameter::Color(v) => Ok(v),
+            _ => Err(value),
+        }
+    }
+}
+
+impl From<FixedSafeString<32>> for Parameter {
+    fn from(value: FixedSafeString<32>) -> Self {
+        Parameter::String32(value)
+    }
+}
+
+impl TryFrom<Parameter> for FixedSafeString<32> {
+    type Error = Parameter;
+
+    fn try_from(value: Parameter) -> std::result::Result<Self, Self::Error> {
+        match value {
+            Parameter::String32(v) => Ok(v),
+            _ => Err(value),
+        }
+    }
+}
+
+impl From<FixedSafeString<64>> for Parameter {
+    fn from(value: FixedSafeString<64>) -> Self {
+        Parameter::String64(value)
+    }
+}
+
+impl TryFrom<Parameter> for FixedSafeString<64> {
+    type Error = Parameter;
+
+    fn try_from(value: Parameter) -> std::result::Result<Self, Self::Error> {
+        match value {
+            Parameter::String64(v) => Ok(v),
+            _ => Err(value),
+        }
+    }
+}
+
+impl From<[Curve; 1]> for Parameter {
+    fn from(value: [Curve; 1]) -> Self {
+        Parameter::Curve1(value)
+    }
+}
+
+impl TryFrom<Parameter> for [Curve; 1] {
+    type Error = Parameter;
+
+    fn try_from(value: Parameter) -> std::result::Result<Self, Self::Error> {
+        match value {
+            Parameter::Curve1(v) => Ok(v),
+            _ => Err(value),
+        }
+    }
+}
+
+impl From<[Curve; 2]> for Parameter {
+    fn from(value: [Curve; 2]) -> Self {
+        Parameter::Curve2(value)
+    }
+}
+
+impl TryFrom<Parameter> for [Curve; 2] {
+    type Error = Parameter;
+
+    fn try_from(value: Parameter) -> std::result::Result<Self, Self::Error> {
+        match value {
+            Parameter::Curve2(v) => Ok(v),
+            _ => Err(value),
+        }
+    }
+}
+
+impl From<[Curve; 3]> for Parameter {
+    fn from(value: [Curve; 3]) -> Self {
+        Parameter::Curve3(value)
+    }
+}
+
+impl TryFrom<Parameter> for [Curve; 3] {
+    type Error = Parameter;
+
+    fn try_from(value: Parameter) -> std::result::Result<Self, Self::Error> {
+        match value {
+            Parameter::Curve3(v) => Ok(v),
+            _ => Err(value),
+        }
+    }
+}
+
+impl From<[Curve; 4]> for Parameter {
+    fn from(value: [Curve; 4]) -> Self {
+        Parameter::Curve4(value)
+    }
+}
+
+impl TryFrom<Parameter> for [Curve; 4] {
+    type Error = Parameter;
+
+    fn try_from(value: Parameter) -> std::result::Result<Self, Self::Error> {
+        match value {
+            Parameter::Curve4(v) => Ok(v),
+            _ => Err(value),
+        }
+    }
+}
+
+impl From<Vec<i32>> for Parameter {
+    fn from(value: Vec<i32>) -> Self {
+        Parameter::BufferInt(value)
+    }
+}
+
+impl TryFrom<Parameter> for Vec<i32> {
+    type Error = Parameter;
+
+    fn try_from(value: Parameter) -> std::result::Result<Self, Self::Error> {
+        match value {
+            Parameter::BufferInt(v) => Ok(v),
+            _ => Err(value),
+        }
+    }
+}
+
+impl From<Vec<f32>> for Parameter {
+    fn from(value: Vec<f32>) -> Self {
+        Parameter::BufferF32(value)
+    }
+}
+
+impl TryFrom<Parameter> for Vec<f32> {
+    type Error = Parameter;
+
+    fn try_from(value: Parameter) -> std::result::Result<Self, Self::Error> {
+        match value {
+            Parameter::BufferF32(v) => Ok(v),
+            _ => Err(value),
+        }
+    }
+}
+
+impl From<FixedSafeString<256>> for Parameter {
+    fn from(value: FixedSafeString<256>) -> Self {
+        Parameter::String256(value)
+    }
+}
+
+impl TryFrom<Parameter> for FixedSafeString<256> {
+    type Error = Parameter;
+
+    fn try_from(value: Parameter) -> std::result::Result<Self, Self::Error> {
+        match value {
+            Parameter::String256(v) => Ok(v),
+            _ => Err(value),
+        }
+    }
+}
+
+impl From<Quat> for Parameter {
+    fn from(value: Quat) -> Self {
+        Parameter::Quat(value)
+    }
+}
+
+impl TryFrom<Parameter> for Quat {
+    type Error = Parameter;
+
+    fn try_from(value: Parameter) -> std::result::Result<Self, Self::Error> {
+        match value {
+            Parameter::Quat(v) => Ok(v),
+            _ => Err(value),
+        }
+    }
+}
+
+impl From<u32> for Parameter {
+    fn from(value: u32) -> Self {
+        Parameter::U32(value)
+    }
+}
+
+impl TryFrom<Parameter> for u32 {
+    type Error = Parameter;
+
+    fn try_from(value: Parameter) -> std::result::Result<Self, Self::Error> {
+        match value {
+            Parameter::U32(v) => Ok(v),
+            _ => Err(value),
+        }
+    }
+}
+
+impl From<Vec<u32>> for Parameter {
+    fn from(value: Vec<u32>) -> Self {
+        Parameter::BufferU32(value)
+    }
+}
+
+impl TryFrom<Parameter> for Vec<u32> {
+    type Error = Parameter;
+
+    fn try_from(value: Parameter) -> std::result::Result<Self, Self::Error> {
+        match value {
+            Parameter::BufferU32(v) => Ok(v),
+            _ => Err(value),
+        }
+    }
+}
+
+impl From<Vec<u8>> for Parameter {
+    fn from(value: Vec<u8>) -> Self {
+        Parameter::BufferBinary(value)
+    }
+}
+
+impl TryFrom<Parameter> for Vec<u8> {
+    type Error = Parameter;
+
+    fn try_from(value: Parameter) -> std::result::Result<Self, Self::Error> {
+        match value {
+            Parameter::BufferBinary(v) => Ok(v),
+            _ => Err(value),
+        }
+    }
+}
+
+impl From<String> for Parameter {
+    fn from(value: String) -> Self {
+        Parameter::StringRef(value)
+    }
+}
+
+impl TryFrom<Parameter> for String {
+    type Error = Parameter;
+
+    fn try_from(value: Parameter) -> std::result::Result<Self, Self::Error> {
+        match value {
+            Parameter::StringRef(v) => Ok(v),
+            _ => Err(value),
+        }
+    }
 }
 
 impl std::hash::Hash for Parameter {

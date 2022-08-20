@@ -27,7 +27,7 @@ pub enum Error {
     #[error("{0}")]
     InvalidDataD(String),
     #[error("Found {0}, expected {1}")]
-    TypeError(String, &'static str),
+    TypeError(smartstring::alias::String, &'static str),
     #[error(transparent)]
     Io(#[from] std::io::Error),
     #[cfg(feature = "binrw")]
