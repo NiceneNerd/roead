@@ -682,6 +682,18 @@ impl From<&[Byml]> for Byml {
     }
 }
 
+impl<S: Into<String>> FromIterator<(S, Byml)> for Byml {
+    fn from_iter<T: IntoIterator<Item = (S, Byml)>>(iter: T) -> Self {
+        Self::Hash(iter.into_iter().map(|(k, v)| (k.into(), v)).collect())
+    }
+}
+
+impl FromIterator<Byml> for Byml {
+    fn from_iter<T: IntoIterator<Item = Byml>>(iter: T) -> Self {
+        Self::Array(iter.into_iter().collect())
+    }
+}
+
 impl Default for Byml {
     fn default() -> Self {
         Self::Null
