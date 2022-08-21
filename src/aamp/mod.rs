@@ -1230,14 +1230,14 @@ impl Parameter {
         )
     }
 
-    /// Returns a [`&str`](`str`) if the parameter is any string type.
-    pub fn as_str(&self) -> Option<&str> {
+    /// Returns a string slice if the parameter is any string type.
+    pub fn as_str(&self) -> Result<&str> {
         match self {
-            Parameter::String32(s) => Some(s.as_str()),
-            Parameter::String64(s) => Some(s.as_str()),
-            Parameter::String256(s) => Some(s.as_str()),
-            Parameter::StringRef(s) => Some(s.as_str()),
-            _ => None,
+            Parameter::String32(s) => Ok(s.as_str()),
+            Parameter::String64(s) => Ok(s.as_str()),
+            Parameter::String256(s) => Ok(s.as_str()),
+            Parameter::StringRef(s) => Ok(s.as_str()),
+            _ => Err(Error::TypeError(self.type_name(), "a string type")),
         }
     }
 }
