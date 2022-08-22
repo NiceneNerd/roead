@@ -1255,6 +1255,30 @@ impl From<&str> for Name {
     }
 }
 
+impl From<String> for Name {
+    fn from(s: String) -> Self {
+        Name(hash_name(&s))
+    }
+}
+
+impl From<&String> for Name {
+    fn from(s: &String) -> Self {
+        Name(hash_name(s))
+    }
+}
+
+impl From<std::string::String> for Name {
+    fn from(s: std::string::String) -> Self {
+        Name(hash_name(&s))
+    }
+}
+
+impl From<&std::string::String> for Name {
+    fn from(s: &std::string::String) -> Self {
+        Name(hash_name(s))
+    }
+}
+
 impl From<u32> for Name {
     fn from(u: u32) -> Self {
         Name(u)
