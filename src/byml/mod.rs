@@ -660,6 +660,24 @@ impl From<String> for Byml {
     }
 }
 
+impl From<&String> for Byml {
+    fn from(value: &String) -> Self {
+        Self::String(value.clone())
+    }
+}
+
+impl From<std::string::String> for Byml {
+    fn from(value: std::string::String) -> Self {
+        Self::String(value.into())
+    }
+}
+
+impl From<&std::string::String> for Byml {
+    fn from(value: &std::string::String) -> Self {
+        Self::String(value.into())
+    }
+}
+
 impl TryFrom<Byml> for String {
     type Error = Byml;
     fn try_from(value: Byml) -> std::result::Result<Self, Self::Error> {
@@ -816,6 +834,7 @@ impl Byml {
 #[cfg(test)]
 pub(self) static FILES: &[&str] = &[
     "A-1_Dynamic",
+    "D-3_Dynamic",
     "EventInfo.product",
     "GameROMPlayer",
     "LevelSensor",

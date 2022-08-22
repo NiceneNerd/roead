@@ -125,15 +125,20 @@ impl StringTableParser {
         }
         let offset: u32 = reader.read_at((self.offset + 4 + 4 * index) as u64)?;
         let next_offset: u32 = reader.read()?;
-        let max_len = next_offset - offset;
+        let max_len = (next_offset - offset) as usize;
         reader.seek((self.offset + offset) as u64)?;
-        let mut string_ = String::new_const();
+        let mut string_ = [0; 1024];
         let mut c: u8 = reader.read()?;
-        while c != 0 && string_.len() < max_len as usize {
-            string_.push(c as char);
+        let mut i = 0;
+        while c != 0 {
+            string_[i] = c;
+            i += 1;
+            if i == max_len {
+                break;
+            }
             c = reader.read()?;
         }
-        Ok(string_)
+        Ok(std::str::from_utf8(&string_[..i])?.into())
     }
 }
 
