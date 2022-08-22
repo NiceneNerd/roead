@@ -18,10 +18,19 @@ use serde::{Deserialize, Serialize};
     derive(Serialize, Deserialize),
     serde(from = "std::string::String", into = "std::string::String")
 )]
-#[derive(Clone, PartialEq, Eq, Hash)]
+#[derive(Clone, Copy, PartialEq, Eq, Hash)]
 pub struct FixedSafeString<const N: usize> {
     data: [u8; N],
     len: usize,
+}
+
+impl<const N: usize> Default for FixedSafeString<N> {
+    fn default() -> Self {
+        Self {
+            data: [0; N],
+            len: 0,
+        }
+    }
 }
 
 impl<const N: usize> std::fmt::Debug for FixedSafeString<N> {
