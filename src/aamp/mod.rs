@@ -1108,6 +1108,9 @@ impl TryFrom<Parameter> for String {
     fn try_from(value: Parameter) -> std::result::Result<Self, Self::Error> {
         match value {
             Parameter::StringRef(v) => Ok(v),
+            Parameter::String32(v) => Ok(v.into()),
+            Parameter::String64(v) => Ok(v.into()),
+            Parameter::String256(v) => Ok(v.into()),
             _ => Err(value),
         }
     }
@@ -1276,6 +1279,12 @@ impl From<std::string::String> for Name {
 impl From<&std::string::String> for Name {
     fn from(s: &std::string::String) -> Self {
         Name(hash_name(s))
+    }
+}
+
+impl<const N: usize> From<FixedSafeString<N>> for Name {
+    fn from(f: FixedSafeString<N>) -> Self {
+        Name(hash_name(f.as_str()))
     }
 }
 
