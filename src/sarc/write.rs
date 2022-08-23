@@ -157,7 +157,7 @@ impl std::fmt::Display for FileName {
 /// A simple SARC archive writer
 #[derive(Clone)]
 pub struct SarcWriter {
-    endian: Endian,
+    pub endian: Endian,
     legacy: bool,
     hash_multiplier: u32,
     min_alignment: usize,

@@ -47,12 +47,16 @@ pub use write::SarcWriter;
 /// Provides readonly access to a file that is stored in a SARC archive.
 #[derive(Debug, PartialEq, Eq)]
 pub struct File<'a> {
-    name: Option<&'a str>,
-    data: &'a [u8],
+    /// File name. May be empty for file entries that do not use the file name
+    /// table.
+    pub name: Option<&'a str>,
+    /// File data (as a slice).
+    pub data: &'a [u8],
     index: usize,
+    sarc: &'a Sarc<'a>,
 }
 
-impl File<'_> {
+impl<'a> File<'a> {
     /// File name. May be empty for file entries that do not use the file name
     /// table.
     #[inline(always)]
@@ -79,7 +83,7 @@ impl File<'_> {
 
     /// File data (as a slice).
     #[inline(always)]
-    pub fn data(&self) -> &[u8] {
+    pub fn data(&self) -> &'a [u8] {
         self.data
     }
 
