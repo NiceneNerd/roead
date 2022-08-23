@@ -1,11 +1,13 @@
 //! Bindings for the `oead::yaz0` module, which supports Yaz0 decompression and
 //! fast compression (using syaz0).
 use crate::{Error, Result};
+use binrw::binrw;
 use std::borrow::Cow;
 
 /// The header of Yaz0 compressed data.
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
-#[repr(C)]
+#[binrw]
+#[brw(big)]
 pub struct Header {
     /// Should be "Yaz0".
     pub magic: [u8; 4],
@@ -16,15 +18,10 @@ pub struct Header {
     #[doc(hidden)]
     reserved: [u8; 4],
 }
-unsafe impl cxx::ExternType for Header {
-    type Id = cxx::type_id!("oead::yaz0::Header");
-    type Kind = cxx::kind::Trivial;
-}
 
 /// Get the header of Yaz0 compressed data, if it exists.
 pub fn get_header(data: impl AsRef<[u8]>) -> Option<Header> {
-    let data = data.as_ref();
-    ffi::GetHeader(data).ok()
+    binrw::BinRead::read(&mut std::io::Cursor::new(data.as_ref())).ok()
 }
 
 /// Decompress Yaz0 data to vector.
@@ -33,7 +30,7 @@ pub fn decompress(data: impl AsRef<[u8]>) -> Result<Vec<u8>> {
     if data.len() < 0x16 {
         return Err(Error::InsufficientData(data.len(), 0x16));
     }
-    let header = ffi::GetHeader(data)?;
+    let header = get_header(data).ok_or(Error::InvalidData("Missing or corrupt Yaz0 header"))?;
     if &header.magic != b"Yaz0" {
         return Err(Error::BadMagic(
             String::from_utf8_lossy(header.magic.as_slice()).to_string(),
@@ -52,7 +49,7 @@ pub fn decompress_into(data: impl AsRef<[u8]>, mut buffer: impl AsMut<[u8]>) -> 
     if data.len() < 0x16 {
         return Err(Error::InsufficientData(data.len(), 0x16));
     }
-    let header: Header = ffi::GetHeader(data)?;
+    let header = get_header(data).ok_or(Error::InvalidData("Missing or corrupt Yaz0 header"))?;
     if &header.magic != b"Yaz0" {
         return Err(Error::BadMagic(
             String::from_utf8_lossy(header.magic.as_slice()).to_string(),
@@ -92,7 +89,7 @@ pub fn decompress_if(data: &[u8]) -> Cow<'_, [u8]> {
     if data.len() < 0x16 {
         return Cow::Borrowed(data);
     }
-    if let Ok(header) = ffi::GetHeader(data) {
+    if let Some(header) = get_header(data) {
         if &header.magic != b"Yaz0" {
             return Cow::Borrowed(data);
         }
@@ -166,9 +163,7 @@ pub fn compress_if(data: &[u8], path: impl AsRef<std::path::Path>) -> Cow<'_, [u
 #[cxx::bridge(namespace = "oead::yaz0")]
 mod ffi {
     unsafe extern "C++" {
-        type Header = super::Header;
         include!("roead/src/include/oead/yaz0.h");
-        fn GetHeader(data: &[u8]) -> Result<Header>;
         #[rust_name = "DecompressIntoBuffer"]
         fn Decompress(data: &[u8], dest: &mut [u8]) -> Result<()>;
         unsafe fn DecompressUnsafe(data: &[u8], dest: &mut [u8]) -> Result<()>;
