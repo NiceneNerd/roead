@@ -229,16 +229,7 @@ mod test {
                 std::fs::read(std::path::Path::new("test/byml").join([file, ".byml"].join("")))
                     .unwrap();
             let binary_byml = Byml::from_binary(bytes).unwrap();
-            if byml != binary_byml {
-                for (v1, v2) in byml["Actors"]
-                    .as_array()
-                    .unwrap()
-                    .iter()
-                    .zip(binary_byml["Actors"].as_array().unwrap().iter())
-                {
-                    assert_eq!(v1, v2);
-                }
-            }
+            assert_eq!(byml, binary_byml);
         }
     }
 
