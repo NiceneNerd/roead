@@ -18,7 +18,7 @@ use serde::{Deserialize, Serialize};
     derive(Serialize, Deserialize),
     serde(from = "std::string::String", into = "std::string::String")
 )]
-#[derive(Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Clone, Copy, PartialEq, Eq, Hash, PartialOrd)]
 pub struct FixedSafeString<const N: usize> {
     data: [u8; N],
     len: usize,
