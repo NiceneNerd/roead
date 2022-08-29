@@ -6,6 +6,7 @@ use crate::{
 use binrw::prelude::*;
 use rustc_hash::FxHashMap;
 use std::{
+    collections::BTreeMap,
     io::{Cursor, Seek, SeekFrom, Write},
     rc::Rc,
 };
@@ -269,7 +270,8 @@ impl<'a, W: Write + Seek> WriteContext<'a, W> {
                 non_inline_nodes.reserve(hash.len());
                 self.write(NodeType::Hash)?;
                 self.write(u24(hash.len() as u32))?;
-                for (key, item) in hash.iter() {
+                let sorted = hash.iter().collect::<BTreeMap<_, _>>();
+                for (key, item) in sorted.into_iter() {
                     self.write(u24(self.hash_key_table.get_index(key)))?;
                     self.write(item.get_node_type())?;
                     write_container_item(self, item, &mut non_inline_nodes)?;
