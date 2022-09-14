@@ -1,4 +1,5 @@
 //! TODO: Docs
+#![feature(let_chains)]
 #![feature(const_slice_index)]
 #![feature(seek_stream_len)]
 #[cfg(feature = "aamp")]
