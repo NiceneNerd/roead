@@ -28,7 +28,7 @@ jobs:
       uses: Symbitic/install-cmake@v0.1.0
     - name: Setup Windows PATH
       if: matrix.os == 'windows-latest'
-      uses: microsoft/setup-msbuild@v1.1
+      uses: ilammy/msvc-dev-cmd@v1
     - name: Build zlib
       if: matrix.os == 'windows-latest'
       working-directory: lib/zlib-ng
