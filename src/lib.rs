@@ -49,8 +49,9 @@
 //! Source code: https://github.com/NiceneNerd/roead
 //! 
 //! This project is licensed under the GPLv3+ license. oead is licensed under the GPLv2+ license.
-#![feature(let_chains)]
 #![feature(const_slice_index)]
+#![feature(doc_auto_cfg)]
+#![feature(let_chains)]
 #![feature(seek_stream_len)]
 #[cfg(feature = "aamp")]
 pub mod aamp;
