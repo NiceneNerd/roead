@@ -1,7 +1,7 @@
 # roead
 
 [![crates.io](https://img.shields.io/crates/v/roead)](https://crates.io/crates/roead)
-[![api](https://img.shields.io/badge/api-rustdoc-558b2f)](https://docs.rs/roead/)
+[![api](https://img.shields.io/badge/api-rustdoc-558b2f)](https://nicenenerd.github.io/roead/roead/)
 [![license](https://img.shields.io/badge/license-GPL-blue)](https://spdx.org/licenses/GPL-3.0-or-later.html)
 [![build](https://img.shields.io/github/workflow/status/NiceneNerd/roead/Build%20and%20test)](https://github.com/NiceneNerd/roead/actions/workflows/rust.yml)
 
