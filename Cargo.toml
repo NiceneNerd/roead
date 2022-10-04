@@ -58,7 +58,7 @@ aamp = [
     "once_cell",
 ]
 byml = ["binrw", "from_variants", "smartstring", "almost"]
-sarc = ["binrw", "num-integer", "serde", "serde_json", "cached"]
+sarc = ["binrw", "num-integer", "serde", "serde_json", "once_cell"]
 yaz0 = ["cxx", "cxx-build"]
 yaml = ["ryml", "lexical", "base64"]
 with-serde = ["serde", "smartstring/serde", "indexmap/serde"]

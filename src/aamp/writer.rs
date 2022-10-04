@@ -275,7 +275,7 @@ impl<'pio, W: Write + Seek> WriteContext<'pio, W> {
             Entry::Vacant(entry) => {
                 let mut tmp_writer = Cursor::new(Vec::<u8>::with_capacity(0x200));
                 match param {
-                    Parameter::Bool(b) => tmp_writer.write_le(&if *b { 1u32 } else { 0u32 })?,
+                    Parameter::Bool(b) => tmp_writer.write_le(&u32::from(*b))?,
                     Parameter::F32(v) => tmp_writer.write_le(&v.to_bits())?,
                     Parameter::Int(v) => tmp_writer.write_le(&v)?,
                     Parameter::Vec2(v) => tmp_writer.write_le(&v)?,

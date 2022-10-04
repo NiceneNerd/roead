@@ -1,15 +1,16 @@
 use super::*;
 use crate::{Endian, Error, Result};
 use binrw::{io::Write, BinReaderExt, BinWrite};
-use cached::proc_macro::cached;
 use num_integer::Integer;
+use once_cell::sync::Lazy;
 use rustc_hash::{FxHashMap, FxHashSet};
 use serde::Deserialize;
 use std::collections::BTreeMap;
 use std::io::{Cursor, Seek, SeekFrom};
+use std::ops::Deref;
 
-const FACTORY_INFO: &str = include_str!("../../data/botw_resource_factory_info.tsv");
-const AGLENV_INFO: &str = include_str!("../../data/aglenv_file_info.json");
+static FACTORY_INFO: &str = include_str!("../../data/botw_resource_factory_info.tsv");
+static AGLENV_INFO: &str = include_str!("../../data/aglenv_file_info.json");
 const HASH_MULTIPLIER: u32 = 0x65;
 
 impl BinWrite for Endian {
@@ -28,12 +29,14 @@ impl BinWrite for Endian {
     }
 }
 
-#[cached]
-fn get_botw_factory_names() -> FxHashSet<&'static str> {
-    FACTORY_INFO
-        .split('\n')
-        .map(|line| line.split('\t').next().unwrap())
-        .collect()
+fn get_botw_factory_names() -> &'static FxHashSet<&'static str> {
+    static FACTOR_NAMES: Lazy<FxHashSet<&'static str>> = Lazy::new(|| {
+        FACTORY_INFO
+            .split('\n')
+            .map(|line| line.split('\t').next().unwrap())
+            .collect()
+    });
+    FACTOR_NAMES.deref()
 }
 
 #[derive(Deserialize)]
@@ -54,14 +57,16 @@ fn align(pos: usize, alignment: usize) -> usize {
     ((pos as i64 + alignment as i64 - 1) & (0 - alignment as i64)) as usize
 }
 
-#[cached]
-fn get_agl_env_alignment_requirements() -> Vec<(String, usize)> {
-    serde_json::from_str::<Vec<AglEnvInfo>>(AGLENV_INFO)
-        .unwrap()
-        .into_iter()
-        .filter_map(|e| (e.align >= 0).then_some((e.align as usize, e)))
-        .flat_map(|(align, entry)| [(entry.ext, align), (entry.bext, align)].into_iter())
-        .collect()
+fn get_agl_env_alignment_requirements() -> &'static Vec<(String, usize)> {
+    static AGLENV_ALIGN: Lazy<Vec<(String, usize)>> = Lazy::new(|| {
+        serde_json::from_str::<Vec<AglEnvInfo>>(AGLENV_INFO)
+            .unwrap()
+            .into_iter()
+            .filter_map(|e| (e.align >= 0).then_some((e.align as usize, e)))
+            .flat_map(|(align, entry)| [(entry.ext, align), (entry.bext, align)].into_iter())
+            .collect()
+    });
+    AGLENV_ALIGN.deref()
 }
 
 /// Newtype wrapper for [`String`] that hashes with the Nintendo algorithm and
@@ -354,7 +359,7 @@ impl SarcWriter {
         // of 2 and thus the calls cannot fail.
         unsafe {
             for (ext, alignment) in get_agl_env_alignment_requirements() {
-                self.add_alignment_requirement(ext, alignment)
+                self.add_alignment_requirement(ext.clone(), *alignment)
                     .unwrap_unchecked();
             }
             self.add_alignment_requirement("ksky".to_owned(), 8)
