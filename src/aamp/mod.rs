@@ -1414,13 +1414,13 @@ macro_rules! impl_map_wrapper {
         impl<N: Into<Name>> std::ops::Index<N> for $type {
             type Output = $valtype;
             fn index(&self, name: N) -> &$valtype {
-                self.0.get(&name.into()).unwrap()
+                self.0.get(&name.into()).expect("Index out of bounds")
             }
         }
 
         impl<N: Into<Name>> std::ops::IndexMut<N> for $type {
             fn index_mut(&mut self, name: N) -> &mut $valtype {
-                self.0.get_mut(&name.into()).unwrap()
+                self.0.get_mut(&name.into()).expect("Index out of bounds")
             }
         }
     };

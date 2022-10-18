@@ -68,7 +68,8 @@ impl ParameterIO {
     /// Serialize the parameter IO to in-memory bytes.
     pub fn to_binary(&self) -> Vec<u8> {
         let mut buf = Vec::new();
-        self.write(Cursor::new(&mut buf)).unwrap();
+        self.write(Cursor::new(&mut buf))
+            .expect("Parameter IO should serialize to binary without error");
         buf
     }
 }
@@ -194,7 +195,7 @@ impl<'pio, W: Write + Seek> WriteContext<'pio, W> {
             let mut process_one_object = || {
                 if let Some(obj) = object.borrow().as_ref() {
                     for param in obj.0.values() {
-                        let mut ctx = ctx.lock().unwrap();
+                        let mut ctx = ctx.lock().expect("Context should unlock");
                         if param.is_string_type() {
                             ctx.string_param_queue.push(param);
                         } else {
@@ -314,7 +315,7 @@ impl<'pio, W: Write + Seek> WriteContext<'pio, W> {
 
     fn write_string(&mut self, param: &'pio Parameter) -> BinResult<()> {
         let parent_offset = self.get_offset(param);
-        let string_ = param.as_str().unwrap();
+        let string_ = param.as_str().expect("Parameter should be a string");
         let pos = self.writer.stream_position()? as u32;
         let mut existed = true;
         let offset = *self.string_offsets.entry(string_).or_insert_with(|| {

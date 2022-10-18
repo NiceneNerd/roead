@@ -118,7 +118,9 @@ impl<'a, S: std::borrow::Borrow<str>> std::ops::Index<S> for Sarc<'a> {
     type Output = [u8];
 
     fn index(&self, index: S) -> &Self::Output {
-        self.get_data(index.borrow()).unwrap().unwrap()
+        self.get_data(index.borrow())
+            .expect("SARC should contain file")
+            .expect("SARC should yield file data")
     }
 }
 
@@ -300,7 +302,8 @@ impl<'a> Sarc<'_> {
         let mut gcd = MIN_ALIGNMENT;
         let mut reader = Cursor::new(&self.data[self.entries_offset as usize..]);
         for _ in 0..self.num_files {
-            let entry: ResFatEntry = read(self.endian, &mut reader).unwrap();
+            let entry: ResFatEntry =
+                read(self.endian, &mut reader).expect("Data should have valid ResFatEntry");
             gcd = gcd.gcd(&(self.data_offset + entry.data_begin));
         }
 

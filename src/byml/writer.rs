@@ -71,7 +71,8 @@ impl Byml {
     /// nodes.
     pub fn to_binary(&self, endian: Endian) -> Vec<u8> {
         let mut buf = Vec::new();
-        self.write(&mut Cursor::new(&mut buf), endian, 2).unwrap();
+        self.write(&mut Cursor::new(&mut buf), endian, 2)
+            .expect("BYML should serialize to binary without error");
         buf
     }
 
@@ -80,7 +81,7 @@ impl Byml {
     pub fn to_binary_with_version(&self, endian: Endian, version: u16) -> Vec<u8> {
         let mut buf = Vec::new();
         self.write(&mut Cursor::new(&mut buf), endian, version)
-            .unwrap();
+            .expect("BYML should serialize to binary without error");
         buf
     }
 }

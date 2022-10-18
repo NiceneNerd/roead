@@ -33,7 +33,7 @@ fn get_botw_factory_names() -> &'static FxHashSet<&'static str> {
     static FACTOR_NAMES: Lazy<FxHashSet<&'static str>> = Lazy::new(|| {
         FACTORY_INFO
             .split('\n')
-            .map(|line| line.split('\t').next().unwrap())
+            .map(|line| unsafe { line.split('\t').next().unwrap_unchecked() })
             .collect()
     });
     FACTOR_NAMES.deref()
@@ -59,8 +59,7 @@ fn align(pos: usize, alignment: usize) -> usize {
 
 fn get_agl_env_alignment_requirements() -> &'static Vec<(String, usize)> {
     static AGLENV_ALIGN: Lazy<Vec<(String, usize)>> = Lazy::new(|| {
-        serde_json::from_str::<Vec<AglEnvInfo>>(AGLENV_INFO)
-            .unwrap()
+        unsafe { serde_json::from_str::<Vec<AglEnvInfo>>(AGLENV_INFO).unwrap_unchecked() }
             .into_iter()
             .filter_map(|e| (e.align >= 0).then_some((e.align as usize, e)))
             .flat_map(|(align, entry)| [(entry.ext, align), (entry.bext, align)].into_iter())
@@ -249,7 +248,8 @@ impl SarcWriter {
                 .map(|(n, d)| 0x10 + align(n.len() + 1, 4) + d.len())
                 .sum::<usize>();
         let mut buf: Vec<u8> = Vec::with_capacity((est_size as f32 * 1.5) as usize);
-        self.write(&mut Cursor::new(&mut buf)).unwrap();
+        self.write(&mut Cursor::new(&mut buf))
+            .expect("SARC should write to memory without error");
         buf
     }
 
@@ -350,7 +350,8 @@ impl SarcWriter {
     /// * `ext` - File extension without the dot (e.g. “bgparamlist”)
     /// * `alignment` - Data alignment (must be a power of 2)
     pub fn with_alignment_requirement(mut self, ext: String, alignment: usize) -> Self {
-        self.add_alignment_requirement(ext, alignment).unwrap();
+        self.add_alignment_requirement(ext, alignment)
+            .expect("Alignment should be a power of two");
         self
     }
 
@@ -398,7 +399,8 @@ impl SarcWriter {
 
     /// Builder-style method to set the minimum data alignment
     pub fn with_min_alignment(mut self, alignment: usize) -> Self {
-        self.set_min_alignment(alignment).unwrap();
+        self.set_min_alignment(alignment)
+            .expect("Alignment should be a power of two");
         self
     }
 
@@ -442,8 +444,8 @@ impl SarcWriter {
         if let Ok(endian) = reader.read_be() {
             reader.set_position(0x1C);
             let file_size: u32 = match endian {
-                Endian::Big => reader.read_be().unwrap(),
-                Endian::Little => reader.read_le().unwrap(),
+                Endian::Big => reader.read_be().expect("Should fine valid u32 file size"),
+                Endian::Little => reader.read_le().expect("Should fine valid u32 file size"),
             };
             if file_size as usize != data.len() {
                 return 1;
@@ -459,7 +461,7 @@ impl SarcWriter {
             1
         } else {
             let mut cur = Cursor::new(&data[data.len() - 0x8..]);
-            let alignment: u16 = cur.read_be().unwrap();
+            let alignment: u16 = cur.read_be().expect("BFLIM should have u16 alignment info");
             alignment as usize
         }
     }

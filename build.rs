@@ -4,13 +4,13 @@ fn build_zlib() {
         .current_dir("lib/zlib-ng")
         .arg(".")
         .output()
-        .unwrap();
+        .expect("Failed to build zlib. Is CMake installed?");
     std::process::Command::new("cmake")
         .current_dir("lib/zlib-ng")
         .arg("--build")
         .arg(".")
         .output()
-        .unwrap();
+        .expect("Failed to build zlib");
 }
 
 #[cfg(feature = "yaz0")]
@@ -26,7 +26,8 @@ fn main() {
         .include("lib/zlib-ng")
         .flag_if_supported("-static");
     if cfg!(windows) {
-        builder.flag_if_supported("/std:c++17")
+        builder
+            .flag_if_supported("/std:c++17")
             .flag_if_supported("/W4")
             .flag_if_supported("/wd4244")
             .flag_if_supported("/wd4127")

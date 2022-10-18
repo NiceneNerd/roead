@@ -5,7 +5,7 @@ use ryml::{NodeRef, Tree};
 impl Byml {
     /// Parse BYML document from YAML text.
     pub fn from_text(text: impl AsRef<str>) -> Result<Byml> {
-        Parser::new(text.as_ref()).unwrap().parse()
+        Parser::new(text.as_ref())?.parse()
     }
 
     /// Serialize the document to YAML. This can only be done for Null, Array,
@@ -34,35 +34,30 @@ struct Parser<'a>(Tree<'a>);
 
 impl<'a> Parser<'a> {
     fn new(text: &str) -> Result<Self> {
-        Ok(Self(Tree::parse(text).unwrap()))
+        Ok(Self(Tree::parse(text)?))
     }
 
-    fn parse_node(&self, node: NodeRef<'a, '_, '_, &Tree<'a>>) -> Result<Byml> {
-        if node.is_map().unwrap() {
+    fn parse_node(node: NodeRef<'a, '_, '_, &Tree<'a>>) -> Result<Byml> {
+        if node.is_map()? {
             Ok(Byml::Hash(
-                node.iter()
-                    .unwrap()
+                node.iter()?
                     .map(|child| {
-                        let key = child.key().unwrap();
-                        let value = self.parse_node(child.clone()).unwrap();
+                        let key = child.key()?;
+                        let value = Self::parse_node(child.clone())?;
                         Ok((key.into(), value))
                     })
-                    .collect::<Result<_>>()
-                    .unwrap(),
+                    .collect::<Result<_>>()?,
             ))
-        } else if node.is_seq().unwrap() {
+        } else if node.is_seq()? {
             Ok(Byml::Array(
-                node.iter()
-                    .unwrap()
-                    .map(|child| self.parse_node(child.clone()))
-                    .collect::<Result<_>>()
-                    .unwrap(),
+                node.iter()?
+                    .map(|child| Self::parse_node(child.clone()))
+                    .collect::<Result<_>>()?,
             ))
         } else {
             let tag = node.val_tag().unwrap_or("");
             let tag_type = get_tag_based_type(tag).or_else(|| recognize_tag(tag));
-            let scalar =
-                parse_scalar(tag_type, node.val().unwrap(), node.is_quoted().unwrap()).unwrap();
+            let scalar = parse_scalar(tag_type, node.val()?, node.is_quoted()?)?;
             match scalar {
                 Scalar::Bool(b) => Ok(Byml::Bool(b)),
                 Scalar::Float(f) => match tag {
@@ -78,7 +73,7 @@ impl<'a> Parser<'a> {
                 Scalar::Null => Ok(Byml::Null),
                 Scalar::String(s) => {
                     if is_binary_tag(tag) {
-                        Ok(Byml::BinaryData(base64::decode(s).unwrap()))
+                        Ok(Byml::BinaryData(base64::decode(s)?))
                     } else {
                         Ok(Byml::String(s))
                     }
@@ -88,8 +83,8 @@ impl<'a> Parser<'a> {
     }
 
     fn parse(self) -> Result<Byml> {
-        let root = self.0.root_ref().unwrap();
-        self.parse_node(root)
+        let root = self.0.root_ref()?;
+        Self::parse_node(root)
     }
 }
 
@@ -119,75 +114,66 @@ impl<'a, 'b> Emitter<'a, 'b> {
         match byml {
             Byml::Array(array) => {
                 if should_use_inline(byml) {
-                    dest_node
-                        .change_type(ryml::NodeType::Seq | ryml::NodeType::WipStyleFlowSl)
-                        .unwrap();
+                    dest_node.change_type(ryml::NodeType::Seq | ryml::NodeType::WipStyleFlowSl)?;
                 } else {
-                    dest_node.change_type(ryml::NodeType::Seq).unwrap();
+                    dest_node.change_type(ryml::NodeType::Seq)?;
                 }
                 for item in array {
-                    let node = dest_node.append_child().unwrap();
-                    Self::build_node(item, node).unwrap();
+                    let node = dest_node.append_child()?;
+                    Self::build_node(item, node)?;
                 }
             }
             Byml::Hash(hash) => {
                 if should_use_inline(byml) {
-                    dest_node
-                        .change_type(ryml::NodeType::Map | ryml::NodeType::WipStyleFlowSl)
-                        .unwrap();
+                    dest_node.change_type(ryml::NodeType::Map | ryml::NodeType::WipStyleFlowSl)?;
                 } else {
-                    dest_node.change_type(ryml::NodeType::Map).unwrap();
+                    dest_node.change_type(ryml::NodeType::Map)?;
                 }
                 let mut map_items = hash.iter().collect::<Vec<_>>();
                 map_items.sort_by(|a, b| a.0.cmp(b.0));
                 for (key, value) in map_items {
-                    let mut node = dest_node.append_child().unwrap();
-                    node.set_key(key).unwrap();
+                    let mut node = dest_node.append_child()?;
+                    node.set_key(key)?;
                     if string_needs_quotes(key) {
-                        let flags = node.node_type().unwrap();
-                        node.set_type_flags(flags | ryml::NodeType::WipKeySquo)
-                            .unwrap();
+                        let flags = node.node_type()?;
+                        node.set_type_flags(flags | ryml::NodeType::WipKeySquo)?;
                     }
-                    Self::build_node(value, node).unwrap();
+                    Self::build_node(value, node)?;
                 }
             }
             scalar => match scalar {
                 Byml::String(s) => {
-                    dest_node.set_val(s).unwrap();
+                    dest_node.set_val(s)?;
                     if string_needs_quotes(s) {
-                        let flags = dest_node.node_type().unwrap();
-                        dest_node
-                            .set_type_flags(flags | ryml::NodeType::WipValDquo)
-                            .unwrap();
+                        let flags = dest_node.node_type()?;
+                        dest_node.set_type_flags(flags | ryml::NodeType::WipValDquo)?;
                     }
                 }
-                Byml::Bool(b) => dest_node
-                    .set_val(if *b { "true" } else { "false" })
-                    .unwrap(),
-                Byml::Float(f) => dest_node.set_val(&lexical::to_string(*f)).unwrap(),
+                Byml::Bool(b) => dest_node.set_val(if *b { "true" } else { "false" })?,
+                Byml::Float(f) => dest_node.set_val(&lexical::to_string(*f))?,
                 Byml::Double(d) => {
-                    dest_node.set_val(&lexical::to_string(*d)).unwrap();
-                    dest_node.set_val_tag("!f64").unwrap();
+                    dest_node.set_val(&lexical::to_string(*d))?;
+                    dest_node.set_val_tag("!f64")?;
                 }
-                Byml::I32(i) => dest_node.set_val(&lexical::to_string(*i)).unwrap(),
+                Byml::I32(i) => dest_node.set_val(&lexical::to_string(*i))?,
                 Byml::I64(i) => {
-                    dest_node.set_val(&lexical::to_string(*i)).unwrap();
-                    dest_node.set_val_tag("!l").unwrap();
+                    dest_node.set_val(&lexical::to_string(*i))?;
+                    dest_node.set_val_tag("!l")?;
                 }
                 Byml::U32(u) => {
-                    dest_node.set_val(&format_hex!(u)).unwrap();
-                    dest_node.set_val_tag("!u").unwrap();
+                    dest_node.set_val(&format_hex!(u))?;
+                    dest_node.set_val_tag("!u")?;
                 }
                 Byml::U64(u) => {
-                    dest_node.set_val(&format_hex!(u)).unwrap();
-                    dest_node.set_val_tag("!ul").unwrap();
+                    dest_node.set_val(&format_hex!(u))?;
+                    dest_node.set_val_tag("!ul")?;
                 }
-                Byml::Null => dest_node.set_val("null").unwrap(),
+                Byml::Null => dest_node.set_val("null")?,
                 Byml::BinaryData(data) => {
                     let arena = dest_node.tree().arena_capacity();
                     dest_node.tree_mut().reserve_arena(arena + data.len());
-                    dest_node.set_val(&base64::encode(&data)).unwrap();
-                    dest_node.set_val_tag("!!binary").unwrap();
+                    dest_node.set_val(&base64::encode(data))?;
+                    dest_node.set_val_tag("!!binary")?;
                 }
                 _ => unsafe { std::hint::unreachable_unchecked() },
             },
@@ -198,8 +184,8 @@ impl<'a, 'b> Emitter<'a, 'b> {
     fn emit(self) -> Result<std::string::String> {
         let Self(byml, mut tree) = self;
         match byml {
-            Byml::Hash(_) => tree.to_map(0).unwrap(),
-            Byml::Array(_) => tree.to_seq(0).unwrap(),
+            Byml::Hash(_) => tree.to_map(0)?,
+            Byml::Array(_) => tree.to_seq(0)?,
             Byml::Null => return Ok("null".to_string()),
             _ => {
                 return Err(Error::Any(
@@ -207,8 +193,8 @@ impl<'a, 'b> Emitter<'a, 'b> {
                 ));
             }
         };
-        Self::build_node(byml, tree.root_ref_mut().unwrap()).unwrap();
-        Ok(tree.emit().unwrap())
+        Self::build_node(byml, tree.root_ref_mut()?)?;
+        Ok(tree.emit()?)
     }
 }
 

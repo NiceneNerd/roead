@@ -15,8 +15,10 @@ impl ParameterIO {
     pub fn to_text(&self) -> std::string::String {
         let mut tree = Tree::default();
         tree.reserve(10000);
-        write_parameter_io(&mut tree, self).unwrap();
-        tree.emit().unwrap()
+        write_parameter_io(&mut tree, self)
+            .expect("ParameterIO should serialize to YAML without error");
+        tree.emit()
+            .expect("ParameterIO should serialize to YAML without error")
     }
 }
 

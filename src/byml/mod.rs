@@ -782,7 +782,7 @@ impl<'a, I: Into<BymlIndex<'a>>> std::ops::Index<I> for Byml {
     fn index(&self, index: I) -> &Self::Output {
         match (self, index.into()) {
             (Byml::Array(a), BymlIndex::ArrayIdx(i)) => &a[i],
-            (Byml::Hash(h), BymlIndex::HashIdx(k)) => h.get(k).unwrap(),
+            (Byml::Hash(h), BymlIndex::HashIdx(k)) => &h[k],
             _ => panic!("Wrong index type or node type."),
         }
     }
@@ -792,7 +792,7 @@ impl<'a, I: Into<BymlIndex<'a>>> std::ops::IndexMut<I> for Byml {
     fn index_mut(&mut self, index: I) -> &mut Self::Output {
         match (self, index.into()) {
             (Byml::Array(a), BymlIndex::ArrayIdx(i)) => &mut a[i],
-            (Byml::Hash(h), BymlIndex::HashIdx(k)) => h.get_mut(k).unwrap(),
+            (Byml::Hash(h), BymlIndex::HashIdx(k)) => h.get_mut(k).expect("Key should be in hash"),
             _ => panic!("Wrong index type or node type."),
         }
     }

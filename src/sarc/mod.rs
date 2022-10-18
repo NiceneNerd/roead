@@ -68,7 +68,7 @@ impl<'a> File<'a> {
     /// table. Panics if the file has no name.
     #[inline(always)]
     pub fn unwrap_name(&self) -> &str {
-        self.name.unwrap()
+        self.name.expect("File should have name")
     }
 
     /// File name. May be empty for file entries that do not use the file name

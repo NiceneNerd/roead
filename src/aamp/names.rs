@@ -59,7 +59,7 @@ fn format_numbered_name(name: &str, pos: usize) -> std::string::String {
         if name.contains(fmt) {
             let mut split = name.split(fmt);
             return [
-                split.next().unwrap(),
+                split.next().expect("string should have format var"),
                 &format_number(fmt, pos),
                 split.next().unwrap_or(""),
             ]
