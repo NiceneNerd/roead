@@ -36,4 +36,4 @@ jobs:
         cmake .
         cmake --build .
     - name: Run tests
-      run: cargo +nightly test
+      run: cargo +nightly test --all-features
