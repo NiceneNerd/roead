@@ -386,6 +386,7 @@ fn write_parameter_list<'a, 't, 'k>(
                 let ty = child.node_type()?;
                 child.set_type_flags(ty | ryml::NodeType::WipKeyDquo)?;
             }
+            child.set_key(name)?;
         } else {
             child.set_key(&lexical::to_string(key.0))?;
         }
@@ -401,6 +402,7 @@ fn write_parameter_list<'a, 't, 'k>(
                 let ty = child.node_type()?;
                 child.set_type_flags(ty | ryml::NodeType::WipKeyDquo)?;
             }
+            child.set_key(name)?;
         } else {
             child.set_key(&lexical::to_string(key.0))?;
         }
@@ -498,5 +500,22 @@ mod tests {
         dbg!(&text2);
         let pio2 = ParameterIO::from_text(&text2).unwrap();
         assert_eq!(pio, pio2);
+    }
+
+    #[test]
+    fn bin_to_text() {
+        for file in jwalk::WalkDir::new("test/aamp")
+            .into_iter()
+            .filter_map(|f| {
+                f.ok().and_then(|f| {
+                    (f.file_type().is_file() && !f.file_name().to_str().unwrap().ends_with("yml"))
+                        .then(|| f.path())
+                })
+            })
+        {
+            let data = std::fs::read(&file).unwrap();
+            let pio = ParameterIO::from_binary(&data).unwrap();
+            pio.to_text();
+        }
     }
 }

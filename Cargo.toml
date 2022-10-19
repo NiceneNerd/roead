@@ -1,7 +1,7 @@
 [package]
 name = "roead"
 description = "Rust bindings for oead C++ library for common Nintendo formats"
-version = "0.16.3"
+version = "0.16.4"
 authors = ["Caleb Smith <c.smith@tuta.io>"]
 license = "GPL-3.0-or-later"
 readme = "README.md"
