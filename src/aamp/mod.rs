@@ -1306,6 +1306,15 @@ impl AsRef<u32> for Name {
     }
 }
 
+impl std::fmt::Display for Name {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match names::get_default_name_table().get_name(self.0, 0, 0) {
+            Some(name) => name.fmt(f),
+            None => self.0.fmt(f),
+        }
+    }
+}
+
 impl Name {
     /// The CRC32 hash of the name.
     pub fn hash(&self) -> u32 {
