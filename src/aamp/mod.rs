@@ -201,17 +201,17 @@ pub enum Parameter {
     /// A single curve.
     Curve1([Curve; 1]),
     /// Two curves.
-    Curve2([Curve; 2]),
+    Curve2(Box<[Curve; 2]>),
     /// Three curves.
-    Curve3([Curve; 3]),
+    Curve3(Box<[Curve; 3]>),
     /// Four curves.
-    Curve4([Curve; 4]),
+    Curve4(Box<[Curve; 4]>),
     /// Buffer of signed ints.
     BufferInt(Vec<i32>),
     /// Buffer of floats.
     BufferF32(Vec<f32>),
     /// String (max length 256 bytes).
-    String256(FixedSafeString<256>),
+    String256(Box<FixedSafeString<256>>),
     /// Quaternion.
     Quat(Quat),
     /// Unsigned int.
@@ -534,7 +534,7 @@ impl Parameter {
     /// Extract the inner String256 value.
     pub fn into_string256(self) -> Result<FixedSafeString<256>> {
         match self {
-            Parameter::String256(value) => Ok(value),
+            Parameter::String256(value) => Ok(*value),
             _ => Err(Error::TypeError(self.type_name(), "FixedSafeString<256>")),
         }
     }
@@ -582,7 +582,7 @@ impl Parameter {
     /// Extract the inner Curve2 value.
     pub fn into_curve2(self) -> Result<[Curve; 2]> {
         match self {
-            Parameter::Curve2(value) => Ok(value),
+            Parameter::Curve2(value) => Ok(*value),
             _ => Err(Error::TypeError(self.type_name(), "[Curve; 2]")),
         }
     }
@@ -606,7 +606,7 @@ impl Parameter {
     /// Extract the inner Curve3 value.
     pub fn into_curve3(self) -> Result<[Curve; 3]> {
         match self {
-            Parameter::Curve3(value) => Ok(value),
+            Parameter::Curve3(value) => Ok(*value),
             _ => Err(Error::TypeError(self.type_name(), "[Curve; 3]")),
         }
     }
@@ -630,7 +630,7 @@ impl Parameter {
     /// Extract the inner Curve4 value.
     pub fn into_curve4(self) -> Result<[Curve; 4]> {
         match self {
-            Parameter::Curve4(value) => Ok(value),
+            Parameter::Curve4(value) => Ok(*value),
             _ => Err(Error::TypeError(self.type_name(), "[Curve; 4]")),
         }
     }
@@ -928,7 +928,7 @@ impl TryFrom<Parameter> for [Curve; 1] {
 
 impl From<[Curve; 2]> for Parameter {
     fn from(value: [Curve; 2]) -> Self {
-        Parameter::Curve2(value)
+        Parameter::Curve2(value.into())
     }
 }
 
@@ -937,7 +937,7 @@ impl TryFrom<Parameter> for [Curve; 2] {
 
     fn try_from(value: Parameter) -> std::result::Result<Self, Self::Error> {
         match value {
-            Parameter::Curve2(v) => Ok(v),
+            Parameter::Curve2(v) => Ok(*v),
             _ => Err(value),
         }
     }
@@ -945,7 +945,7 @@ impl TryFrom<Parameter> for [Curve; 2] {
 
 impl From<[Curve; 3]> for Parameter {
     fn from(value: [Curve; 3]) -> Self {
-        Parameter::Curve3(value)
+        Parameter::Curve3(value.into())
     }
 }
 
@@ -954,7 +954,7 @@ impl TryFrom<Parameter> for [Curve; 3] {
 
     fn try_from(value: Parameter) -> std::result::Result<Self, Self::Error> {
         match value {
-            Parameter::Curve3(v) => Ok(v),
+            Parameter::Curve3(v) => Ok(*v),
             _ => Err(value),
         }
     }
@@ -962,7 +962,7 @@ impl TryFrom<Parameter> for [Curve; 3] {
 
 impl From<[Curve; 4]> for Parameter {
     fn from(value: [Curve; 4]) -> Self {
-        Parameter::Curve4(value)
+        Parameter::Curve4(value.into())
     }
 }
 
@@ -971,7 +971,7 @@ impl TryFrom<Parameter> for [Curve; 4] {
 
     fn try_from(value: Parameter) -> std::result::Result<Self, Self::Error> {
         match value {
-            Parameter::Curve4(v) => Ok(v),
+            Parameter::Curve4(v) => Ok(*v),
             _ => Err(value),
         }
     }
@@ -1013,7 +1013,7 @@ impl TryFrom<Parameter> for Vec<f32> {
 
 impl From<FixedSafeString<256>> for Parameter {
     fn from(value: FixedSafeString<256>) -> Self {
-        Parameter::String256(value)
+        Parameter::String256(value.into())
     }
 }
 
@@ -1022,7 +1022,7 @@ impl TryFrom<Parameter> for FixedSafeString<256> {
 
     fn try_from(value: Parameter) -> std::result::Result<Self, Self::Error> {
         match value {
-            Parameter::String256(v) => Ok(v),
+            Parameter::String256(v) => Ok(*v),
             _ => Err(value),
         }
     }
@@ -1110,7 +1110,7 @@ impl TryFrom<Parameter> for String {
             Parameter::StringRef(v) => Ok(v),
             Parameter::String32(v) => Ok(v.into()),
             Parameter::String64(v) => Ok(v.into()),
-            Parameter::String256(v) => Ok(v.into()),
+            Parameter::String256(v) => Ok(v.as_str().into()),
             _ => Err(value),
         }
     }
