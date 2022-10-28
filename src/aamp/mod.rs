@@ -197,9 +197,9 @@ pub enum Parameter {
     /// String (max length 32 bytes).
     String32(FixedSafeString<32>),
     /// String (max length 64 bytes).
-    String64(FixedSafeString<64>),
+    String64(Box<FixedSafeString<64>>),
     /// A single curve.
-    Curve1([Curve; 1]),
+    Curve1(Box<[Curve; 1]>),
     /// Two curves.
     Curve2(Box<[Curve; 2]>),
     /// Three curves.
@@ -510,7 +510,7 @@ impl Parameter {
     /// Extract the inner String64 value.
     pub fn into_string64(self) -> Result<FixedSafeString<64>> {
         match self {
-            Parameter::String64(value) => Ok(value),
+            Parameter::String64(value) => Ok(*value),
             _ => Err(Error::TypeError(self.type_name(), "FixedSafeString<64>")),
         }
     }
@@ -558,7 +558,7 @@ impl Parameter {
     /// Extract the inner Curve1 value.
     pub fn into_curve1(self) -> Result<[Curve; 1]> {
         match self {
-            Parameter::Curve1(value) => Ok(value),
+            Parameter::Curve1(value) => Ok(*value),
             _ => Err(Error::TypeError(self.type_name(), "[Curve; 1]")),
         }
     }
@@ -894,7 +894,7 @@ impl TryFrom<Parameter> for FixedSafeString<32> {
 
 impl From<FixedSafeString<64>> for Parameter {
     fn from(value: FixedSafeString<64>) -> Self {
-        Parameter::String64(value)
+        Parameter::String64(value.into())
     }
 }
 
@@ -903,7 +903,7 @@ impl TryFrom<Parameter> for FixedSafeString<64> {
 
     fn try_from(value: Parameter) -> std::result::Result<Self, Self::Error> {
         match value {
-            Parameter::String64(v) => Ok(v),
+            Parameter::String64(v) => Ok(*v),
             _ => Err(value),
         }
     }
@@ -911,7 +911,7 @@ impl TryFrom<Parameter> for FixedSafeString<64> {
 
 impl From<[Curve; 1]> for Parameter {
     fn from(value: [Curve; 1]) -> Self {
-        Parameter::Curve1(value)
+        Parameter::Curve1(value.into())
     }
 }
 
@@ -920,7 +920,7 @@ impl TryFrom<Parameter> for [Curve; 1] {
 
     fn try_from(value: Parameter) -> std::result::Result<Self, Self::Error> {
         match value {
-            Parameter::Curve1(v) => Ok(v),
+            Parameter::Curve1(v) => Ok(*v),
             _ => Err(value),
         }
     }
@@ -1109,7 +1109,7 @@ impl TryFrom<Parameter> for String {
         match value {
             Parameter::StringRef(v) => Ok(v),
             Parameter::String32(v) => Ok(v.into()),
-            Parameter::String64(v) => Ok(v.into()),
+            Parameter::String64(v) => Ok(v.as_str().into()),
             Parameter::String256(v) => Ok(v.as_str().into()),
             _ => Err(value),
         }
