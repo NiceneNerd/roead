@@ -35,7 +35,7 @@ fn scalar_to_value(tag: &str, scalar: Scalar) -> Result<Parameter> {
     Ok(match scalar {
         Scalar::String(s) => match tag {
             "!str32" => Parameter::String32(s.into()),
-            "!str64" => Parameter::String64(s.into()),
+            "!str64" => Parameter::String64(Box::new(s.into())),
             "!str256" => Parameter::String256(Box::new(s.into())),
             _ => Parameter::StringRef(s),
         },
