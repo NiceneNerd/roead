@@ -54,7 +54,9 @@ struct AglEnvInfo {
 
 #[inline(always)]
 fn align(pos: usize, alignment: usize) -> usize {
-    ((pos as i64 + alignment as i64 - 1) & (0 - alignment as i64)) as usize
+    let pos = pos as i64;
+    let alignment = alignment as i64;
+    (pos + (alignment - pos % alignment) % alignment) as usize
 }
 
 fn get_agl_env_alignment_requirements() -> &'static Vec<(String, usize)> {
@@ -365,8 +367,6 @@ impl SarcWriter {
             }
             self.add_alignment_requirement("ksky".to_owned(), 8)
                 .unwrap_unchecked();
-            self.add_alignment_requirement("ksky".to_owned(), 8)
-                .unwrap_unchecked();
             self.add_alignment_requirement("bksky".to_owned(), 8)
                 .unwrap_unchecked();
             self.add_alignment_requirement("gtx".to_owned(), 0x2000)
@@ -441,11 +441,12 @@ impl SarcWriter {
             return 1;
         }
         reader.set_position(0xC);
-        if let Ok(endian) = reader.read_be() {
+        if let Ok(endian) = reader.read_be::<[u8; 2]>() {
             reader.set_position(0x1C);
-            let file_size: u32 = match endian {
-                Endian::Big => reader.read_be().expect("Should fine valid u32 file size"),
-                Endian::Little => reader.read_le().expect("Should fine valid u32 file size"),
+            let file_size: u32 = match &endian {
+                b"\xfe\xff" => reader.read_be().expect("Should fine valid u32 file size"),
+                b"\xff\xfe" => reader.read_le().expect("Should fine valid u32 file size"),
+                _ => return 1,
             };
             if file_size as usize != data.len() {
                 return 1;
@@ -540,6 +541,7 @@ mod tests {
             "ActorObserverByActorTagTag.sarc",
             "test.sarc",
             "A-1.00.sarc",
+            "Common.blarc",
         ] {
             let data = std::fs::read(std::path::Path::new("test/sarc").join(file)).unwrap();
             let sarc = Sarc::new(&data).unwrap();
