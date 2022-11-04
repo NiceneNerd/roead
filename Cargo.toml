@@ -23,10 +23,7 @@ exclude = [
 almost = { version = "0.2.0", optional = true }
 base64 = { version = "0.13.0", optional = true }
 binrw = { version = "0.9.2", optional = true }
-cached = { version = "0.39.0", optional = true }
 cxx = { version = "1.0.71", optional = true }
-enumflags2 = { version = "0.7.5", optional = true }
-from_variants = { version = "1.0.0", optional = true }
 indexmap = { version = "1.9.1", optional = true }
 join_str = "0.1.0"
 lexical = { version = "6.1.1", optional = true, features = ["power-of-two"] }
@@ -49,15 +46,13 @@ jwalk = "0.6.0"
 [features]
 aamp = [
     "binrw",
-    "enumflags2",
-    "from_variants",
     "smartstring",
     "indexmap",
     "almost",
     "parking_lot",
     "once_cell",
 ]
-byml = ["binrw", "from_variants", "smartstring", "almost"]
+byml = ["binrw", "smartstring", "almost"]
 sarc = ["binrw", "num-integer", "serde", "serde_json", "once_cell"]
 yaz0 = ["cxx", "cxx-build"]
 yaml = ["ryml", "lexical", "base64"]
