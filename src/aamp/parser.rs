@@ -69,7 +69,7 @@ impl<R: Read + Seek> Parser<R> {
             ))
         } else {
             Ok(ParameterIO {
-                version: self.header.version,
+                version: self.header.pio_version,
                 data_type: {
                     self.seek(0x30)?;
                     self.read_null_string()?
