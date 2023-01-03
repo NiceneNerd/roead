@@ -119,8 +119,7 @@ impl<'a, S: std::borrow::Borrow<str>> std::ops::Index<S> for Sarc<'a> {
 
     fn index(&self, index: S) -> &Self::Output {
         self.get_data(index.borrow())
-            .expect("SARC should contain file")
-            .expect("SARC should yield file data")
+            .expect("File not found in SARC")
     }
 }
 
@@ -219,7 +218,7 @@ impl<'a> Sarc<'_> {
         let mut b: u32 = self.num_files as u32 - 1;
         let mut reader = Cursor::new(self.data.as_ref());
         while a <= b {
-            let m: u32 = (a + b) as u32 / 2;
+            let m: u32 = (a + b) / 2;
             reader.set_position(self.entries_offset as u64 + 0x10 * m as u64);
             let hash: u32 = read(self.endian, &mut reader)?;
             match needle_hash.cmp(&hash) {
@@ -231,14 +230,27 @@ impl<'a> Sarc<'_> {
         Ok(None)
     }
 
-    /// Get a file by name
-    pub fn get_file(&self, file: &str) -> Result<Option<File>> {
+    /// Get a file by name, returning `None` on its absence or any error.
+    /// If you need to know the error, use [`Sarc::try_get`].
+    pub fn get(&self, file: &str) -> Option<File> {
+        let file_index = self.find_file(file).ok()?;
+        file_index.and_then(|i| self.file_at(i).ok())
+    }
+
+    /// Get a file by name, returning a [`Result`] of an [`Option`]. This
+    /// distinguishes between failed parsing (e.g. due to a corrupted SARC)
+    /// and the absence of the file. If you don't care about any potential
+    /// errors, just whether you can get the file data, use [`Sarc::get`].
+    pub fn try_get(&self, file: &str) -> Result<Option<File>> {
         let file_index = self.find_file(file)?;
         file_index.map(|i| self.file_at(i)).transpose()
     }
 
-    /// Get file data by name.
-    pub fn get_data(&self, file: &str) -> Result<Option<&[u8]>> {
+    /// Get file data by name, returning a [`Result`] of an [`Option`]. This
+    /// distinguishes between failed parsing (e.g. due to a corrupted SARC)
+    /// and the absence of the file. If you don't care about any potential
+    /// errors, just whether you can get the file data, use [`Sarc::get_data`].
+    pub fn try_get_data(&self, file: &str) -> Result<Option<&[u8]>> {
         let file_index = self.find_file(file)?;
         file_index
             .map(|i| -> Result<&[u8]> {
@@ -249,6 +261,12 @@ impl<'a> Sarc<'_> {
                     ..(self.data_offset + entry.data_end) as usize])
             })
             .transpose()
+    }
+
+    /// Get file data by name, returning `None` on its absence or any error.
+    /// If you need to know the error, use [`Sarc::try_get_data`].
+    pub fn get_data(&self, file: &str) -> Option<&[u8]> {
+        self.try_get_data(file).ok().flatten()
     }
 
     /// Get a file by index. Returns error if index > file count.
@@ -351,8 +369,7 @@ mod tests {
             "Model/DgnMrgPrt_Dungeon119.sbfres",
             "Model/DgnMrgPrt_Dungeon119.Tex2.sbfres",
         ] {
-            sarc.get_file(file)
-                .unwrap()
+            sarc.get(file)
                 .unwrap_or_else(|| panic!("Could not find file {}", file));
         }
     }
