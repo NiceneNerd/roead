@@ -199,7 +199,7 @@ mod tests {
         for (file, magic, len) in FILES {
             let path = std::path::Path::new("test/yaz0").join(file);
             let data = std::fs::read(path).unwrap();
-            let decompressed = super::decompress(&data).unwrap();
+            let decompressed = super::decompress(data).unwrap();
             assert_eq!(&decompressed[..4], magic.as_slice());
             assert_eq!(decompressed.len(), *len);
             println!("{} is good", file);
@@ -211,9 +211,9 @@ mod tests {
         for (file, _, _) in FILES {
             let path = std::path::Path::new("test/yaz0").join(file);
             let data = std::fs::read(path).unwrap();
-            let decompressed = super::decompress(&data).unwrap();
+            let decompressed = super::decompress(data).unwrap();
             let compressed = super::compress(decompressed.as_slice());
-            let decompressed2 = super::decompress(&compressed).unwrap();
+            let decompressed2 = super::decompress(compressed).unwrap();
             assert_eq!(decompressed, decompressed2);
         }
     }

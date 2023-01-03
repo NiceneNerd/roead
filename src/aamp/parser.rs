@@ -209,7 +209,7 @@ mod tests {
         {
             println!("{}", file.display());
             let data = std::fs::read(&file).unwrap();
-            ParameterIO::from_binary(&data).unwrap();
+            ParameterIO::from_binary(data).unwrap();
         }
     }
 }

@@ -1,6 +1,6 @@
 #[inline(always)]
 pub(crate) fn align(value: u32, size: u32) -> u32 {
-    (value + (size - value % size) % size) as u32
+    value + (size - value % size) % size
 }
 
 #[allow(non_camel_case_types)]

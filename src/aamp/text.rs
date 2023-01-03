@@ -442,7 +442,7 @@ mod tests {
     #[test]
     fn parse() {
         let text = std::fs::read_to_string("test/aamp/test.yml").unwrap();
-        let pio = ParameterIO::from_text(&text).unwrap();
+        let pio = ParameterIO::from_text(text).unwrap();
         dbg!(&pio);
         assert_eq!(
             pio.param_root
@@ -495,7 +495,7 @@ mod tests {
             }
         }
         let text = std::fs::read_to_string("test/aamp/test.yml").unwrap();
-        let pio = ParameterIO::from_text(&text).unwrap();
+        let pio = ParameterIO::from_text(text).unwrap();
         let text2 = pio.to_text();
         dbg!(&text2);
         let pio2 = ParameterIO::from_text(&text2).unwrap();
@@ -513,8 +513,8 @@ mod tests {
                 })
             })
         {
-            let data = std::fs::read(&file).unwrap();
-            let pio = ParameterIO::from_binary(&data).unwrap();
+            let data = std::fs::read(file).unwrap();
+            let pio = ParameterIO::from_binary(data).unwrap();
             pio.to_text();
         }
     }

@@ -397,9 +397,9 @@ mod tests {
         {
             println!("{}", file.display());
             let data = std::fs::read(&file).unwrap();
-            let pio = ParameterIO::from_binary(&data).unwrap();
+            let pio = ParameterIO::from_binary(data).unwrap();
             let new_bytes = pio.to_binary();
-            let new_pio = ParameterIO::from_binary(&new_bytes).unwrap();
+            let new_pio = ParameterIO::from_binary(new_bytes).unwrap();
             assert_eq!(pio, new_pio);
         }
     }

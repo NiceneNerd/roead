@@ -340,7 +340,7 @@ mod test {
                     .unwrap();
             let byml = Byml::from_binary(bytes).unwrap();
             let new_le_bytes = byml.to_binary(Endian::Little);
-            let mut new_byml = Byml::from_binary(&new_le_bytes).unwrap();
+            let mut new_byml = Byml::from_binary(new_le_bytes).unwrap();
             assert_eq!(byml, new_byml);
             let new_be_bytes = byml.to_binary(Endian::Big);
             new_byml = Byml::from_binary(new_be_bytes).unwrap();
