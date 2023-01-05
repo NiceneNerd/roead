@@ -71,7 +71,7 @@ fn get_agl_env_alignment_requirements() -> &'static Vec<(String, usize)> {
 }
 
 /// Newtype wrapper for [`String`] that hashes with the Nintendo algorithm and
-/// is ordered by that hash value.
+/// is ordered by that hash value. Used only for the file map in [`SarcWriter`].
 #[derive(Debug, Clone, Eq)]
 #[repr(transparent)]
 pub struct FileName(String);
@@ -131,26 +131,6 @@ impl From<&str> for FileName {
 impl From<String> for FileName {
     fn from(s: String) -> Self {
         Self(s)
-    }
-}
-
-impl std::borrow::Borrow<str> for FileName {
-    fn borrow(&self) -> &str {
-        self.0.borrow()
-    }
-}
-
-impl std::borrow::Borrow<String> for FileName {
-    fn borrow(&self) -> &String {
-        self.0.borrow()
-    }
-}
-
-impl std::borrow::Borrow<FileName> for String {
-    fn borrow(&self) -> &FileName {
-        // This is sound because [`FileName`] is a newtype around [`String`] with
-        // `repr(transparent)`.
-        unsafe { &*(self as *const String as *const FileName) }
     }
 }
 
@@ -522,6 +502,18 @@ impl SarcWriter {
     {
         self.add_files(iter);
         self
+    }
+
+    /// Remove a file from the archive, with greater generic flexibility than
+    /// using `remove` on the `files` field.
+    pub fn remove_file(&mut self, name: impl Into<String>) {
+        self.files.remove(&FileName(name.into()));
+    }
+
+    /// Get a file's data from the archive, with greater generic flexibility
+    /// than using `get` on the `files` field.
+    pub fn get_file(&mut self, name: impl Into<String>) -> Option<&Vec<u8>> {
+        self.files.get(&FileName(name.into()))
     }
 }
 
