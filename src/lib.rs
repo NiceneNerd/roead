@@ -3,7 +3,7 @@
 //! [![crates.io](https://img.shields.io/crates/v/roead)](https://crates.io/crates/roead)
 //! [![api](https://img.shields.io/badge/api-rustdoc-558b2f)](https://nicenenerd.github.io/roead/roead/)
 //! [![license](https://img.shields.io/badge/license-GPL-blue)](https://spdx.org/licenses/GPL-3.0-or-later.html)
-//! [![build](https://img.shields.io/github/workflow/status/NiceneNerd/roead/Build%20and%20test)](https://github.com/NiceneNerd/roead/actions/workflows/rust.yml)
+//! [![build](https://img.shields.io/github/actions/workflow/status/NiceneNerd/roead/test.yml)](https://github.com/NiceneNerd/roead/actions/workflows/test.yml)
 //!
 //! ## A Rusty child of the oead C++ library
 //! **oead** is a C++ library for common file formats that are used in modern
@@ -48,8 +48,8 @@
 //!
 //! ## Contributing
 //!
-//! Issue tracker: https://github.com/NiceneNerd/roead/issues  
-//! Source code: https://github.com/NiceneNerd/roead
+//! Issue tracker: <https://github.com/NiceneNerd/roead/issues>  
+//! Source code: <https://github.com/NiceneNerd/roead>
 //!
 //! This project is licensed under the GPLv3+ license. oead is licensed under
 //! the GPLv2+ license.
@@ -119,7 +119,7 @@ pub enum Endian {
     Little = 0xFEFF,
 }
 
-type Result<T> = std::result::Result<T, Error>;
+pub type Result<T> = std::result::Result<T, Error>;
 
 impl Clone for Error {
     fn clone(&self) -> Self {

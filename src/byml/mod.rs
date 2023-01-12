@@ -43,7 +43,8 @@
 //!
 //! For convenience, a `Byml` *known* to be an array or hash node can be
 //! indexed. **Panics if the node has the wrong type, the index has the wrong
-//! type, or the index is not found**. ```
+//! type, or the index is not found**.
+//! ```
 //! # use roead::byml::Byml;
 //! # fn docttest() -> Result<(), Box<dyn std::error::Error>> {
 //! let buf: Vec<u8> = std::fs::read("test/byml/ActorInfo.product.byml")?;
