@@ -139,11 +139,7 @@ const fn hash_name(multiplier: u32, name: &str) -> u32 {
     let bytes = name.as_bytes();
     let mut i = 0;
     while i < name.len() {
-        hash = hash
-            .wrapping_mul(multiplier)
-            // This is sound because obviously the index is within the string
-            // length.
-            .wrapping_add(unsafe { *bytes.get_unchecked(i) as u32 });
+        hash = hash.wrapping_mul(multiplier).wrapping_add(bytes[i] as u32);
         i += 1;
     }
     hash
@@ -189,7 +185,8 @@ struct ResFntHeader {
     reserved: u16,
 }
 
+/// Check if a potential alignment is valid for building a SARC
 #[inline(always)]
-const fn is_valid_alignment(alignment: usize) -> bool {
+pub const fn is_valid_alignment(alignment: usize) -> bool {
     alignment != 0 && (alignment & (alignment - 1)) == 0
 }

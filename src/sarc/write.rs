@@ -1,10 +1,11 @@
 use super::*;
-use crate::{Endian, Error, Result};
+use crate::{Endian, Result};
 use binrw::{io::Write, BinReaderExt, BinWrite};
 use num_integer::Integer;
 use once_cell::sync::Lazy;
 use rustc_hash::{FxHashMap, FxHashSet};
 use serde::Deserialize;
+use std::borrow::Cow;
 use std::collections::BTreeMap;
 use std::io::{Cursor, Seek, SeekFrom};
 use std::ops::Deref;
@@ -74,9 +75,9 @@ fn get_agl_env_alignment_requirements() -> &'static Vec<(String, usize)> {
 /// is ordered by that hash value. Used only for the file map in [`SarcWriter`].
 #[derive(Debug, Clone, Eq)]
 #[repr(transparent)]
-pub struct FileName(String);
+pub struct FileName<'a>(Cow<'a, str>);
 
-impl std::ops::Deref for FileName {
+impl std::ops::Deref for FileName<'_> {
     type Target = str;
 
     fn deref(&self) -> &Self::Target {
@@ -84,57 +85,63 @@ impl std::ops::Deref for FileName {
     }
 }
 
-impl PartialEq for FileName {
+impl PartialEq for FileName<'_> {
     fn eq(&self, other: &Self) -> bool {
         self.0.eq(&other.0)
     }
 }
 
-impl std::hash::Hash for FileName {
+impl std::hash::Hash for FileName<'_> {
     fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
         hash_name(HASH_MULTIPLIER, &self.0).hash(state)
     }
 }
 
-impl PartialOrd for FileName {
+impl PartialOrd for FileName<'_> {
     fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
         hash_name(HASH_MULTIPLIER, &self.0).partial_cmp(&hash_name(HASH_MULTIPLIER, &other.0))
     }
 }
 
-impl Ord for FileName {
+impl Ord for FileName<'_> {
     fn cmp(&self, other: &Self) -> std::cmp::Ordering {
         hash_name(HASH_MULTIPLIER, &self.0).cmp(&hash_name(HASH_MULTIPLIER, &other.0))
     }
 }
 
-impl AsRef<str> for FileName {
+impl AsRef<str> for FileName<'_> {
     fn as_ref(&self) -> &str {
         self.0.as_ref()
     }
 }
 
-impl AsRef<FileName> for String {
-    fn as_ref(&self) -> &FileName {
-        // This is sound because [`FileName`] is a newtype around [`String`] with
-        // `repr(transparent)`.
-        unsafe { &*(self as *const String as *const FileName) }
+impl<'a> From<&'a str> for FileName<'a> {
+    fn from(s: &'a str) -> Self {
+        Self(s.into())
     }
 }
 
-impl From<&str> for FileName {
-    fn from(s: &str) -> Self {
-        Self(s.to_owned())
-    }
-}
-
-impl From<String> for FileName {
+impl From<String> for FileName<'_> {
     fn from(s: String) -> Self {
-        Self(s)
+        Self(s.into())
     }
 }
 
-impl std::fmt::Display for FileName {
+#[cfg(feature = "smartstring")]
+impl From<smartstring::alias::String> for FileName<'_> {
+    fn from(s: smartstring::alias::String) -> Self {
+        Self(s.to_string().into())
+    }
+}
+
+#[cfg(feature = "smartstring")]
+impl<'a> From<&'a smartstring::alias::String> for FileName<'a> {
+    fn from(s: &'a smartstring::alias::String) -> Self {
+        Self(s.as_str().into())
+    }
+}
+
+impl std::fmt::Display for FileName<'_> {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         self.0.fmt(f)
     }
@@ -150,7 +157,7 @@ pub struct SarcWriter {
     alignment_map: FxHashMap<String, usize>,
     options: binrw::WriteOptions,
     /// Files to be written.
-    pub files: BTreeMap<FileName, Vec<u8>>,
+    pub files: BTreeMap<FileName<'static>, Vec<u8>>,
 }
 
 impl std::fmt::Debug for SarcWriter {
@@ -207,7 +214,10 @@ impl SarcWriter {
             alignment_map: FxHashMap::default(),
             files: sarc
                 .files()
-                .filter_map(|f| f.name.map(|name| (name.into(), f.data.to_vec())))
+                .filter_map(|f| {
+                    f.name
+                        .map(|name| (name.to_string().into(), f.data.to_vec()))
+                })
                 .collect(),
             options: binrw::WriteOptions::default().with_endian(match endian {
                 Endian::Big => binrw::Endian::Big,
@@ -316,12 +326,15 @@ impl SarcWriter {
     ///
     /// * `ext` - File extension without the dot (e.g. “bgparamlist”)
     /// * `alignment` - Data alignment (must be a power of 2)
-    pub fn add_alignment_requirement(&mut self, ext: String, alignment: usize) -> Result<()> {
+    ///
+    /// Panics if an invalid alignment is provided. If you're not passing an
+    /// alignment that is known at compile-time, you should probably check
+    /// using [`is_valid_alignment`] first.
+    pub fn add_alignment_requirement(&mut self, ext: String, alignment: usize) {
         if !is_valid_alignment(alignment) {
-            return Err(Error::InvalidData("Invalid alignment requirement"));
+            panic!("Invalid alignment requirement");
         }
         self.alignment_map.insert(ext, alignment);
-        Ok(())
     }
 
     /// Builder-style method to add or modify a data alignment requirement for
@@ -332,55 +345,46 @@ impl SarcWriter {
     /// * `ext` - File extension without the dot (e.g. “bgparamlist”)
     /// * `alignment` - Data alignment (must be a power of 2)
     pub fn with_alignment_requirement(mut self, ext: String, alignment: usize) -> Self {
-        self.add_alignment_requirement(ext, alignment)
-            .expect("Alignment should be a power of two");
+        self.add_alignment_requirement(ext, alignment);
         self
     }
 
     fn add_default_alignments(&mut self) {
         // This is perfectly sound because all of these alignments are powers
         // of 2 and thus the calls cannot fail.
-        unsafe {
-            for (ext, alignment) in get_agl_env_alignment_requirements() {
-                self.add_alignment_requirement(ext.clone(), *alignment)
-                    .unwrap_unchecked();
-            }
-            self.add_alignment_requirement("ksky".to_owned(), 8)
-                .unwrap_unchecked();
-            self.add_alignment_requirement("bksky".to_owned(), 8)
-                .unwrap_unchecked();
-            self.add_alignment_requirement("gtx".to_owned(), 0x2000)
-                .unwrap_unchecked();
-            self.add_alignment_requirement("sharcb".to_owned(), 0x1000)
-                .unwrap_unchecked();
-            self.add_alignment_requirement("sharc".to_owned(), 0x1000)
-                .unwrap_unchecked();
-            self.add_alignment_requirement("baglmf".to_owned(), 0x80)
-                .unwrap_unchecked();
-            self.add_alignment_requirement(
-                "bffnt".to_owned(),
-                match self.endian {
-                    Endian::Big => 0x2000,
-                    Endian::Little => 0x1000,
-                },
-            )
-            .unwrap_unchecked();
+        for (ext, alignment) in get_agl_env_alignment_requirements() {
+            self.add_alignment_requirement(ext.clone(), *alignment);
         }
+        self.add_alignment_requirement("ksky".to_owned(), 8);
+        self.add_alignment_requirement("bksky".to_owned(), 8);
+        self.add_alignment_requirement("gtx".to_owned(), 0x2000);
+        self.add_alignment_requirement("sharcb".to_owned(), 0x1000);
+        self.add_alignment_requirement("sharc".to_owned(), 0x1000);
+        self.add_alignment_requirement("baglmf".to_owned(), 0x80);
+        self.add_alignment_requirement(
+            "bffnt".to_owned(),
+            match self.endian {
+                Endian::Big => 0x2000,
+                Endian::Little => 0x1000,
+            },
+        );
     }
 
-    /// Set the minimum data alignment
-    pub fn set_min_alignment(&mut self, alignment: usize) -> Result<()> {
+    /// Set the minimum data alignment.
+    ///
+    /// Panics if an invalid alignment is provided. If you're not passing an
+    /// alignment that is known at compile-time, you should probably check
+    /// using [`is_valid_alignment`] first.
+    pub fn set_min_alignment(&mut self, alignment: usize) {
         if !is_valid_alignment(alignment) {
-            return Err(Error::InvalidData("Invalid minimum SARC file alignment"));
+            panic!("Invalid minimum SARC file alignment");
         }
         self.min_alignment = alignment;
-        Ok(())
     }
 
     /// Builder-style method to set the minimum data alignment
     pub fn with_min_alignment(mut self, alignment: usize) -> Self {
-        self.set_min_alignment(alignment)
-            .expect("Alignment should be a power of two");
+        self.set_min_alignment(alignment);
         self
     }
 
@@ -471,12 +475,16 @@ impl SarcWriter {
 
     /// Add a file to the archive, with greater generic flexibility than using
     /// `insert` on the `files` field.
-    pub fn add_file(&mut self, name: impl Into<String>, data: impl Into<Vec<u8>>) {
-        self.files.insert(FileName(name.into()), data.into());
+    pub fn add_file(&mut self, name: impl Into<FileName<'static>>, data: impl Into<Vec<u8>>) {
+        self.files.insert(name.into(), data.into());
     }
 
     /// Builder-style method to add a file to the archive.
-    pub fn with_file(mut self, name: impl Into<String>, data: impl Into<Vec<u8>>) -> Self {
+    pub fn with_file(
+        mut self,
+        name: impl Into<FileName<'static>>,
+        data: impl Into<Vec<u8>>,
+    ) -> Self {
         self.add_file(name, data);
         self
     }
@@ -485,19 +493,19 @@ impl SarcWriter {
     /// flexibility than using `extend` on the `files` field.
     pub fn add_files<N, D>(&mut self, iter: impl IntoIterator<Item = (N, D)>)
     where
-        N: Into<String>,
+        N: Into<FileName<'static>>,
         D: Into<Vec<u8>>,
     {
         self.files.extend(
             iter.into_iter()
-                .map(|(name, data)| (FileName(name.into()), data.into())),
+                .map(|(name, data)| (name.into(), data.into())),
         );
     }
 
     /// Builder-style method to add files to the archive from an iterator.
     pub fn with_files<N, D>(mut self, iter: impl IntoIterator<Item = (N, D)>) -> Self
     where
-        N: Into<String>,
+        N: Into<FileName<'static>>,
         D: Into<Vec<u8>>,
     {
         self.add_files(iter);
@@ -506,14 +514,14 @@ impl SarcWriter {
 
     /// Remove a file from the archive, with greater generic flexibility than
     /// using `remove` on the `files` field.
-    pub fn remove_file(&mut self, name: impl Into<String>) {
-        self.files.remove(&FileName(name.into()));
+    pub fn remove_file(&mut self, name: impl Into<FileName<'static>>) {
+        self.files.remove(&name.into());
     }
 
     /// Get a file's data from the archive, with greater generic flexibility
     /// than using `get` on the `files` field.
-    pub fn get_file(&mut self, name: impl Into<String>) -> Option<&Vec<u8>> {
-        self.files.get(&FileName(name.into()))
+    pub fn get_file(&mut self, name: impl Into<FileName<'static>>) -> Option<&Vec<u8>> {
+        self.files.get(&name.into())
     }
 }
 
