@@ -21,14 +21,14 @@ use serde::{Deserialize, Serialize};
 #[derive(Clone, Copy, PartialEq, Eq, Hash, PartialOrd)]
 pub struct FixedSafeString<const N: usize> {
     data: [u8; N],
-    len: usize,
+    len:  usize,
 }
 
 impl<const N: usize> Default for FixedSafeString<N> {
     fn default() -> Self {
         Self {
             data: [0; N],
-            len: 0,
+            len:  0,
         }
     }
 }
@@ -48,6 +48,7 @@ impl<const N: usize> FixedSafeString<N> {
 
 impl<const N: usize> std::ops::Deref for FixedSafeString<N> {
     type Target = str;
+
     fn deref(&self) -> &str {
         self.as_ref()
     }
@@ -121,6 +122,7 @@ impl<const N: usize> std::fmt::Display for FixedSafeString<N> {
 #[cfg(feature = "binrw")]
 impl<const N: usize> binrw::BinRead for FixedSafeString<N> {
     type Args = ();
+
     fn read_options<R: std::io::Read + std::io::Seek>(
         reader: &mut R,
         _: &binrw::ReadOptions,

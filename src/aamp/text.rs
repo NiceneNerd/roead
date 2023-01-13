@@ -1,7 +1,8 @@
-use super::*;
-use crate::{types::*, yaml::*, Error, Result};
 use lexical::{FromLexical, FromLexicalWithOptions, ToLexical, ToLexicalWithOptions};
 use ryml::*;
+
+use super::*;
+use crate::{types::*, yaml::*, Error, Result};
 
 impl ParameterIO {
     /// Parse ParameterIO from YAML text.
@@ -33,12 +34,14 @@ fn recognize_tag(tag: &str) -> Option<TagBasedType> {
 
 fn scalar_to_value(tag: &str, scalar: Scalar) -> Result<Parameter> {
     Ok(match scalar {
-        Scalar::String(s) => match tag {
-            "!str32" => Parameter::String32(s.into()),
-            "!str64" => Parameter::String64(Box::new(s.into())),
-            "!str256" => Parameter::String256(Box::new(s.into())),
-            _ => Parameter::StringRef(s),
-        },
+        Scalar::String(s) => {
+            match tag {
+                "!str32" => Parameter::String32(s.into()),
+                "!str64" => Parameter::String64(Box::new(s.into())),
+                "!str256" => Parameter::String256(Box::new(s.into())),
+                _ => Parameter::StringRef(s),
+            }
+        }
         Scalar::Int(i) => {
             if tag == "!u" {
                 Parameter::U32(i as u32)
@@ -147,13 +150,15 @@ fn parse_parameter<'a, 't, 'k, 'r>(
             "!vec4" => Vector4f::try_from(node)?.into(),
             "!quat" => Quat::try_from(node)?.into(),
             "!color" => Color::try_from(node)?.into(),
-            "!curve" => match node.num_children()? {
-                32 => read_curves::<1>(node)?.into(),
-                64 => read_curves::<2>(node)?.into(),
-                96 => read_curves::<3>(node)?.into(),
-                128 => read_curves::<4>(node)?.into(),
-                _ => return Err(Error::InvalidData("Invalid curve: wrong number of values")),
-            },
+            "!curve" => {
+                match node.num_children()? {
+                    32 => read_curves::<1>(node)?.into(),
+                    64 => read_curves::<2>(node)?.into(),
+                    96 => read_curves::<3>(node)?.into(),
+                    128 => read_curves::<4>(node)?.into(),
+                    _ => return Err(Error::InvalidData("Invalid curve: wrong number of values")),
+                }
+            }
             "!buffer_int" => read_buf::<i32>(node)?.into(),
             "!buffer_f32" => read_buf::<f32>(node)?.into(),
             "!buffer_u32" => read_buf::<u32>(node)?.into(),
@@ -161,7 +166,7 @@ fn parse_parameter<'a, 't, 'k, 'r>(
             _ => {
                 return Err(Error::InvalidData(
                     "Invalid parameter: sequence without known tag",
-                ))
+                ));
             }
         }
     } else {

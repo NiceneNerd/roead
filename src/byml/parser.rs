@@ -1,10 +1,12 @@
+use std::io::{Read, Seek, SeekFrom};
+
+use binrw::{binrw, BinRead, VecArgs};
+
 use super::*;
 use crate::{
     util::{align, u24},
     Endian, Error, Result,
 };
-use binrw::{binrw, BinRead, VecArgs};
-use std::io::{Read, Seek, SeekFrom};
 
 impl Byml {
     /// Read a document from a binary reader.
@@ -32,7 +34,7 @@ impl Byml {
 
 struct BinReader<R: Read + Seek> {
     reader: R,
-    opts: binrw::ReadOptions,
+    opts:   binrw::ReadOptions,
 }
 
 impl<R: Read + Seek> BinReader<R> {
@@ -96,7 +98,7 @@ struct ResHeader {
 #[derive(Debug, Default)]
 struct StringTableParser {
     offset: u32,
-    size: u32,
+    size:   u32,
 }
 
 impl StringTableParser {
@@ -192,14 +194,10 @@ impl<R: Read + Seek> Parser<R> {
             NodeType::String => Byml::String(self.string_table.get_string(raw, &mut self.reader)?),
             NodeType::Binary => {
                 let size: u32 = self.reader.read_at(raw as u64)?;
-                let buf = Vec::read_options(
-                    &mut self.reader.reader,
-                    &self.reader.opts,
-                    VecArgs {
-                        count: size as usize,
-                        inner: (),
-                    },
-                )?;
+                let buf = Vec::read_options(&mut self.reader.reader, &self.reader.opts, VecArgs {
+                    count: size as usize,
+                    inner: (),
+                })?;
                 Byml::BinaryData(buf)
             }
             NodeType::Bool => Byml::Bool(raw != 0),

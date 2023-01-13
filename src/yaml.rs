@@ -1,5 +1,6 @@
-use crate::{Error, Result};
 use join_str::jstr;
+
+use crate::{Error, Result};
 
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
 pub(crate) enum TagBasedType {
@@ -103,7 +104,7 @@ pub(crate) fn parse_scalar(
                                 Err(_) => {
                                     return Err(Error::InvalidDataD(jstr!(
                                         "Invalid integer: {value}"
-                                    )))
+                                    )));
                                 }
                             }
                         }

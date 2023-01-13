@@ -1,7 +1,9 @@
+use std::io::{Read, Seek};
+
+use binrw::prelude::*;
+
 use super::*;
 use crate::{Error, Result};
-use binrw::prelude::*;
-use std::io::{Read, Seek};
 
 impl ParameterIO {
     /// Read a parameter archive from a binary reader.
@@ -30,7 +32,7 @@ impl ParameterIO {
 struct Parser<R: Read + Seek> {
     reader: R,
     header: ResHeader,
-    opts: binrw::ReadOptions,
+    opts:   binrw::ReadOptions,
 }
 
 impl<R: Read + Seek> Parser<R> {
@@ -180,7 +182,7 @@ impl<R: Read + Seek> Parser<R> {
         let lists_offset = info.lists_rel_offset as u32 * 4 + offset;
         let objects_offset = info.objects_rel_offset as u32 * 4 + offset;
         let plist = ParameterList {
-            lists: (0..info.list_count)
+            lists:   (0..info.list_count)
                 .into_iter()
                 .map(|i| self.parse_list(lists_offset + 0xC * i as u32))
                 .collect::<Result<_>>()?,

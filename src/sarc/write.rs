@@ -1,14 +1,18 @@
-use super::*;
-use crate::{Endian, Result};
+use std::{
+    borrow::Cow,
+    collections::BTreeMap,
+    io::{Cursor, Seek, SeekFrom},
+    ops::Deref,
+};
+
 use binrw::{io::Write, BinReaderExt, BinWrite};
 use num_integer::Integer;
 use once_cell::sync::Lazy;
 use rustc_hash::{FxHashMap, FxHashSet};
 use serde::Deserialize;
-use std::borrow::Cow;
-use std::collections::BTreeMap;
-use std::io::{Cursor, Seek, SeekFrom};
-use std::ops::Deref;
+
+use super::*;
+use crate::{Endian, Result};
 
 static FACTORY_INFO: &str = include_str!("../../data/botw_resource_factory_info.tsv");
 static AGLENV_INFO: &str = include_str!("../../data/aglenv_file_info.json");
@@ -16,6 +20,7 @@ const HASH_MULTIPLIER: u32 = 0x65;
 
 impl BinWrite for Endian {
     type Args = ();
+
     #[inline(always)]
     fn write_options<W: Write + Seek>(
         &self,
@@ -361,13 +366,10 @@ impl SarcWriter {
         self.add_alignment_requirement("sharcb".to_owned(), 0x1000);
         self.add_alignment_requirement("sharc".to_owned(), 0x1000);
         self.add_alignment_requirement("baglmf".to_owned(), 0x80);
-        self.add_alignment_requirement(
-            "bffnt".to_owned(),
-            match self.endian {
-                Endian::Big => 0x2000,
-                Endian::Little => 0x1000,
-            },
-        );
+        self.add_alignment_requirement("bffnt".to_owned(), match self.endian {
+            Endian::Big => 0x2000,
+            Endian::Little => 0x1000,
+        });
     }
 
     /// Set the minimum data alignment.

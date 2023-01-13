@@ -1,12 +1,14 @@
-use super::*;
-use once_cell::sync::Lazy;
-use parking_lot::RwLock;
-use rustc_hash::FxHashMap;
 use std::{
     borrow::Cow,
     collections::hash_map::{Entry, VacantEntry},
     sync::Arc,
 };
+
+use once_cell::sync::Lazy;
+use parking_lot::RwLock;
+use rustc_hash::FxHashMap;
+
+use super::*;
 
 static NAMES: &str = include_str!("../../data/botw_hashed_names.txt");
 static NUMBERED_NAMES: &str = include_str!("../../data/botw_numbered_names.txt");

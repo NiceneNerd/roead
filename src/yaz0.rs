@@ -1,8 +1,10 @@
 //! Bindings for the `oead::yaz0` module, which supports Yaz0 decompression and
 //! fast compression (using syaz0).
-use crate::{Error, Result};
-use binrw::binrw;
 use std::borrow::Cow;
+
+use binrw::binrw;
+
+use crate::{Error, Result};
 
 /// The header of Yaz0 compressed data.
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
@@ -208,7 +210,7 @@ mod tests {
 
     #[test]
     fn test_roundtrip() {
-        for (file, _, _) in FILES {
+        for (file, ..) in FILES {
             let path = std::path::Path::new("test/yaz0").join(file);
             let data = std::fs::read(path).unwrap();
             let decompressed = super::decompress(data).unwrap();

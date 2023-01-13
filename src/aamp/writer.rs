@@ -1,7 +1,3 @@
-use super::*;
-use crate::{util::align, Result};
-use binrw::prelude::*;
-use rustc_hash::FxHashMap;
 use std::{
     cell::RefCell,
     collections::hash_map::Entry,
@@ -10,6 +6,12 @@ use std::{
     rc::Rc,
     sync::Mutex,
 };
+
+use binrw::prelude::*;
+use rustc_hash::FxHashMap;
+
+use super::*;
+use crate::{util::align, Result};
 
 impl ParameterIO {
     /// Serialize the parameter IO to binary using the given writer.
@@ -177,11 +179,11 @@ impl<'pio, W: Write + Seek> WriteContext<'pio, W> {
         // the majority of binary parameter archives the order is determined
         // with a rather convoluted algorithm:
         //
-        // * First, process all of the parameter IO's objects (i.e. add all their
-        //   parameters to the parameter queue).
-        // * Recursively collect all objects for child lists. For lists, object
-        //   processing happens after recursively processing child lists; however every
-        //   2 lists one object from the parent list is processed.
+        // * First, process all of the parameter IO's objects (i.e. add all their parameters to the
+        //   parameter queue).
+        // * Recursively collect all objects for child lists. For lists, object processing happens
+        //   after recursively processing child lists; however every 2 lists one object from the
+        //   parent list is processed.
         fn do_collect<'ctx, 'pio, W: Write + Seek>(
             ctx: Rc<Mutex<&mut WriteContext<'pio, W>>>,
             list: &'pio ParameterList,

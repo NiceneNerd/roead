@@ -17,6 +17,7 @@ impl u24 {
 const _: () = {
     impl binrw::BinRead for u24 {
         type Args = ();
+
         fn read_options<R: std::io::Read + std::io::Seek>(
             reader: &mut R,
             opts: &binrw::ReadOptions,
@@ -24,18 +25,23 @@ const _: () = {
         ) -> binrw::BinResult<Self> {
             let buf: [u8; 3] = binrw::BinRead::read(reader)?;
             match opts.endian() {
-                binrw::Endian::Little | binrw::Endian::Native => Ok(u24(u32::from(buf[0])
-                    | u32::from(buf[1]) << 8
-                    | u32::from(buf[2]) << 16)),
-                binrw::Endian::Big => Ok(u24(u32::from(buf[2])
-                    | u32::from(buf[1]) << 8
-                    | u32::from(buf[0]) << 16)),
+                binrw::Endian::Little | binrw::Endian::Native => {
+                    Ok(u24(u32::from(buf[0])
+                        | u32::from(buf[1]) << 8
+                        | u32::from(buf[2]) << 16))
+                }
+                binrw::Endian::Big => {
+                    Ok(u24(u32::from(buf[2])
+                        | u32::from(buf[1]) << 8
+                        | u32::from(buf[0]) << 16))
+                }
             }
         }
     }
 
     impl binrw::BinWrite for u24 {
         type Args = ();
+
         fn write_options<W: std::io::Write + std::io::Seek>(
             &self,
             writer: &mut W,

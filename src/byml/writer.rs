@@ -1,14 +1,16 @@
-use super::*;
-use crate::{
-    util::{align, u24},
-    Endian, Error, Result,
-};
-use binrw::prelude::*;
-use rustc_hash::FxHashMap;
 use std::{
     collections::BTreeMap,
     io::{Cursor, Seek, SeekFrom, Write},
     rc::Rc,
+};
+
+use binrw::prelude::*;
+use rustc_hash::FxHashMap;
+
+use super::*;
+use crate::{
+    util::{align, u24},
+    Endian, Error, Result,
 };
 
 impl Byml {
@@ -87,7 +89,7 @@ impl Byml {
 }
 
 struct NonInlineNode<'a> {
-    data: &'a Byml,
+    data:   &'a Byml,
     offset: u32,
 }
 
@@ -244,7 +246,7 @@ impl<'a, W: Write + Seek> WriteContext<'a, W> {
         ) -> binrw::BinResult<()> {
             if item.is_non_inline_type() {
                 non_inline_nodes.push(NonInlineNode {
-                    data: item,
+                    data:   item,
                     offset: ctx.writer.stream_position()? as u32,
                 });
                 ctx.write(0u32)?;

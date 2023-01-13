@@ -27,8 +27,12 @@
 //! # fn main() -> Result<(), Box<dyn std::error::Error>> {
 //! let mut sarc_writer = SarcWriter::new(Endian::Big); // Create an empty SARC
 //! sarc_writer.set_min_alignment(4); // Set the alignment, if needed
-//! sarc_writer.files.insert("A/Dummy/File.txt".into(), b"This is a test".to_vec()); // Add a couple files
-//! sarc_writer.files.insert("A/Dummy/File2.txt".into(), b"This is another test".to_vec());
+//! sarc_writer
+//!     .files
+//!     .insert("A/Dummy/File.txt".into(), b"This is a test".to_vec()); // Add a couple files
+//! sarc_writer
+//!     .files
+//!     .insert("A/Dummy/File2.txt".into(), b"This is another test".to_vec());
 //! sarc_writer.remove_file("A/Dummy/File.txt"); // Never mind!
 //! let data = sarc_writer.to_binary(); // Write to an in-memory buffer
 //! // We can also take construct a SARC writer from an existing SARC
@@ -39,10 +43,11 @@
 //! ```
 mod parse;
 mod write;
-use crate::Endian;
 use binrw::{binrw, BinRead, BinWrite};
 pub use parse::Sarc;
 pub use write::{FileName, SarcWriter};
+
+use crate::Endian;
 
 /// Provides readonly access to a file that is stored in a SARC archive.
 #[derive(Debug, PartialEq, Eq)]

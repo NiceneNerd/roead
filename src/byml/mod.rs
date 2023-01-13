@@ -21,7 +21,10 @@
 //! let buf: Vec<u8> = std::fs::read("test/aamp/A-1_Dynamic.byml")?;
 //! let map_unit = Byml::from_binary(&buf)?;
 //! //std::fs::write("A-1_Static.yml", &map_unit.to_text())?;
-//! std::fs::write("test/aamp/A-1_Dynamic.byml", &map_unit.to_binary(Endian::Big))?;
+//! std::fs::write(
+//!     "test/aamp/A-1_Dynamic.byml",
+//!     &map_unit.to_binary(Endian::Big),
+//! )?;
 //! # Ok(())
 //! # }
 //! ```
@@ -57,9 +60,10 @@
 #[cfg(feature = "yaml")]
 mod text;
 mod writer;
-use crate::{Error, Result};
 use num_traits::AsPrimitive;
 use smartstring::alias::String;
+
+use crate::{Error, Result};
 mod parser;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -606,6 +610,7 @@ impl From<u64> for Byml {
 
 impl TryFrom<Byml> for u64 {
     type Error = Byml;
+
     fn try_from(value: Byml) -> std::result::Result<Self, Self::Error> {
         match value {
             Byml::U64(v) => Ok(v),
@@ -622,6 +627,7 @@ impl From<f32> for Byml {
 
 impl TryFrom<Byml> for f32 {
     type Error = Byml;
+
     fn try_from(value: Byml) -> std::result::Result<Self, Self::Error> {
         match value {
             Byml::Float(v) => Ok(v),
@@ -638,6 +644,7 @@ impl From<f64> for Byml {
 
 impl TryFrom<Byml> for f64 {
     type Error = Byml;
+
     fn try_from(value: Byml) -> std::result::Result<Self, Self::Error> {
         match value {
             Byml::Double(v) => Ok(v),
@@ -654,6 +661,7 @@ impl From<Vec<u8>> for Byml {
 
 impl TryFrom<Byml> for Vec<u8> {
     type Error = Byml;
+
     fn try_from(value: Byml) -> std::result::Result<Self, Self::Error> {
         match value {
             Byml::BinaryData(v) => Ok(v),
@@ -670,6 +678,7 @@ impl From<Vec<Byml>> for Byml {
 
 impl TryFrom<Byml> for Vec<Byml> {
     type Error = Byml;
+
     fn try_from(value: Byml) -> std::result::Result<Self, Self::Error> {
         match value {
             Byml::Array(v) => Ok(v),
@@ -686,6 +695,7 @@ impl From<Hash> for Byml {
 
 impl TryFrom<Byml> for Hash {
     type Error = Byml;
+
     fn try_from(value: Byml) -> std::result::Result<Self, Self::Error> {
         match value {
             Byml::Hash(v) => Ok(v),
@@ -726,6 +736,7 @@ impl From<&std::string::String> for Byml {
 
 impl TryFrom<Byml> for String {
     type Error = Byml;
+
     fn try_from(value: Byml) -> std::result::Result<Self, Self::Error> {
         match value {
             Byml::String(v) => Ok(v),

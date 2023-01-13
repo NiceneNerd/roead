@@ -15,7 +15,8 @@
 //! for (hash, list) in pio.lists().iter() {
 //!     // Do stuff with lists
 //! }
-//! if let Some(demo_obj) = pio.object("DemoAIActionIdx") { // Access a parameter object
+//! if let Some(demo_obj) = pio.object("DemoAIActionIdx") {
+//!     // Access a parameter object
 //!     for (hash, parameter) in demo_obj.iter() {
 //!         // Do stuff with parameters
 //!     }
@@ -35,7 +36,6 @@ mod parser;
 #[cfg(feature = "yaml")]
 mod text;
 mod writer;
-use crate::{types::*, util::u24, Error, Result};
 use binrw::binrw;
 use indexmap::IndexMap;
 pub use names::{get_default_name_table, NameTable};
@@ -43,6 +43,8 @@ use num_traits::AsPrimitive;
 #[cfg(feature = "with-serde")]
 use serde::{Deserialize, Serialize};
 use smartstring::alias::String;
+
+use crate::{types::*, util::u24, Error, Result};
 
 type ParameterStructureMap<V> =
     IndexMap<Name, V, std::hash::BuildHasherDefault<rustc_hash::FxHasher>>;
@@ -1457,6 +1459,7 @@ macro_rules! impl_map_wrapper {
 
         impl<N: Into<Name>> std::ops::Index<N> for $type {
             type Output = $valtype;
+
             fn index(&self, name: N) -> &$valtype {
                 self.0.get(&name.into()).expect("Index out of bounds")
             }
@@ -1559,7 +1562,7 @@ pub struct ParameterList {
     /// Map of child parameter objects.
     pub objects: ParameterObjectMap,
     /// Map of child parameter lists.
-    pub lists: ParameterListMap,
+    pub lists:   ParameterListMap,
 }
 
 impl ParameterListing for ParameterList {

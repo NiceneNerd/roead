@@ -1,6 +1,7 @@
+use ryml::{NodeRef, Tree};
+
 use super::*;
 use crate::{yaml::*, Error, Result};
-use ryml::{NodeRef, Tree};
 
 impl Byml {
     /// Parse BYML document from YAML text.
@@ -60,16 +61,20 @@ impl<'a> Parser<'a> {
             let scalar = parse_scalar(tag_type, node.val()?, node.is_quoted()?)?;
             match scalar {
                 Scalar::Bool(b) => Ok(Byml::Bool(b)),
-                Scalar::Float(f) => match tag {
-                    "!f64" => Ok(Byml::Double(f)),
-                    _ => Ok(Byml::Float(f as f32)),
-                },
-                Scalar::Int(i) => match tag {
-                    "!u" => Ok(Byml::U32(i as u32)),
-                    "!ul" => Ok(Byml::U64(i as u64)),
-                    "!l" => Ok(Byml::I64(i)),
-                    _ => Ok(Byml::I32(i as i32)),
-                },
+                Scalar::Float(f) => {
+                    match tag {
+                        "!f64" => Ok(Byml::Double(f)),
+                        _ => Ok(Byml::Float(f as f32)),
+                    }
+                }
+                Scalar::Int(i) => {
+                    match tag {
+                        "!u" => Ok(Byml::U32(i as u32)),
+                        "!ul" => Ok(Byml::U64(i as u64)),
+                        "!l" => Ok(Byml::I64(i)),
+                        _ => Ok(Byml::I32(i as i32)),
+                    }
+                }
                 Scalar::Null => Ok(Byml::Null),
                 Scalar::String(s) => {
                     if is_binary_tag(tag) {
@@ -141,42 +146,44 @@ impl<'a, 'b> Emitter<'a, 'b> {
                     Self::build_node(value, node)?;
                 }
             }
-            scalar => match scalar {
-                Byml::String(s) => {
-                    dest_node.set_val(s)?;
-                    if string_needs_quotes(s) {
-                        let flags = dest_node.node_type()?;
-                        dest_node.set_type_flags(flags | ryml::NodeType::WipValDquo)?;
+            scalar => {
+                match scalar {
+                    Byml::String(s) => {
+                        dest_node.set_val(s)?;
+                        if string_needs_quotes(s) {
+                            let flags = dest_node.node_type()?;
+                            dest_node.set_type_flags(flags | ryml::NodeType::WipValDquo)?;
+                        }
                     }
+                    Byml::Bool(b) => dest_node.set_val(if *b { "true" } else { "false" })?,
+                    Byml::Float(f) => dest_node.set_val(&lexical::to_string(*f))?,
+                    Byml::Double(d) => {
+                        dest_node.set_val(&lexical::to_string(*d))?;
+                        dest_node.set_val_tag("!f64")?;
+                    }
+                    Byml::I32(i) => dest_node.set_val(&lexical::to_string(*i))?,
+                    Byml::I64(i) => {
+                        dest_node.set_val(&lexical::to_string(*i))?;
+                        dest_node.set_val_tag("!l")?;
+                    }
+                    Byml::U32(u) => {
+                        dest_node.set_val(&format_hex!(u))?;
+                        dest_node.set_val_tag("!u")?;
+                    }
+                    Byml::U64(u) => {
+                        dest_node.set_val(&format_hex!(u))?;
+                        dest_node.set_val_tag("!ul")?;
+                    }
+                    Byml::Null => dest_node.set_val("null")?,
+                    Byml::BinaryData(data) => {
+                        let arena = dest_node.tree().arena_capacity();
+                        dest_node.tree_mut().reserve_arena(arena + data.len());
+                        dest_node.set_val(&base64::encode(data))?;
+                        dest_node.set_val_tag("!!binary")?;
+                    }
+                    _ => unsafe { std::hint::unreachable_unchecked() },
                 }
-                Byml::Bool(b) => dest_node.set_val(if *b { "true" } else { "false" })?,
-                Byml::Float(f) => dest_node.set_val(&lexical::to_string(*f))?,
-                Byml::Double(d) => {
-                    dest_node.set_val(&lexical::to_string(*d))?;
-                    dest_node.set_val_tag("!f64")?;
-                }
-                Byml::I32(i) => dest_node.set_val(&lexical::to_string(*i))?,
-                Byml::I64(i) => {
-                    dest_node.set_val(&lexical::to_string(*i))?;
-                    dest_node.set_val_tag("!l")?;
-                }
-                Byml::U32(u) => {
-                    dest_node.set_val(&format_hex!(u))?;
-                    dest_node.set_val_tag("!u")?;
-                }
-                Byml::U64(u) => {
-                    dest_node.set_val(&format_hex!(u))?;
-                    dest_node.set_val_tag("!ul")?;
-                }
-                Byml::Null => dest_node.set_val("null")?,
-                Byml::BinaryData(data) => {
-                    let arena = dest_node.tree().arena_capacity();
-                    dest_node.tree_mut().reserve_arena(arena + data.len());
-                    dest_node.set_val(&base64::encode(data))?;
-                    dest_node.set_val_tag("!!binary")?;
-                }
-                _ => unsafe { std::hint::unreachable_unchecked() },
-            },
+            }
         }
         Ok(())
     }

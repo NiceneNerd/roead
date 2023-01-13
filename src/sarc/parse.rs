@@ -1,14 +1,16 @@
-use super::*;
-use crate::{Error, Result};
-use binrw::{BinRead, BinReaderExt};
 use core::mem::size_of;
-use join_str::jstr;
-use num_integer::Integer;
 use std::{
     borrow::Cow,
     hash::{Hash, Hasher},
     io::Cursor,
 };
+
+use binrw::{BinRead, BinReaderExt};
+use join_str::jstr;
+use num_integer::Integer;
+
+use super::*;
+use crate::{Error, Result};
 
 fn find_null(data: &[u8]) -> Result<usize> {
     data.iter()
@@ -54,7 +56,7 @@ impl<'a> Iterator for FileIterator<'a> {
             .ok()?;
             self.index += 1;
             Some(File {
-                name: if self.entry.rel_name_opt_offset != 0 {
+                name:  if self.entry.rel_name_opt_offset != 0 {
                     let name_offset = self.sarc.names_offset as usize
                         + (self.entry.rel_name_opt_offset & 0xFFFFFF) as usize * 4;
                     let term_pos = find_null(&self.sarc.data[name_offset..]).ok()?;
@@ -65,10 +67,10 @@ impl<'a> Iterator for FileIterator<'a> {
                 } else {
                     None
                 },
-                data: &self.sarc.data[(self.sarc.data_offset + self.entry.data_begin) as usize
+                data:  &self.sarc.data[(self.sarc.data_offset + self.entry.data_begin) as usize
                     ..(self.sarc.data_offset + self.entry.data_end) as usize],
                 index: self.index,
-                sarc: self.sarc,
+                sarc:  self.sarc,
             })
         }
     }
@@ -348,8 +350,9 @@ impl<'a> Sarc<'_> {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use std::fs::read;
+
+    use super::*;
     #[test]
     fn parse_sarc() {
         let data = read("test/sarc/Dungeon119.pack").unwrap();
