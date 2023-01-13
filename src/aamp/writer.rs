@@ -278,7 +278,7 @@ impl<'pio, W: Write + Seek> WriteContext<'pio, W> {
                 match param {
                     Parameter::Bool(b) => tmp_writer.write_le(&u32::from(*b))?,
                     Parameter::F32(v) => tmp_writer.write_le(&v.to_bits())?,
-                    Parameter::Int(v) => tmp_writer.write_le(&v)?,
+                    Parameter::I32(v) => tmp_writer.write_le(&v)?,
                     Parameter::Vec2(v) => tmp_writer.write_le(&v)?,
                     Parameter::Vec3(v) => tmp_writer.write_le(&v)?,
                     Parameter::Vec4(v) => tmp_writer.write_le(&v)?,

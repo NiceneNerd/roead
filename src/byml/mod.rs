@@ -58,6 +58,7 @@
 mod text;
 mod writer;
 use crate::{Error, Result};
+use num_traits::AsPrimitive;
 use smartstring::alias::String;
 mod parser;
 
@@ -232,6 +233,50 @@ impl Byml {
         }
     }
 
+    /// Get the inner value as an integer of any type. Casts the value using
+    /// [`as`](https://doc.rust-lang.org/std/keyword.as.html) where necessary.
+    /// Note that this is subject to all the normal risks of casting with `as`.
+    pub fn as_int<T>(&self) -> Result<T>
+    where
+        T: Copy + 'static,
+        i32: AsPrimitive<T>,
+        u32: AsPrimitive<T>,
+        i64: AsPrimitive<T>,
+        u64: AsPrimitive<T>,
+    {
+        match self {
+            Byml::I32(i) => Ok(i.as_()),
+            Byml::I64(i) => Ok(i.as_()),
+            Byml::U32(i) => Ok(i.as_()),
+            Byml::U64(i) => Ok(i.as_()),
+            _ => Err(Error::TypeError(self.type_name(), "an integer")),
+        }
+    }
+
+    /// Get the inner value as a number of any type. Casts the value using
+    /// [`as`](https://doc.rust-lang.org/std/keyword.as.html) where necessary.
+    /// Note that this is subject to all the normal risks of casting with `as`.
+    pub fn as_num<T>(&self) -> Result<T>
+    where
+        T: Copy + 'static,
+        i32: AsPrimitive<T>,
+        u32: AsPrimitive<T>,
+        i64: AsPrimitive<T>,
+        u64: AsPrimitive<T>,
+        f32: AsPrimitive<T>,
+        f64: AsPrimitive<T>,
+    {
+        match self {
+            Byml::I32(i) => Ok(i.as_()),
+            Byml::I64(i) => Ok(i.as_()),
+            Byml::U32(i) => Ok(i.as_()),
+            Byml::U64(i) => Ok(i.as_()),
+            Byml::Float(i) => Ok(i.as_()),
+            Byml::Double(i) => Ok(i.as_()),
+            _ => Err(Error::TypeError(self.type_name(), "a number")),
+        }
+    }
+
     /// Get a reference to the inner f32 value.
     pub fn as_float(&self) -> Result<f32> {
         if let Self::Float(v) = self {
@@ -368,9 +413,9 @@ impl Byml {
     }
 
     /// Get a mutable reference to the inner array of BYML nodes.
-    pub fn as_mut_array(&mut self) -> Result<&mut [Byml]> {
+    pub fn as_mut_array(&mut self) -> Result<&mut Vec<Byml>> {
         if let Self::Array(v) = self {
-            Ok(v.as_mut_slice())
+            Ok(v)
         } else {
             Err(Error::TypeError(self.type_name(), "Array"))
         }

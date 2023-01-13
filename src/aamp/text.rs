@@ -43,7 +43,7 @@ fn scalar_to_value(tag: &str, scalar: Scalar) -> Result<Parameter> {
             if tag == "!u" {
                 Parameter::U32(i as u32)
             } else {
-                Parameter::Int(i as i32)
+                Parameter::I32(i as i32)
             }
         }
         Scalar::Float(f) => Parameter::F32(f as f32),
@@ -298,7 +298,7 @@ fn write_parameter<'a, 't, 'k>(
     match param {
         Parameter::Bool(b) => node.set_val(if *b { "true" } else { "false" })?,
         Parameter::F32(f) => node.set_val(&lexical::to_string(*f))?,
-        Parameter::Int(i) => node.set_val(&lexical::to_string(*i))?,
+        Parameter::I32(i) => node.set_val(&lexical::to_string(*i))?,
         Parameter::Vec2(v) => fill_node_from_struct!(node, "!vec2", v, x, y),
         Parameter::Vec3(v) => fill_node_from_struct!(node, "!vec3", v, x, y, z),
         Parameter::Vec4(v) => fill_node_from_struct!(node, "!vec4", v, x, y, z, t),

@@ -140,7 +140,7 @@ impl<R: Read + Seek> Parser<R> {
         let value = match info.type_ {
             Type::Bool => Parameter::Bool(self.read::<u32>()? != 0),
             Type::F32 => Parameter::F32(self.read::<f32>()?),
-            Type::Int => Parameter::Int(self.read()?),
+            Type::Int => Parameter::I32(self.read()?),
             Type::Vec2 => Parameter::Vec2(self.read()?),
             Type::Vec3 => Parameter::Vec3(self.read()?),
             Type::Vec4 => Parameter::Vec4(self.read()?),

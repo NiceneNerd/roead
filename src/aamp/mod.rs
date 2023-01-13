@@ -39,6 +39,7 @@ use crate::{types::*, util::u24, Error, Result};
 use binrw::binrw;
 use indexmap::IndexMap;
 pub use names::{get_default_name_table, NameTable};
+use num_traits::AsPrimitive;
 #[cfg(feature = "with-serde")]
 use serde::{Deserialize, Serialize};
 use smartstring::alias::String;
@@ -185,7 +186,7 @@ pub enum Parameter {
     /// Float.
     F32(f32),
     /// Int.
-    Int(i32),
+    I32(i32),
     /// 2D vector.
     Vec2(Vector2f),
     /// 3D vector.
@@ -229,7 +230,7 @@ impl Parameter {
         match self {
             Parameter::Bool(_) => "Bool".into(),
             Parameter::F32(_) => "F32".into(),
-            Parameter::Int(_) => "Int".into(),
+            Parameter::I32(_) => "I32".into(),
             Parameter::Vec2(_) => "Vec2".into(),
             Parameter::Vec3(_) => "Vec3".into(),
             Parameter::Vec4(_) => "Vec4".into(),
@@ -300,25 +301,59 @@ impl Parameter {
     }
 
     /// Get the inner i32 value.
-    pub fn as_int(&self) -> Result<i32> {
+    pub fn as_i32(&self) -> Result<i32> {
         match self {
-            Parameter::Int(i) => Ok(*i),
+            Parameter::I32(i) => Ok(*i),
             _ => Err(Error::TypeError(self.type_name(), "Int")),
         }
     }
 
     /// Get a mutable reference to the inner i32.
-    pub fn as_mut_int(&mut self) -> Result<&mut i32> {
+    pub fn as_mut_i32(&mut self) -> Result<&mut i32> {
         match self {
-            Parameter::Int(value) => Ok(value),
+            Parameter::I32(value) => Ok(value),
             _ => Err(Error::TypeError(self.type_name(), "i32")),
         }
     }
 
-    /// Extract the inner i32 value.
-    pub fn into_int(self) -> Result<i32> {
+    /// Get the inner value as an integer of any type. Casts the value using
+    /// [`as`](https://doc.rust-lang.org/std/keyword.as.html) where necessary.
+    /// Note that this is subject to all the normal risks of casting with `as`.
+    pub fn as_int<T>(&self) -> Result<T>
+    where
+        T: Copy + 'static,
+        i32: AsPrimitive<T>,
+        u32: AsPrimitive<T>,
+    {
         match self {
-            Parameter::Int(value) => Ok(value),
+            Parameter::I32(i) => Ok(i.as_()),
+            Parameter::U32(i) => Ok(i.as_()),
+            _ => Err(Error::TypeError(self.type_name(), "an integer")),
+        }
+    }
+
+    /// Get the inner value as a number of any type. Casts the value using
+    /// [`as`](https://doc.rust-lang.org/std/keyword.as.html) where necessary.
+    /// Note that this is subject to all the normal risks of casting with `as`.
+    pub fn as_num<T>(&self) -> Result<T>
+    where
+        T: Copy + 'static,
+        i32: AsPrimitive<T>,
+        u32: AsPrimitive<T>,
+        f32: AsPrimitive<T>,
+    {
+        match self {
+            Parameter::I32(i) => Ok(i.as_()),
+            Parameter::U32(i) => Ok(i.as_()),
+            Parameter::F32(i) => Ok(i.as_()),
+            _ => Err(Error::TypeError(self.type_name(), "a number")),
+        }
+    }
+
+    /// Extract the inner i32 value.
+    pub fn into_i32(self) -> Result<i32> {
+        match self {
+            Parameter::I32(value) => Ok(value),
             _ => Err(Error::TypeError(self.type_name(), "i32")),
         }
     }
@@ -792,7 +827,7 @@ impl TryFrom<Parameter> for f32 {
 
 impl From<i32> for Parameter {
     fn from(value: i32) -> Self {
-        Parameter::Int(value)
+        Parameter::I32(value)
     }
 }
 
@@ -801,7 +836,7 @@ impl TryFrom<Parameter> for i32 {
 
     fn try_from(value: Parameter) -> std::result::Result<Self, Self::Error> {
         match value {
-            Parameter::Int(v) => Ok(v),
+            Parameter::I32(v) => Ok(v),
             _ => Err(value),
         }
     }
@@ -1124,7 +1159,7 @@ impl std::hash::Hash for Parameter {
                 b"f".hash(state);
                 f.to_bits().hash(state)
             }
-            Parameter::Int(i) => i.hash(state),
+            Parameter::I32(i) => i.hash(state),
             Parameter::Vec2(v) => v.hash(state),
             Parameter::Vec3(v) => v.hash(state),
             Parameter::Vec4(v) => v.hash(state),
@@ -1157,7 +1192,7 @@ impl PartialEq for Parameter {
         match (self, other) {
             (Self::Bool(a), Self::Bool(b)) => a == b,
             (Self::F32(a), Self::F32(b)) => almost::equal(*a, *b),
-            (Self::Int(a), Self::Int(b)) => a == b,
+            (Self::I32(a), Self::I32(b)) => a == b,
             (Self::Vec2(a), Self::Vec2(b)) => a == b,
             (Self::Vec3(a), Self::Vec3(b)) => a == b,
             (Self::Vec4(a), Self::Vec4(b)) => a == b,
@@ -1189,7 +1224,7 @@ impl Parameter {
         match self {
             Parameter::Bool(_) => Type::Bool,
             Parameter::F32(_) => Type::F32,
-            Parameter::Int(_) => Type::Int,
+            Parameter::I32(_) => Type::Int,
             Parameter::Vec2(_) => Type::Vec2,
             Parameter::Vec3(_) => Type::Vec3,
             Parameter::Vec4(_) => Type::Vec4,
