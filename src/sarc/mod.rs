@@ -45,7 +45,7 @@ mod parse;
 mod write;
 use binrw::{binrw, BinRead, BinWrite};
 pub use parse::Sarc;
-pub use write::{FileName, SarcWriter};
+pub use write::SarcWriter;
 
 use crate::Endian;
 

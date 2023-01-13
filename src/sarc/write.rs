@@ -1,11 +1,12 @@
 use std::{
-    borrow::Cow,
-    collections::BTreeMap,
+    borrow::Borrow,
+    hash::Hash,
     io::{Cursor, Seek, SeekFrom},
     ops::Deref,
 };
 
 use binrw::{io::Write, BinReaderExt, BinWrite};
+use indexmap::IndexMap;
 use num_integer::Integer;
 use once_cell::sync::Lazy;
 use rustc_hash::{FxHashMap, FxHashSet};
@@ -76,82 +77,6 @@ fn get_agl_env_alignment_requirements() -> &'static Vec<(String, usize)> {
     AGLENV_ALIGN.deref()
 }
 
-/// Newtype wrapper for [`String`] that hashes with the Nintendo algorithm and
-/// is ordered by that hash value. Used only for the file map in [`SarcWriter`].
-#[derive(Debug, Clone, Eq)]
-#[repr(transparent)]
-pub struct FileName<'a>(Cow<'a, str>);
-
-impl std::ops::Deref for FileName<'_> {
-    type Target = str;
-
-    fn deref(&self) -> &Self::Target {
-        &self.0
-    }
-}
-
-impl PartialEq for FileName<'_> {
-    fn eq(&self, other: &Self) -> bool {
-        self.0.eq(&other.0)
-    }
-}
-
-impl std::hash::Hash for FileName<'_> {
-    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
-        hash_name(HASH_MULTIPLIER, &self.0).hash(state)
-    }
-}
-
-impl PartialOrd for FileName<'_> {
-    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
-        hash_name(HASH_MULTIPLIER, &self.0).partial_cmp(&hash_name(HASH_MULTIPLIER, &other.0))
-    }
-}
-
-impl Ord for FileName<'_> {
-    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
-        hash_name(HASH_MULTIPLIER, &self.0).cmp(&hash_name(HASH_MULTIPLIER, &other.0))
-    }
-}
-
-impl AsRef<str> for FileName<'_> {
-    fn as_ref(&self) -> &str {
-        self.0.as_ref()
-    }
-}
-
-impl<'a> From<&'a str> for FileName<'a> {
-    fn from(s: &'a str) -> Self {
-        Self(s.into())
-    }
-}
-
-impl From<String> for FileName<'_> {
-    fn from(s: String) -> Self {
-        Self(s.into())
-    }
-}
-
-#[cfg(feature = "smartstring")]
-impl From<smartstring::alias::String> for FileName<'_> {
-    fn from(s: smartstring::alias::String) -> Self {
-        Self(s.to_string().into())
-    }
-}
-
-#[cfg(feature = "smartstring")]
-impl<'a> From<&'a smartstring::alias::String> for FileName<'a> {
-    fn from(s: &'a smartstring::alias::String) -> Self {
-        Self(s.as_str().into())
-    }
-}
-
-impl std::fmt::Display for FileName<'_> {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        self.0.fmt(f)
-    }
-}
-
 /// A simple SARC archive writer
 #[derive(Clone)]
 pub struct SarcWriter {
@@ -162,7 +87,7 @@ pub struct SarcWriter {
     alignment_map: FxHashMap<String, usize>,
     options: binrw::WriteOptions,
     /// Files to be written.
-    pub files: BTreeMap<FileName<'static>, Vec<u8>>,
+    pub files: IndexMap<String, Vec<u8>>,
 }
 
 impl std::fmt::Debug for SarcWriter {
@@ -199,7 +124,7 @@ impl SarcWriter {
             legacy: false,
             hash_multiplier: HASH_MULTIPLIER,
             alignment_map: FxHashMap::default(),
-            files: BTreeMap::new(),
+            files: IndexMap::new(),
             options: binrw::WriteOptions::default().with_endian(match endian {
                 Endian::Big => binrw::Endian::Big,
                 Endian::Little => binrw::Endian::Little,
@@ -219,10 +144,7 @@ impl SarcWriter {
             alignment_map: FxHashMap::default(),
             files: sarc
                 .files()
-                .filter_map(|f| {
-                    f.name
-                        .map(|name| (name.to_string().into(), f.data.to_vec()))
-                })
+                .filter_map(|f| f.name.map(|name| (name.to_string(), f.data.to_vec())))
                 .collect(),
             options: binrw::WriteOptions::default().with_endian(match endian {
                 Endian::Big => binrw::Endian::Big,
@@ -262,6 +184,9 @@ impl SarcWriter {
         }
         .write_options(writer, &self.options, ())?;
 
+        self.files.sort_unstable_by(|ka, _, kb, _| {
+            hash_name(HASH_MULTIPLIER, ka).cmp(&hash_name(HASH_MULTIPLIER, kb))
+        });
         self.add_default_alignments();
         let mut alignments: Vec<usize> = Vec::with_capacity(self.files.len());
 
@@ -292,7 +217,7 @@ impl SarcWriter {
         }
         .write_options(writer, &self.options, ())?;
         for (name, _) in self.files.iter() {
-            name.0.as_bytes().write_options(writer, &self.options, ())?;
+            name.as_bytes().write_options(writer, &self.options, ())?;
             0u8.write_options(writer, &self.options, ())?;
             let pos = writer.stream_position()? as usize;
             writer.seek(SeekFrom::Start(align(pos, 4) as u64))?;
@@ -349,6 +274,7 @@ impl SarcWriter {
     ///
     /// * `ext` - File extension without the dot (e.g. “bgparamlist”)
     /// * `alignment` - Data alignment (must be a power of 2)
+    #[inline]
     pub fn with_alignment_requirement(mut self, ext: String, alignment: usize) -> Self {
         self.add_alignment_requirement(ext, alignment);
         self
@@ -385,6 +311,7 @@ impl SarcWriter {
     }
 
     /// Builder-style method to set the minimum data alignment
+    #[inline]
     pub fn with_min_alignment(mut self, alignment: usize) -> Self {
         self.set_min_alignment(alignment);
         self
@@ -392,6 +319,7 @@ impl SarcWriter {
 
     /// Set whether to use legacy mode (for games without a BOTW-style
     /// resource system) for addtional alignment restrictions
+    #[inline]
     pub fn set_legacy_mode(&mut self, value: bool) {
         self.legacy = value
     }
@@ -399,17 +327,20 @@ impl SarcWriter {
     /// Builder-style method to set whether to use legacy mode (for games
     /// without a BOTW-style resource system) for addtional alignment
     /// restrictions
+    #[inline]
     pub fn with_legacy_mode(mut self, value: bool) -> Self {
         self.set_legacy_mode(value);
         self
     }
 
     /// Set the endianness
+    #[inline]
     pub fn set_endian(&mut self, endian: Endian) {
         self.endian = endian
     }
 
     /// Builder-style method to set the endianness
+    #[inline]
     pub fn with_endian(mut self, endian: Endian) -> Self {
         self.set_endian(endian);
         self
@@ -477,25 +408,24 @@ impl SarcWriter {
 
     /// Add a file to the archive, with greater generic flexibility than using
     /// `insert` on the `files` field.
-    pub fn add_file(&mut self, name: impl Into<FileName<'static>>, data: impl Into<Vec<u8>>) {
+    #[inline]
+    pub fn add_file(&mut self, name: impl Into<String>, data: impl Into<Vec<u8>>) {
         self.files.insert(name.into(), data.into());
     }
 
     /// Builder-style method to add a file to the archive.
-    pub fn with_file(
-        mut self,
-        name: impl Into<FileName<'static>>,
-        data: impl Into<Vec<u8>>,
-    ) -> Self {
+    #[inline]
+    pub fn with_file(mut self, name: impl Into<String>, data: impl Into<Vec<u8>>) -> Self {
         self.add_file(name, data);
         self
     }
 
     /// Add files to the archive from an iterator, with greater generic
     /// flexibility than using `extend` on the `files` field.
+    #[inline]
     pub fn add_files<N, D>(&mut self, iter: impl IntoIterator<Item = (N, D)>)
     where
-        N: Into<FileName<'static>>,
+        N: Into<String>,
         D: Into<Vec<u8>>,
     {
         self.files.extend(
@@ -505,25 +435,32 @@ impl SarcWriter {
     }
 
     /// Builder-style method to add files to the archive from an iterator.
+    #[inline]
     pub fn with_files<N, D>(mut self, iter: impl IntoIterator<Item = (N, D)>) -> Self
     where
-        N: Into<FileName<'static>>,
+        N: Into<String>,
         D: Into<Vec<u8>>,
     {
         self.add_files(iter);
         self
     }
 
-    /// Remove a file from the archive, with greater generic flexibility than
-    /// using `remove` on the `files` field.
-    pub fn remove_file(&mut self, name: impl Into<FileName<'static>>) {
-        self.files.remove(&name.into());
+    /// Remove a file from the archive, for convenience.
+    #[inline]
+    pub fn remove_file<Q: ?Sized + Hash + Eq>(&mut self, name: &Q)
+    where
+        String: Borrow<Q>,
+    {
+        self.files.remove(name);
     }
 
-    /// Get a file's data from the archive, with greater generic flexibility
-    /// than using `get` on the `files` field.
-    pub fn get_file(&mut self, name: impl Into<FileName<'static>>) -> Option<&Vec<u8>> {
-        self.files.get(&name.into())
+    /// Get a file's data from the archive, for convience.
+    #[inline]
+    pub fn get_file<Q: ?Sized + Hash + Eq>(&mut self, name: &Q) -> Option<&Vec<u8>>
+    where
+        String: Borrow<Q>,
+    {
+        self.files.get(name)
     }
 }
 
@@ -548,6 +485,7 @@ mod tests {
             let data = std::fs::read(std::path::Path::new("test/sarc").join(file)).unwrap();
             let sarc = Sarc::new(&data).unwrap();
             let mut sarc_writer = SarcWriter::from_sarc(&sarc);
+            sarc_writer.remove_file("Bob");
             let new_data = sarc_writer.to_binary();
             let new_sarc = Sarc::new(&new_data).unwrap();
             if !Sarc::are_files_equal(&sarc, &new_sarc) {
