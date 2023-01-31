@@ -224,7 +224,12 @@ impl<'a> Sarc<'_> {
             reader.set_position(self.entries_offset as u64 + 0x10 * m as u64);
             let hash: u32 = read(self.endian, &mut reader)?;
             match needle_hash.cmp(&hash) {
-                std::cmp::Ordering::Less => b = m - 1,
+                std::cmp::Ordering::Less => {
+                    match m.checked_sub(1) {
+                        Some(v) => b = v,
+                        None => return Ok(None),
+                    }
+                }
                 std::cmp::Ordering::Greater => a = m + 1,
                 std::cmp::Ordering::Equal => return Ok(Some(m as usize)),
             }
