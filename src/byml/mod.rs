@@ -561,10 +561,7 @@ impl TryFrom<Byml> for i32 {
     type Error = Byml;
 
     fn try_from(value: Byml) -> std::result::Result<Self, Self::Error> {
-        match value {
-            Byml::I32(v) => Ok(v),
-            _ => Err(value),
-        }
+        value.as_int().map_err(|_| value)
     }
 }
 
@@ -578,10 +575,7 @@ impl TryFrom<Byml> for u32 {
     type Error = Byml;
 
     fn try_from(value: Byml) -> std::result::Result<Self, Self::Error> {
-        match value {
-            Byml::U32(v) => Ok(v),
-            _ => Err(value),
-        }
+        value.as_int().map_err(|_| value)
     }
 }
 
@@ -595,10 +589,7 @@ impl TryFrom<Byml> for i64 {
     type Error = Byml;
 
     fn try_from(value: Byml) -> std::result::Result<Self, Self::Error> {
-        match value {
-            Byml::I64(v) => Ok(v),
-            _ => Err(value),
-        }
+        value.as_int().map_err(|_| value)
     }
 }
 
@@ -612,10 +603,7 @@ impl TryFrom<Byml> for u64 {
     type Error = Byml;
 
     fn try_from(value: Byml) -> std::result::Result<Self, Self::Error> {
-        match value {
-            Byml::U64(v) => Ok(v),
-            _ => Err(value),
-        }
+        value.as_int().map_err(|_| value)
     }
 }
 
@@ -629,10 +617,7 @@ impl TryFrom<Byml> for f32 {
     type Error = Byml;
 
     fn try_from(value: Byml) -> std::result::Result<Self, Self::Error> {
-        match value {
-            Byml::Float(v) => Ok(v),
-            _ => Err(value),
-        }
+        value.as_num().map_err(|_| value)
     }
 }
 
@@ -646,10 +631,7 @@ impl TryFrom<Byml> for f64 {
     type Error = Byml;
 
     fn try_from(value: Byml) -> std::result::Result<Self, Self::Error> {
-        match value {
-            Byml::Double(v) => Ok(v),
-            _ => Err(value),
-        }
+        value.as_num().map_err(|_| value)
     }
 }
 

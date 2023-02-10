@@ -791,6 +791,17 @@ impl Parameter {
             _ => Err(Error::TypeError(self.type_name(), "string")),
         }
     }
+
+    /// Get the value from any string type. May truncate.
+    pub fn as_safe_string<const N: usize>(&self) -> Result<FixedSafeString<N>> {
+        match self {
+            Self::String32(s) => Ok(s.as_str().into()),
+            Self::String64(s) => Ok(s.as_str().into()),
+            Self::String256(s) => Ok(s.as_str().into()),
+            Self::StringRef(s) => Ok(s.as_str().into()),
+            _ => Err(Error::TypeError(self.type_name(), "any string type")),
+        }
+    }
 }
 
 impl From<bool> for Parameter {
@@ -820,10 +831,7 @@ impl TryFrom<Parameter> for f32 {
     type Error = Parameter;
 
     fn try_from(value: Parameter) -> std::result::Result<Self, Self::Error> {
-        match value {
-            Parameter::F32(v) => Ok(v),
-            _ => Err(value),
-        }
+        value.as_num().map_err(|_| value)
     }
 }
 
@@ -837,10 +845,7 @@ impl TryFrom<Parameter> for i32 {
     type Error = Parameter;
 
     fn try_from(value: Parameter) -> std::result::Result<Self, Self::Error> {
-        match value {
-            Parameter::I32(v) => Ok(v),
-            _ => Err(value),
-        }
+        value.as_num().map_err(|_| value)
     }
 }
 
@@ -918,31 +923,9 @@ impl From<FixedSafeString<32>> for Parameter {
     }
 }
 
-impl TryFrom<Parameter> for FixedSafeString<32> {
-    type Error = Parameter;
-
-    fn try_from(value: Parameter) -> std::result::Result<Self, Self::Error> {
-        match value {
-            Parameter::String32(v) => Ok(v),
-            _ => Err(value),
-        }
-    }
-}
-
 impl From<FixedSafeString<64>> for Parameter {
     fn from(value: FixedSafeString<64>) -> Self {
         Parameter::String64(value.into())
-    }
-}
-
-impl TryFrom<Parameter> for FixedSafeString<64> {
-    type Error = Parameter;
-
-    fn try_from(value: Parameter) -> std::result::Result<Self, Self::Error> {
-        match value {
-            Parameter::String64(v) => Ok(*v),
-            _ => Err(value),
-        }
     }
 }
 
@@ -1054,14 +1037,11 @@ impl From<FixedSafeString<256>> for Parameter {
     }
 }
 
-impl TryFrom<Parameter> for FixedSafeString<256> {
+impl<const N: usize> TryFrom<Parameter> for FixedSafeString<N> {
     type Error = Parameter;
 
     fn try_from(value: Parameter) -> std::result::Result<Self, Self::Error> {
-        match value {
-            Parameter::String256(v) => Ok(*v),
-            _ => Err(value),
-        }
+        value.as_safe_string().map_err(|_| value)
     }
 }
 
@@ -1092,10 +1072,7 @@ impl TryFrom<Parameter> for u32 {
     type Error = Parameter;
 
     fn try_from(value: Parameter) -> std::result::Result<Self, Self::Error> {
-        match value {
-            Parameter::U32(v) => Ok(v),
-            _ => Err(value),
-        }
+        value.as_num().map_err(|_| value)
     }
 }
 
