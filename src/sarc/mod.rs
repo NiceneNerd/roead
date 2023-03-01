@@ -108,7 +108,8 @@ impl<'a> File<'a> {
     /// Check if the file is a SARC.
     #[inline(always)]
     pub fn is_sarc(&self) -> bool {
-        &self.data[0..4] == b"SARC" || &self.data[0x11..0x15] == b"SARC"
+        (self.data.len() > 4 && &self.data[0..4] == b"SARC")
+            || (self.data.len() > 0x15 && &self.data[0x11..0x15] == b"SARC")
     }
 
     /// Attempt to parse file as SARC.
@@ -119,22 +120,23 @@ impl<'a> File<'a> {
     /// Check if the file is yaz0 compressed.
     #[inline(always)]
     pub fn is_compressed(&self) -> bool {
-        &self.data[0..4] == b"Yaz0"
+        self.data.len() > 4 && &self.data[0..4] == b"Yaz0"
     }
 
     /// Check if the file is an AAMP.
     #[inline(always)]
     pub fn is_aamp(&self) -> bool {
-        &self.data[0..4] == b"AAMP"
+        self.data.len() > 4 && &self.data[0..4] == b"AAMP"
     }
 
     /// Check if the file is a BYML document.
     #[inline(always)]
     pub fn is_byml(&self) -> bool {
-        &self.data[0..2] == b"BY"
-            || &self.data[0..2] == b"YB"
-            || &self.data[0x11..0x13] == b"BY"
-            || &self.data[0x11..0x13] == b"YB"
+        self.data.len() > 0x13
+            && (&self.data[0..2] == b"BY"
+                || &self.data[0..2] == b"YB"
+                || &self.data[0x11..0x13] == b"BY"
+                || &self.data[0x11..0x13] == b"YB")
     }
 }
 
