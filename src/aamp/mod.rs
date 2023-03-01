@@ -180,7 +180,7 @@ struct ResParameterList {
 /// the parameter class in order to make the parameter logic simpler and more
 /// efficient.
 #[cfg_attr(feature = "with-serde", derive(Serialize, Deserialize))]
-#[allow(clippy::derive_hash_xor_eq)]
+#[allow(clippy::derived_hash_with_manual_eq)]
 #[derive(Debug, Clone)]
 pub enum Parameter {
     /// Boolean.

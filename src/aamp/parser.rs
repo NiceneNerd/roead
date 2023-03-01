@@ -170,7 +170,6 @@ impl<R: Read + Seek> Parser<R> {
         let info: ResParameterObj = self.read()?;
         let offset = info.params_rel_offset as u32 * 4 + offset;
         let params = (0..info.param_count)
-            .into_iter()
             .map(|i| self.parse_parameter(offset + 0x8 * i as u32))
             .collect::<Result<_>>()?;
         Ok((info.name, params))
@@ -183,11 +182,9 @@ impl<R: Read + Seek> Parser<R> {
         let objects_offset = info.objects_rel_offset as u32 * 4 + offset;
         let plist = ParameterList {
             lists:   (0..info.list_count)
-                .into_iter()
                 .map(|i| self.parse_list(lists_offset + 0xC * i as u32))
                 .collect::<Result<_>>()?,
             objects: (0..info.object_count)
-                .into_iter()
                 .map(|i| self.parse_object(objects_offset + 0x8 * i as u32))
                 .collect::<Result<_>>()?,
         };

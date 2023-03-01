@@ -100,8 +100,8 @@ impl_from_node_for_struct!(Vector4f, x, y, z, t);
 impl_from_node_for_struct!(Quat, a, b, c, d);
 impl_from_node_for_struct!(Color, r, g, b, a);
 
-fn read_curves<'a, 't, 'k, 'r, const N: usize>(
-    node: &'r NodeRef<'a, 't, 'k, &'t Tree<'a>>,
+fn read_curves<'a, 't, const N: usize>(
+    node: &NodeRef<'a, 't, '_, &'t Tree<'a>>,
 ) -> Result<[Curve; N]> {
     let mut iter = node.iter()?;
     let mut curves = [Curve::default(); N];
@@ -136,9 +136,7 @@ fn read_buf<'a, 't, T: FromLexical + FromLexicalWithOptions>(
         .collect::<Result<_>>()
 }
 
-fn parse_parameter<'a, 't, 'k, 'r>(
-    node: &'r NodeRef<'a, 't, 'k, &'t Tree<'a>>,
-) -> Result<Parameter> {
+fn parse_parameter<'a, 't>(node: &'_ NodeRef<'a, 't, '_, &'t Tree<'a>>) -> Result<Parameter> {
     if !node.is_valid() {
         return Err(Error::InvalidData("Invalid YAML node for parameter"));
     }
@@ -197,8 +195,8 @@ macro_rules! read_map {
     };
 }
 
-fn read_parameter_object<'a, 't, 'k, 'r>(
-    node: &'r NodeRef<'a, 't, 'k, &'t Tree<'a>>,
+fn read_parameter_object<'a, 't>(
+    node: &'_ NodeRef<'a, 't, '_, &'t Tree<'a>>,
 ) -> Result<ParameterObject> {
     if !node.is_valid() {
         return Err(Error::InvalidData("Invalid YAML node for parameter object"));
@@ -208,8 +206,8 @@ fn read_parameter_object<'a, 't, 'k, 'r>(
     Ok(param_object)
 }
 
-fn read_parameter_list<'a, 't, 'k, 'r>(
-    node: &'r NodeRef<'a, 't, 'k, &'t Tree<'a>>,
+fn read_parameter_list<'a, 't>(
+    node: &'_ NodeRef<'a, 't, '_, &'t Tree<'a>>,
 ) -> Result<ParameterList> {
     if !node.is_valid() {
         return Err(Error::InvalidData("Invalid YAML node for parameter list"));
@@ -222,9 +220,7 @@ fn read_parameter_list<'a, 't, 'k, 'r>(
     Ok(param_list)
 }
 
-fn read_parameter_io<'a, 't, 'k, 'r>(
-    node: &'r NodeRef<'a, 't, 'k, &'t Tree<'a>>,
-) -> Result<ParameterIO> {
+fn read_parameter_io<'a, 't>(node: &'_ NodeRef<'a, 't, '_, &'t Tree<'a>>) -> Result<ParameterIO> {
     if !node.is_valid() {
         return Err(Error::InvalidData("Invalid YAML node for parameter IO"));
     }
@@ -256,8 +252,8 @@ macro_rules! fill_node_from_struct {
     }};
 }
 
-fn write_curves<'a, 't, 'k, const N: usize>(
-    mut node: NodeRef<'a, 't, 'k, &'t mut Tree<'a>>,
+fn write_curves<'a, 't, const N: usize>(
+    mut node: NodeRef<'a, 't, '_, &'t mut Tree<'a>>,
     curves: &[Curve; N],
 ) -> Result<()> {
     node.change_type(ryml::NodeType::Seq | ryml::NodeType::WipStyleFlowSl)?;
@@ -276,8 +272,8 @@ fn write_curves<'a, 't, 'k, const N: usize>(
 }
 
 #[inline]
-fn write_buf<'a, 't, 'k, T: ToLexical + ToLexicalWithOptions>(
-    mut node: NodeRef<'a, 't, 'k, &'t mut Tree<'a>>,
+fn write_buf<'a, 't, T: ToLexical + ToLexicalWithOptions>(
+    mut node: NodeRef<'a, 't, '_, &'t mut Tree<'a>>,
     buf: &[T],
     use_hex: bool,
     tag: &str,
@@ -296,9 +292,9 @@ fn write_buf<'a, 't, 'k, T: ToLexical + ToLexicalWithOptions>(
     Ok(())
 }
 
-fn write_parameter<'a, 't, 'k>(
+fn write_parameter<'a, 't>(
     param: &Parameter,
-    mut node: NodeRef<'a, 't, 'k, &'t mut Tree<'a>>,
+    mut node: NodeRef<'a, 't, '_, &'t mut Tree<'a>>,
 ) -> Result<()> {
     match param {
         Parameter::Bool(b) => node.set_val(if *b { "true" } else { "false" })?,
@@ -352,10 +348,10 @@ fn write_parameter<'a, 't, 'k>(
     Ok(())
 }
 
-fn write_parameter_object<'a, 't, 'k>(
+fn write_parameter_object<'a, 't>(
     pobj: &ParameterObject,
     parent_hash: u32,
-    mut node: NodeRef<'a, 't, 'k, &'t mut Tree<'a>>,
+    mut node: NodeRef<'a, 't, '_, &'t mut Tree<'a>>,
 ) -> Result<()> {
     node.change_type(ryml::NodeType::Map)?;
     for (i, (key, val)) in pobj.0.iter().enumerate() {
@@ -375,10 +371,10 @@ fn write_parameter_object<'a, 't, 'k>(
     Ok(())
 }
 
-fn write_parameter_list<'a, 't, 'k>(
+fn write_parameter_list<'a, 't>(
     plist: &ParameterList,
     parent_hash: u32,
-    mut node: NodeRef<'a, 't, 'k, &'t mut Tree<'a>>,
+    mut node: NodeRef<'a, 't, '_, &'t mut Tree<'a>>,
 ) -> Result<()> {
     node.change_type(ryml::NodeType::Map)?;
     let mut objects = node.append_child()?;
@@ -417,7 +413,7 @@ fn write_parameter_list<'a, 't, 'k>(
     Ok(())
 }
 
-fn write_parameter_io<'a>(tree: &mut Tree<'a>, pio: &ParameterIO) -> Result<()> {
+fn write_parameter_io(tree: &mut Tree<'_>, pio: &ParameterIO) -> Result<()> {
     let mut root = tree.root_ref_mut()?;
     root.change_type(ryml::NodeType::Map)?;
     root.set_val_tag("!io")?;

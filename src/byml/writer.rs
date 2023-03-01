@@ -239,10 +239,10 @@ impl<'a, W: Write + Seek> WriteContext<'a, W> {
         let mut non_inline_nodes = Vec::new();
 
         #[inline]
-        fn write_container_item<'parent, 'nodes, W: Write + Seek>(
+        fn write_container_item<'parent, W: Write + Seek>(
             ctx: &mut WriteContext<'parent, W>,
             item: &'parent Byml,
-            non_inline_nodes: &'nodes mut Vec<NonInlineNode<'parent>>,
+            non_inline_nodes: &mut Vec<NonInlineNode<'parent>>,
         ) -> binrw::BinResult<()> {
             if item.is_non_inline_type() {
                 non_inline_nodes.push(NonInlineNode {
