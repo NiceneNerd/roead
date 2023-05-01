@@ -67,8 +67,10 @@ impl<'a> Iterator for FileIterator<'a> {
                 } else {
                     None
                 },
-                data:  &self.sarc.data[(self.sarc.data_offset + self.entry.data_begin) as usize
-                    ..(self.sarc.data_offset + self.entry.data_end) as usize],
+                data:  &self.sarc.data.get(
+                    (self.sarc.data_offset + self.entry.data_begin) as usize
+                        ..(self.sarc.data_offset + self.entry.data_end) as usize,
+                )?,
                 index: self.index,
                 sarc:  self.sarc,
             })
