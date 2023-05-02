@@ -93,7 +93,11 @@ const fn is_container_type(node_type: NodeType) -> bool {
 
 #[inline(always)]
 const fn is_valid_version(version: u16) -> bool {
-    version >= 2 && version <= 4
+    if cfg!(feature = "byml7") {
+        (version >= 2 && version <= 4) || version == 7
+    } else {
+        version >= 2 && version <= 4
+    }
 }
 
 #[derive(Debug, thiserror::Error)]

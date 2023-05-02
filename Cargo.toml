@@ -1,7 +1,7 @@
 [package]
 name = "roead"
 description = "Rust bindings for oead C++ library for common Nintendo formats"
-version = "0.20.3"
+version = "0.21.0"
 authors = ["Caleb Smith <c.smith@tuta.io>"]
 license = "GPL-3.0-or-later"
 readme = "README.md"
@@ -47,6 +47,7 @@ jwalk = "0.6.0"
 [features]
 aamp = ["almost", "binrw", "indexmap", "num-traits", "once_cell", "parking_lot"]
 byml = ["binrw", "almost", "num-traits"]
+byml7 = []
 sarc = ["binrw", "num-integer", "serde", "serde_json", "once_cell", "indexmap"]
 yaz0 = ["cxx", "cxx-build"]
 yaml = ["ryml", "lexical", "base64"]

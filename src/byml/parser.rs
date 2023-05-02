@@ -73,6 +73,7 @@ impl<R: Read + Seek> BinReader<R> {
 #[binrw]
 struct ResHeaderInner {
     /// Format version (2-4).
+    /// Supports 7 if experimental feature `byml7` enabled.
     version: u16,
     /// Offset to the hash key table, relative to start (usually 0x010)
     /// May be 0 if no hash nodes are used. Must be a string table node (0xc2).
@@ -264,6 +265,14 @@ impl<R: Read + Seek> Parser<R> {
 #[cfg(test)]
 mod test {
     use super::*;
+
+    #[cfg(feature = "byml7")]
+    #[test]
+    fn parse_v7() {
+        let bytes = std::fs::read("test/byml/J-8_Dynamic.bcett.byml").unwrap();
+        let byml = Byml::from_binary(bytes).unwrap();
+        println!("{}", byml.to_text().unwrap());
+    }
 
     #[test]
     fn from_bytes() {
