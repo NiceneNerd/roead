@@ -1,3 +1,5 @@
+use std::path::Path;
+use std::env;
 #[cfg(feature = "yaz0")]
 fn build_zlib() {
     std::process::Command::new("cmake")
@@ -48,7 +50,8 @@ fn main() {
     println!("cargo:rerun-if-changed=src/yaz0.rs");
     println!("cargo:rerun-if-changed=src/yaz0.cpp");
     println!("cargo:rerun-if-changed=src/include/oead/yaz0.h");
-    println!("cargo:rustc-link-search=native=lib/zlib-ng");
+    let dir = env::var("CARGO_MANIFEST_DIR").unwrap();
+    println!("cargo:rustc-link-search=native={}", Path::new(&dir).join("lib/zlib-ng").display());
 }
 
 #[cfg(not(feature = "yaz0"))]
