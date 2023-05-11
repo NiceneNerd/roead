@@ -2,9 +2,17 @@ use std::path::Path;
 use std::env;
 #[cfg(feature = "yaz0")]
 fn build_zlib() {
-    std::process::Command::new("cmake")
-        .current_dir("lib/zlib-ng")
-        .arg(".")
+    let target = env::var("TARGET").unwrap();
+    let mut cmake = std::process::Command::new("cmake");
+    cmake.current_dir("lib/zlib-ng");
+    if target.contains("aarch64-apple-darwin") {
+        cmake.arg("-DCMAKE_OSX_ARCHITECTURES=arm64");
+    } else if target.contains("x86_64-apple-darwin") {
+        cmake.arg("-DCMAKE_OSX_ARCHITECTURES=x86_64");
+    } else {
+        //Not OSX
+    }
+    cmake.arg(".")
         .output()
         .expect("Failed to build zlib. Is CMake installed?");
     std::process::Command::new("cmake")
