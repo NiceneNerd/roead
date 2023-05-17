@@ -52,7 +52,7 @@
 //!
 //! This project is licensed under the GPLv3+ license. oead is licensed under
 //! the GPLv2+ license.
-#![feature(const_slice_index, doc_auto_cfg, let_chains, seek_stream_len)]
+// #![feature(const_slice_index, doc_auto_cfg, let_chains, seek_stream_len)]
 #![cfg_attr(not(test), deny(clippy::unwrap_used))]
 #[cfg(feature = "aamp")]
 pub mod aamp;

@@ -149,9 +149,7 @@ impl<'a> NameTable<'a> {
                     pos: i,
                     index: 0,
                 }) {
-                    #[allow(irrefutable_let_patterns)]
-                    if let candidate = hash_name(&fmt) && candidate == hash
-                    {
+                    if hash_name(&fmt) == hash {
                         let name = entry.insert(fmt.into());
                         return Ok(free_cow!(name, 'a));
                     }
@@ -196,8 +194,7 @@ impl<'a> NameTable<'a> {
                 for format in &self.numbered_names {
                     for i in 0..(index + 2) {
                         let name = format_numbered_name(format, i);
-                        #[allow(irrefutable_let_patterns)]
-                        if let candidate = hash_name(&name) && candidate == hash {
+                        if hash_name(&name) == hash {
                             let name = entry.insert(name.into());
                             return Some(free_cow!(name, 'a));
                         }

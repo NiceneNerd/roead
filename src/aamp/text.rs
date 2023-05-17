@@ -184,13 +184,13 @@ macro_rules! read_map {
         for child in $node.iter()? {
             let key = child.key()?;
             let value = $fn(&child)?;
-            if !$node.is_key_quoted()?
-                && let Ok(hash) = lexical::parse::<u64, &str>(key)
-            {
-                $m.insert(hash as u32, value);
-            } else {
-                $m.insert(hash_name(key), value);
+            if !$node.is_key_quoted()? {
+                if let Ok(hash) = lexical::parse::<u64, &str>(key) {
+                    $m.insert(hash as u32, value);
+                    continue;
+                }
             }
+            $m.insert(hash_name(key), value);
         }
     };
 }

@@ -4,7 +4,7 @@ use binrw::{binrw, BinRead, VecArgs};
 
 use super::*;
 use crate::{
-    util::{align, u24},
+    util::{align, u24, SeekShim},
     Endian, Error, Result,
 };
 
@@ -154,7 +154,7 @@ struct Parser<R: Read + Seek> {
 
 impl<R: Read + Seek> Parser<R> {
     fn new(mut reader: R) -> Result<Self> {
-        if reader.stream_len()? < 0x10 {
+        if SeekShim::stream_len(&mut reader)? < 0x10 {
             return Err(Error::InvalidData("Insufficient data for header"));
         }
         let header = ResHeader::read_ne(&mut reader)?;

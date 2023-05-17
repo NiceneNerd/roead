@@ -3,7 +3,7 @@ use std::io::{Read, Seek};
 use binrw::prelude::*;
 
 use super::*;
-use crate::{Error, Result};
+use crate::{util::SeekShim, Error, Result};
 
 impl ParameterIO {
     /// Read a parameter archive from a binary reader.
@@ -37,7 +37,7 @@ struct Parser<R: Read + Seek> {
 
 impl<R: Read + Seek> Parser<R> {
     fn new(mut reader: R) -> Result<Self> {
-        if reader.stream_len()? < 0x30 {
+        if SeekShim::stream_len(&mut reader)? < 0x30 {
             return Err(Error::InvalidData("Incomplete parameter archive"));
         }
         let header = ResHeader::read(&mut reader)?;
