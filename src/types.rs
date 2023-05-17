@@ -119,12 +119,12 @@ impl<const N: usize> std::fmt::Display for FixedSafeString<N> {
 
 #[cfg(feature = "binrw")]
 impl<const N: usize> binrw::BinRead for FixedSafeString<N> {
-    type Args = ();
+    type Args<'a> = ();
 
     fn read_options<R: std::io::Read + std::io::Seek>(
         reader: &mut R,
-        _: &binrw::ReadOptions,
-        _: Self::Args,
+        _: binrw::Endian,
+        _: Self::Args<'_>,
     ) -> binrw::BinResult<Self> {
         let mut data = [0; N];
         let mut c = u8::read(reader)?;

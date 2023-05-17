@@ -77,10 +77,10 @@ impl ParameterIO {
 }
 
 #[inline]
-fn write_buffer<W: Write + Seek, T: BinWrite<Args = ()>>(
-    writer: &mut W,
-    buffer: &[T],
-) -> BinResult<()> {
+fn write_buffer<W: Write + Seek, T>(writer: &mut W, buffer: &[T]) -> BinResult<()>
+where
+    T: for<'a> BinWrite<Args<'a> = ()> + Clone + 'static,
+{
     writer.write_le(&(buffer.len() as u32))?;
     writer.write_le(&buffer)?;
     Ok(())
@@ -120,7 +120,10 @@ impl<'pio, W: Write + Seek> WriteContext<'pio, W> {
     }
 
     #[inline]
-    fn write_at<T: BinWrite<Args = ()>>(&mut self, offset: u32, data: T) -> BinResult<()> {
+    fn write_at<T>(&mut self, offset: u32, data: T) -> BinResult<()>
+    where
+        T: for<'a> BinWrite<Args<'a> = ()> + Clone + 'static,
+    {
         let old_pos = self.writer.stream_position()?;
         self.writer.seek(SeekFrom::Start(offset as u64))?;
         self.writer.write_le(&data)?;

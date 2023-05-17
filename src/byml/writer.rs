@@ -134,7 +134,7 @@ impl<'a> StringTable<'a> {
 
 struct WriteContext<'a, W: Write + Seek> {
     writer: W,
-    options: binrw::WriteOptions,
+    endian: binrw::Endian,
     hash_key_table: Rc<StringTable<'a>>,
     string_table: Rc<StringTable<'a>>,
     non_inline_node_data: FxHashMap<&'a Byml, u32>,
@@ -181,10 +181,10 @@ impl<'a, W: Write + Seek> WriteContext<'a, W> {
         hash_key_table.build();
         WriteContext {
             writer,
-            options: binrw::WriteOptions::default().with_endian(match endian {
+            endian: match endian {
                 Endian::Little => binrw::Endian::Little,
                 Endian::Big => binrw::Endian::Big,
-            }),
+            },
             hash_key_table: Rc::new(hash_key_table),
             string_table: Rc::new(string_table),
             non_inline_node_data: FxHashMap::with_capacity_and_hasher(
@@ -195,8 +195,8 @@ impl<'a, W: Write + Seek> WriteContext<'a, W> {
     }
 
     #[inline(always)]
-    fn write<T: BinWrite<Args = ()>>(&mut self, val: T) -> binrw::BinResult<()> {
-        val.write_options(&mut self.writer, &self.options, ())
+    fn write<'b, T: BinWrite<Args<'b> = ()>>(&mut self, val: T) -> binrw::BinResult<()> {
+        val.write_options(&mut self.writer, self.endian, ())
     }
 
     #[inline(always)]
@@ -208,7 +208,11 @@ impl<'a, W: Write + Seek> WriteContext<'a, W> {
     }
 
     #[inline(always)]
-    fn write_at<T: BinWrite<Args = ()>>(&mut self, val: T, offset: u32) -> binrw::BinResult<()> {
+    fn write_at<'b, T: BinWrite<Args<'b> = ()>>(
+        &mut self,
+        val: T,
+        offset: u32,
+    ) -> binrw::BinResult<()> {
         let old_pos = self.writer.stream_position()?;
         self.writer.seek(SeekFrom::Start(offset as u64))?;
         self.write(val)?;

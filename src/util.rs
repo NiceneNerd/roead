@@ -16,16 +16,16 @@ impl u24 {
 #[cfg(feature = "binrw")]
 const _: () = {
     impl binrw::BinRead for u24 {
-        type Args = ();
+        type Args<'b> = ();
 
         fn read_options<R: std::io::Read + std::io::Seek>(
             reader: &mut R,
-            opts: &binrw::ReadOptions,
+            endian: binrw::Endian,
             _: (),
         ) -> binrw::BinResult<Self> {
             let buf: [u8; 3] = binrw::BinRead::read(reader)?;
-            match opts.endian() {
-                binrw::Endian::Little | binrw::Endian::Native => {
+            match endian {
+                binrw::Endian::Little => {
                     Ok(u24(u32::from(buf[0])
                         | u32::from(buf[1]) << 8
                         | u32::from(buf[2]) << 16))
@@ -40,17 +40,17 @@ const _: () = {
     }
 
     impl binrw::BinWrite for u24 {
-        type Args = ();
+        type Args<'a> = ();
 
         fn write_options<W: std::io::Write + std::io::Seek>(
             &self,
             writer: &mut W,
-            options: &binrw::WriteOptions,
-            args: Self::Args,
+            endian: binrw::Endian,
+            args: Self::Args<'_>,
         ) -> binrw::BinResult<()> {
             let mut buf = [0; 3];
-            match options.endian() {
-                binrw::Endian::Little | binrw::Endian::Native => {
+            match endian {
+                binrw::Endian::Little => {
                     buf[0] = self.0 as u8;
                     buf[1] = (self.0 >> 8) as u8;
                     buf[2] = (self.0 >> 16) as u8;
@@ -61,7 +61,7 @@ const _: () = {
                     buf[2] = self.0 as u8;
                 }
             }
-            buf.write_options(writer, options, args)
+            buf.write_options(writer, endian, args)
         }
     }
 };
@@ -77,34 +77,20 @@ fn test_u24_rw() {
     let mut buf = Vec::new();
     num.write_options(
         &mut std::io::Cursor::new(&mut buf),
-        &binrw::WriteOptions::default().with_endian(binrw::Endian::Little),
+        binrw::Endian::Little,
         (),
     )
     .unwrap();
     assert_eq!(buf, le_data);
     buf.clear();
-    num.write_options(
-        &mut std::io::Cursor::new(&mut buf),
-        &binrw::WriteOptions::default().with_endian(binrw::Endian::Big),
-        (),
-    )
-    .unwrap();
+    num.write_options(&mut std::io::Cursor::new(&mut buf), binrw::Endian::Big, ())
+        .unwrap();
     assert_eq!(buf, be_data);
     buf.clear();
     let mut reader = std::io::Cursor::new(le_data);
-    let num = u24::read_options(
-        &mut reader,
-        &binrw::ReadOptions::default().with_endian(Endian::Little),
-        (),
-    )
-    .unwrap();
+    let num = u24::read_options(&mut reader, Endian::Little, ()).unwrap();
     assert_eq!(num.0, 8388608);
     reader = std::io::Cursor::new(be_data);
-    let num = u24::read_options(
-        &mut reader,
-        &binrw::ReadOptions::default().with_endian(Endian::Big),
-        (),
-    )
-    .unwrap();
+    let num = u24::read_options(&mut reader, Endian::Big, ()).unwrap();
     assert_eq!(num.0, 8388608);
 }

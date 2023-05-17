@@ -32,7 +32,7 @@ impl ParameterIO {
 struct Parser<R: Read + Seek> {
     reader: R,
     header: ResHeader,
-    opts:   binrw::ReadOptions,
+    endian: binrw::Endian,
 }
 
 impl<R: Read + Seek> Parser<R> {
@@ -59,7 +59,7 @@ impl<R: Read + Seek> Parser<R> {
         Ok(Self {
             reader,
             header,
-            opts: binrw::ReadOptions::default().with_endian(binrw::Endian::Little),
+            endian: binrw::Endian::Little,
         })
     }
 
@@ -88,7 +88,7 @@ impl<R: Read + Seek> Parser<R> {
     }
 
     #[inline]
-    fn read<T: BinRead<Args = ()>>(&mut self) -> Result<T> {
+    fn read<'a, T: BinRead<Args<'a> = ()>>(&mut self) -> Result<T> {
         Ok(self.reader.read_le()?)
     }
 
@@ -106,7 +106,7 @@ impl<R: Read + Seek> Parser<R> {
     }
 
     #[inline]
-    fn read_at<T: BinRead<Args = ()>>(&mut self, offset: u32) -> Result<T> {
+    fn read_at<'a, T: BinRead<Args<'a> = ()>>(&mut self, offset: u32) -> Result<T> {
         let old_pos = self.reader.stream_position()? as u32;
         self.seek(offset)?;
         let val = self.read()?;
@@ -114,11 +114,14 @@ impl<R: Read + Seek> Parser<R> {
         Ok(val)
     }
 
-    fn read_buffer<T: BinRead<Args = ()> + Copy>(&mut self, offset: u32) -> Result<Vec<T>> {
+    fn read_buffer<T>(&mut self, offset: u32) -> Result<Vec<T>>
+    where
+        T: for<'a> BinRead<Args<'a> = ()> + Clone + 'static,
+    {
         let size = self.read_at::<u32>(offset - 4)?;
-        let buf = Vec::<T>::read_options(
+        let buf = binrw::BinRead::read_options(
             &mut self.reader,
-            &self.opts,
+            self.endian,
             binrw::VecArgs::builder().count(size as usize).finalize(),
         )?;
         Ok(buf)

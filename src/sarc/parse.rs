@@ -21,9 +21,9 @@ fn find_null(data: &[u8]) -> Result<usize> {
 }
 
 #[inline(always)]
-fn read<T: BinRead>(endian: Endian, reader: &mut Cursor<&[u8]>) -> Result<T>
+fn read<'a, T: BinRead>(endian: Endian, reader: &mut Cursor<&[u8]>) -> Result<T>
 where
-    <T as binrw::BinRead>::Args: std::default::Default,
+    <T as binrw::BinRead>::Args<'a>: std::default::Default + std::clone::Clone,
 {
     Ok(match endian {
         Endian::Big => reader.read_be()?,
@@ -67,7 +67,7 @@ impl<'a> Iterator for FileIterator<'a> {
                 } else {
                     None
                 },
-                data:  &self.sarc.data.get(
+                data:  self.sarc.data.get(
                     (self.sarc.data_offset + self.entry.data_begin) as usize
                         ..(self.sarc.data_offset + self.entry.data_end) as usize,
                 )?,
@@ -144,7 +144,7 @@ impl<'a> Sarc<'_> {
 
         let mut reader = Cursor::new(data.as_ref());
         reader.set_position(6);
-        let endian: Endian = Endian::read(&mut reader).map_err(Error::from)?;
+        let endian: Endian = Endian::read_ne(&mut reader).map_err(Error::from)?;
         reader.set_position(0);
 
         let header: ResHeader = read(endian, &mut reader)?;

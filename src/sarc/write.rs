@@ -20,18 +20,18 @@ static AGLENV_INFO: &str = include_str!("../../data/aglenv_file_info.json");
 const HASH_MULTIPLIER: u32 = 0x65;
 
 impl BinWrite for Endian {
-    type Args = ();
+    type Args<'b> = ();
 
     #[inline(always)]
     fn write_options<W: Write + Seek>(
         &self,
         writer: &mut W,
-        _: &binrw::WriteOptions,
-        _: Self::Args,
+        _: binrw::Endian,
+        _: Self::Args<'_>,
     ) -> binrw::BinResult<()> {
         match *self {
-            Self::Big => [0xFEu8, 0xFFu8].write_to(writer),
-            Self::Little => [0xFFu8, 0xFEu8].write_to(writer),
+            Self::Big => [0xFEu8, 0xFFu8].write(writer),
+            Self::Little => [0xFFu8, 0xFEu8].write(writer),
         }
     }
 }
@@ -85,7 +85,7 @@ pub struct SarcWriter {
     hash_multiplier: u32,
     min_alignment: usize,
     alignment_map: FxHashMap<String, usize>,
-    options: binrw::WriteOptions,
+    brw_endian: binrw::Endian,
     /// Files to be written.
     pub files: IndexMap<String, Vec<u8>>,
 }
@@ -125,10 +125,10 @@ impl SarcWriter {
             hash_multiplier: HASH_MULTIPLIER,
             alignment_map: FxHashMap::default(),
             files: IndexMap::new(),
-            options: binrw::WriteOptions::default().with_endian(match endian {
+            brw_endian: match endian {
                 Endian::Big => binrw::Endian::Big,
                 Endian::Little => binrw::Endian::Little,
-            }),
+            },
             min_alignment: 4,
         }
     }
@@ -146,10 +146,10 @@ impl SarcWriter {
                 .files()
                 .filter_map(|f| f.name.map(|name| (name.to_string(), f.data.to_vec())))
                 .collect(),
-            options: binrw::WriteOptions::default().with_endian(match endian {
+            brw_endian: match endian {
                 Endian::Big => binrw::Endian::Big,
                 Endian::Little => binrw::Endian::Little,
-            }),
+            },
             min_alignment: sarc.guess_min_alignment(),
         }
     }
@@ -182,7 +182,7 @@ impl SarcWriter {
             num_files: self.files.len() as u16,
             hash_multiplier: self.hash_multiplier,
         }
-        .write_options(writer, &self.options, ())?;
+        .write_options(writer, self.brw_endian, ())?;
 
         self.files.sort_unstable_by(|ka, _, kb, _| {
             hash_name(HASH_MULTIPLIER, ka).cmp(&hash_name(HASH_MULTIPLIER, kb))
@@ -204,7 +204,7 @@ impl SarcWriter {
                     data_begin: offset as u32,
                     data_end: (offset + data.len()) as u32,
                 }
-                .write_options(writer, &self.options, ())?;
+                .write_options(writer, self.brw_endian, ())?;
 
                 rel_data_offset = offset + data.len();
                 rel_string_offset += align(name.len() + 1, 4) as u32;
@@ -215,10 +215,10 @@ impl SarcWriter {
             header_size: 0x8,
             reserved: 0,
         }
-        .write_options(writer, &self.options, ())?;
+        .write_options(writer, self.brw_endian, ())?;
         for (name, _) in self.files.iter() {
-            name.as_bytes().write_options(writer, &self.options, ())?;
-            0u8.write_options(writer, &self.options, ())?;
+            name.as_bytes().write_options(writer, self.brw_endian, ())?;
+            0u8.write_options(writer, self.brw_endian, ())?;
             let pos = writer.stream_position()? as usize;
             writer.seek(SeekFrom::Start(align(pos, 4) as u64))?;
         }
@@ -232,7 +232,7 @@ impl SarcWriter {
         for ((_, data), alignment) in self.files.iter().zip(alignments.iter()) {
             let pos = writer.stream_position()? as usize;
             writer.seek(SeekFrom::Start(align(pos, *alignment) as u64))?;
-            data.write_to(writer)?;
+            data.write(writer)?;
         }
 
         let file_size = writer.stream_position()? as u32;
@@ -245,7 +245,7 @@ impl SarcWriter {
             version: 0x0100,
             reserved: 0,
         }
-        .write_options(writer, &self.options, ())?;
+        .write_options(writer, self.brw_endian, ())?;
         Ok(())
     }
 

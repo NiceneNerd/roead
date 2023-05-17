@@ -34,30 +34,30 @@ impl Byml {
 
 struct BinReader<R: Read + Seek> {
     reader: R,
-    opts:   binrw::ReadOptions,
+    endian: binrw::Endian,
 }
 
 impl<R: Read + Seek> BinReader<R> {
     fn new(reader: R, endian: Endian) -> Self {
         Self {
             reader,
-            opts: binrw::ReadOptions::default().with_endian(match endian {
+            endian: match endian {
                 Endian::Little => binrw::Endian::Little,
                 Endian::Big => binrw::Endian::Big,
-            }),
+            },
         }
     }
 
-    fn read<T: BinRead>(&mut self) -> binrw::BinResult<T>
+    fn read<'a, T: BinRead>(&mut self) -> binrw::BinResult<T>
     where
-        T::Args: Default,
+        T::Args<'a>: Default,
     {
-        T::read_options(&mut self.reader, &self.opts, T::Args::default())
+        T::read_options(&mut self.reader, self.endian, T::Args::default())
     }
 
-    fn read_at<T: BinRead>(&mut self, offset: u64) -> binrw::BinResult<T>
+    fn read_at<'a, T: BinRead>(&mut self, offset: u64) -> binrw::BinResult<T>
     where
-        T::Args: Default,
+        T::Args<'a>: Default,
     {
         self.reader.seek(SeekFrom::Start(offset))?;
         self.read()
@@ -157,7 +157,7 @@ impl<R: Read + Seek> Parser<R> {
         if reader.stream_len()? < 0x10 {
             return Err(Error::InvalidData("Insufficient data for header"));
         }
-        let header = ResHeader::read(&mut reader)?;
+        let header = ResHeader::read_ne(&mut reader)?;
         let endian = if &header.magic == b"BY" {
             Endian::Big
         } else {
@@ -195,10 +195,14 @@ impl<R: Read + Seek> Parser<R> {
             NodeType::String => Byml::String(self.string_table.get_string(raw, &mut self.reader)?),
             NodeType::Binary => {
                 let size: u32 = self.reader.read_at(raw as u64)?;
-                let buf = Vec::read_options(&mut self.reader.reader, &self.reader.opts, VecArgs {
-                    count: size as usize,
-                    inner: (),
-                })?;
+                let buf = binrw::BinRead::read_options(
+                    &mut self.reader.reader,
+                    self.reader.endian,
+                    VecArgs {
+                        count: size as usize,
+                        inner: (),
+                    },
+                )?;
                 Byml::BinaryData(buf)
             }
             NodeType::Bool => Byml::Bool(raw != 0),

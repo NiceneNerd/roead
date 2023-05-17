@@ -1,3 +1,4 @@
+use base64::Engine;
 use ryml::{NodeRef, Tree};
 
 use super::*;
@@ -78,7 +79,9 @@ impl<'a> Parser<'a> {
                 Scalar::Null => Ok(Byml::Null),
                 Scalar::String(s) => {
                     if is_binary_tag(tag) {
-                        Ok(Byml::BinaryData(base64::decode(s)?))
+                        Ok(Byml::BinaryData(
+                            base64::engine::general_purpose::STANDARD.decode(s)?,
+                        ))
                     } else {
                         Ok(Byml::String(s))
                     }
@@ -178,7 +181,8 @@ impl<'a, 'b> Emitter<'a, 'b> {
                     Byml::BinaryData(data) => {
                         let arena = dest_node.tree().arena_capacity();
                         dest_node.tree_mut().reserve_arena(arena + data.len());
-                        dest_node.set_val(&base64::encode(data))?;
+                        dest_node
+                            .set_val(&base64::engine::general_purpose::STANDARD.encode(data))?;
                         dest_node.set_val_tag("!!binary")?;
                     }
                     _ => unsafe { std::hint::unreachable_unchecked() },
