@@ -205,6 +205,19 @@ impl<R: Read + Seek> Parser<R> {
                 )?;
                 Byml::BinaryData(buf)
             }
+            NodeType::File => {
+                let size: u32 = self.reader.read_at(raw as u64)?;
+                let _unknown: u32 = self.reader.read_at(raw as u64 + 4)?;
+                let buf = binrw::BinRead::read_options(
+                    &mut self.reader.reader,
+                    self.reader.endian,
+                    VecArgs {
+                        count: size as usize,
+                        inner: (),
+                    },
+                )?;
+                Byml::FileData(buf)
+            }
             NodeType::Bool => Byml::Bool(raw != 0),
             NodeType::I32 => Byml::I32(raw as i32),
             NodeType::U32 => Byml::U32(raw),
@@ -213,7 +226,11 @@ impl<R: Read + Seek> Parser<R> {
             NodeType::U64 => Byml::U64(read_long(raw)?),
             NodeType::Double => Byml::Double(f64::from_bits(read_long(raw)?)),
             NodeType::Null => Byml::Null,
-            _ => unreachable!("Invalid value node type"),
+            _ => {
+                return Err(Error::Any(format!(
+                    "Invalid value node type: {node_type:?}"
+                )));
+            }
         };
         Ok(value)
     }

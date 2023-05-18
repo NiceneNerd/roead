@@ -27,7 +27,7 @@ fn recognize_tag(tag: &str) -> Option<TagBasedType> {
     match tag {
         "!f64" => Some(TagBasedType::Float),
         "!u" | "!l" | "!ul" => Some(TagBasedType::Int),
-        "tag:yaml.org,2002:binary" | "!!binary" => Some(TagBasedType::Str),
+        "tag:yaml.org,2002:binary" | "!!binary" | "!!file" => Some(TagBasedType::Str),
         _ => None,
     }
 }
@@ -80,6 +80,10 @@ impl<'a> Parser<'a> {
                 Scalar::String(s) => {
                     if is_binary_tag(tag) {
                         Ok(Byml::BinaryData(
+                            base64::engine::general_purpose::STANDARD.decode(s)?,
+                        ))
+                    } else if tag == "!!file" {
+                        Ok(Byml::FileData(
                             base64::engine::general_purpose::STANDARD.decode(s)?,
                         ))
                     } else {
@@ -184,6 +188,13 @@ impl<'a, 'b> Emitter<'a, 'b> {
                         dest_node
                             .set_val(&base64::engine::general_purpose::STANDARD.encode(data))?;
                         dest_node.set_val_tag("!!binary")?;
+                    }
+                    Byml::FileData(data) => {
+                        let arena = dest_node.tree().arena_capacity();
+                        dest_node.tree_mut().reserve_arena(arena + data.len());
+                        dest_node
+                            .set_val(&base64::engine::general_purpose::STANDARD.encode(data))?;
+                        dest_node.set_val_tag("!!file")?;
                     }
                     _ => unsafe { std::hint::unreachable_unchecked() },
                 }

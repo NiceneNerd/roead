@@ -73,6 +73,7 @@ mod parser;
 enum NodeType {
     String = 0xa0,
     Binary = 0xa1,
+    File = 0xa2,
     Array = 0xc0,
     Hash = 0xc1,
     StringTable = 0xc2,
@@ -151,6 +152,8 @@ pub enum Byml {
     String(String),
     /// Binary data (not used in BOTW).
     BinaryData(Vec<u8>),
+    /// File data
+    FileData(Vec<u8>),
     /// Array of BYML nodes.
     Array(Vec<Byml>),
     /// Hash map of BYML nodes.
@@ -178,6 +181,7 @@ impl Byml {
         match self {
             Byml::String(_) => "String".into(),
             Byml::BinaryData(_) => "Binary".into(),
+            Byml::FileData(_) => "File".into(),
             Byml::Array(_) => "Array".into(),
             Byml::Hash(_) => "Hash".into(),
             Byml::Bool(_) => "Bool".into(),
@@ -766,6 +770,7 @@ impl PartialEq for Byml {
         match (self, other) {
             (Byml::String(s1), Byml::String(s2)) => s1 == s2,
             (Byml::BinaryData(d1), Byml::BinaryData(d2)) => d1 == d2,
+            (Byml::FileData(d1), Byml::FileData(d2)) => d1 == d2,
             (Byml::Array(a1), Byml::Array(a2)) => a1 == a2,
             (Byml::Hash(h1), Byml::Hash(h2)) => h1 == h2,
             (Byml::Bool(b1), Byml::Bool(b2)) => b1 == b2,
@@ -794,6 +799,7 @@ impl std::hash::Hash for Byml {
         match self {
             Byml::String(s) => s.hash(state),
             Byml::BinaryData(b) => b.hash(state),
+            Byml::FileData(b) => b.hash(state),
             Byml::Array(a) => a.hash(state),
             Byml::Hash(h) => {
                 for (k, v) in h.iter() {
@@ -847,6 +853,7 @@ impl Byml {
         match self {
             Byml::String(_) => NodeType::String,
             Byml::BinaryData(_) => NodeType::Binary,
+            Byml::FileData(_) => NodeType::Binary,
             Byml::Array(_) => NodeType::Array,
             Byml::Hash(_) => NodeType::Hash,
             Byml::Bool(_) => NodeType::Bool,
@@ -867,6 +874,7 @@ impl Byml {
             Byml::Array(_)
                 | Byml::Hash(_)
                 | Byml::BinaryData(_)
+                | Byml::FileData(_)
                 | Byml::I64(_)
                 | Byml::U64(_)
                 | Byml::Double(_)
@@ -885,6 +893,7 @@ pub(self) static FILES: &[&str] = &[
     "MainFieldStatic",
     "Preset0_Field",
     "ActorInfo.product",
+    "ElectricGenerator.Nin_NX_NVN.esetb",
     #[cfg(feature = "byml7")]
     "Mrg_01e57204_MrgD100_B4-B3-B2-1A90E17A.bcett",
 ];
