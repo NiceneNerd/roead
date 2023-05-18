@@ -189,7 +189,7 @@ impl<R: Read + Seek> Parser<R> {
     fn parse_value_node(&mut self, offset: u32, node_type: NodeType) -> Result<Byml> {
         let raw: u32 = self.reader.read_at(offset as u64)?;
 
-        let mut read_long = || -> Result<u64> { Ok(self.reader.read_at(offset as u64)?) };
+        let mut read_long = |raw: u32| -> Result<u64> { Ok(self.reader.read_at(raw as u64)?) };
 
         let value = match node_type {
             NodeType::String => Byml::String(self.string_table.get_string(raw, &mut self.reader)?),
@@ -209,9 +209,9 @@ impl<R: Read + Seek> Parser<R> {
             NodeType::I32 => Byml::I32(raw as i32),
             NodeType::U32 => Byml::U32(raw),
             NodeType::Float => Byml::Float(f32::from_bits(raw)),
-            NodeType::I64 => Byml::I64(read_long()? as i64),
-            NodeType::U64 => Byml::U64(read_long()?),
-            NodeType::Double => Byml::Double(f64::from_bits(read_long()?)),
+            NodeType::I64 => Byml::I64(read_long(raw)? as i64),
+            NodeType::U64 => Byml::U64(read_long(raw)?),
+            NodeType::Double => Byml::Double(f64::from_bits(read_long(raw)?)),
             NodeType::Null => Byml::Null,
             _ => unreachable!("Invalid value node type"),
         };
@@ -273,7 +273,8 @@ mod test {
     #[cfg(feature = "byml7")]
     #[test]
     fn parse_v7() {
-        let bytes = std::fs::read("test/byml/J-8_Dynamic.bcett.byml").unwrap();
+        let bytes =
+            std::fs::read("test/byml/Mrg_01e57204_MrgD100_B4-B3-B2-1A90E17A.bcett.byml").unwrap();
         let byml = Byml::from_binary(bytes).unwrap();
         println!("{}", byml.to_text().unwrap());
     }

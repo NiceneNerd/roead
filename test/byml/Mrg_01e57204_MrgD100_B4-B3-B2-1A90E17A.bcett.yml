@@ -1,0 +1,33 @@
+Actors:
+- Bakeable: true
+  Gyaml: CaveObj_Decoration_A_02
+  Hash: !ul 934954474910587728
+  Phive:
+    Placement: {ID: !ul 6570573656605395051}
+  Rotate: [0.514000058, -0.500999987, -1.01299989]
+  SRTHash: !u 0xc287ff70
+  Translate: [0.722999573, -1.11049652, -0.0924987793]
+- Bakeable: true
+  Gyaml: CaveObj_Decoration_A_01
+  Hash: !ul 15362430485594965333
+  Phive:
+    Placement: {ID: !ul 3845812508247786240}
+  Rotate: [0.514000058, -0.500999987, -1.01299989]
+  SRTHash: !u 0xc287ff70
+  Translate: [0.722999573, -1.11049652, -0.0924987793]
+- Bakeable: true
+  Gyaml: CaveObj_Decoration_A_02
+  Hash: !ul 11556631673347769598
+  Phive:
+    Placement: {ID: !ul 8898447031479965443}
+  Rotate: [1.15159261, -0.366592556, -2.19859266]
+  SRTHash: !u 0x2c7c2d2a
+  Translate: [-0.722999573, 1.11049652, 0.0924987793]
+- Bakeable: true
+  Gyaml: CaveObj_Decoration_A_01
+  Hash: !ul 11075487932415285758
+  Phive:
+    Placement: {ID: !ul 16815009760259126877}
+  Rotate: [1.15159261, -0.366592556, -2.19859266]
+  SRTHash: !u 0x2c7c2d2a
+  Translate: [-0.722999573, 1.11049652, 0.0924987793]

@@ -885,6 +885,8 @@ pub(self) static FILES: &[&str] = &[
     "MainFieldStatic",
     "Preset0_Field",
     "ActorInfo.product",
+    #[cfg(feature = "byml7")]
+    "Mrg_01e57204_MrgD100_B4-B3-B2-1A90E17A.bcett",
 ];
 
 #[cfg(test)]
