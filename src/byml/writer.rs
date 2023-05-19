@@ -26,10 +26,13 @@ impl Byml {
             return Err(Error::InvalidData("Unsupported BYML version (2-4 only)"));
         }
 
-        if !matches!(self, Byml::Map(_) | Byml::Array(_) | Byml::Null) {
+        if !matches!(
+            self,
+            Byml::Map(_) | Byml::HashMap(_) | Byml::ValueHashMap(_) | Byml::Array(_) | Byml::Null
+        ) {
             return Err(Error::TypeError(
                 format!("{:?}", self).into(),
-                "Hash, Array, or Null",
+                "Map, HashMap, ValueHashMap, Array, or Null",
             ));
         }
 
@@ -166,7 +169,21 @@ impl<'a, W: Write + Seek> WriteContext<'a, W> {
                         traverse(node, count, string_table, hash_key_table);
                     }
                 }
-                Byml::BinaryData(_) | Byml::I64(_) | Byml::U64(_) | Byml::Double(_) => {}
+                Byml::HashMap(hash) => {
+                    for node in hash.values() {
+                        traverse(node, count, string_table, hash_key_table);
+                    }
+                }
+                Byml::ValueHashMap(hash) => {
+                    for (node, _) in hash.values() {
+                        traverse(node, count, string_table, hash_key_table);
+                    }
+                }
+                Byml::BinaryData(_)
+                | Byml::FileData(_)
+                | Byml::I64(_)
+                | Byml::U64(_)
+                | Byml::Double(_) => {}
                 _ => return,
             }
             *count += 1;
@@ -228,6 +245,11 @@ impl<'a, W: Write + Seek> WriteContext<'a, W> {
                 self.write(data.len() as u32)?;
                 self.write(data)
             }
+            Byml::FileData(data) => {
+                self.write(data.len() as u32)?;
+                self.write(0x1000u32)?; // unknown
+                self.write(data)
+            }
             Byml::Bool(b) => self.write(*b as u32),
             Byml::I32(i) => self.write(*i),
             Byml::U32(u) => self.write(*u),
@@ -235,7 +257,12 @@ impl<'a, W: Write + Seek> WriteContext<'a, W> {
             Byml::I64(i) => self.write(*i),
             Byml::U64(u) => self.write(*u),
             Byml::Double(d) => self.write(d.to_bits()),
-            _ => unreachable!("Invalid value node type"),
+            _ => {
+                BinResult::Err(binrw::Error::Custom {
+                    pos: self.writer.stream_position()?,
+                    err: Box::new("Invalid value node type"),
+                })
+            }
         }
     }
 
@@ -273,21 +300,56 @@ impl<'a, W: Write + Seek> WriteContext<'a, W> {
                     write_container_item(self, item, &mut non_inline_nodes)?;
                 }
             }
-            Byml::Map(hash) => {
-                non_inline_nodes.reserve(hash.len());
+            Byml::Map(map) => {
+                non_inline_nodes.reserve(map.len());
                 self.write(NodeType::Map)?;
-                self.write(u24(hash.len() as u32))?;
-                let sorted = hash.iter().collect::<BTreeMap<_, _>>();
-                for (key, item) in sorted.into_iter() {
+                self.write(u24(map.len() as u32))?;
+                let sorted = map.iter().collect::<BTreeMap<_, _>>();
+                for (key, item) in sorted {
                     self.write(u24(self.hash_key_table.get_index(key)))?;
                     self.write(item.get_node_type())?;
                     write_container_item(self, item, &mut non_inline_nodes)?;
                 }
             }
-            _ => unreachable!("Invalid container node type"),
+            Byml::HashMap(hash) => {
+                non_inline_nodes.reserve(hash.len());
+                self.write(NodeType::HashMap)?;
+                self.write(u24(hash.len() as u32))?;
+                let sorted = hash.iter().collect::<BTreeMap<_, _>>();
+                for (hash, item) in &sorted {
+                    self.write(*hash)?;
+                    write_container_item(self, item, &mut non_inline_nodes)?;
+                }
+                for item in sorted.values() {
+                    self.write(item.get_node_type())?;
+                }
+                self.align()?;
+            }
+            Byml::ValueHashMap(hash) => {
+                non_inline_nodes.reserve(hash.len());
+                self.write(NodeType::ValueHashMap)?;
+                self.write(u24(hash.len() as u32))?;
+                let sorted = hash.iter().collect::<BTreeMap<_, _>>();
+                for (hash, (item, unknown)) in &sorted {
+                    write_container_item(self, item, &mut non_inline_nodes)?;
+                    self.write(hash)?;
+                    self.write(unknown)?;
+                }
+                for (item, _) in sorted.values() {
+                    self.write(item.get_node_type())?;
+                }
+                self.align()?;
+            }
+            _ => {
+                return BinResult::Err(binrw::Error::Custom {
+                    pos: self.writer.stream_position()?,
+                    err: Box::new("Invalid container node type"),
+                });
+            }
         }
 
         for node in non_inline_nodes {
+            self.align()?;
             if let Some(pos) = self.non_inline_node_data.get(&node.data).copied() {
                 self.write_at(pos, node.offset)?;
             } else {
@@ -295,7 +357,9 @@ impl<'a, W: Write + Seek> WriteContext<'a, W> {
                 self.write_at(offset, node.offset)?;
                 self.non_inline_node_data.insert(node.data, offset);
                 match node.data {
-                    Byml::Array(_) | Byml::Map(_) => self.write_container_node(node.data)?,
+                    Byml::Array(_) | Byml::Map(_) | Byml::HashMap(_) | Byml::ValueHashMap(_) => {
+                        self.write_container_node(node.data)?
+                    }
                     _ => self.write_value_node(node.data)?,
                 }
             }

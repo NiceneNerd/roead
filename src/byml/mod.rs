@@ -36,15 +36,16 @@
 //! # fn docttest() -> Result<(), Box<dyn std::error::Error>> {
 //! # let some_data = b"BYML";
 //! let doc = Byml::from_binary(some_data)?;
-//! let hash = doc.as_hash().unwrap();
+//! let map = doc.as_map().unwrap();
 //! # Ok(())
 //! # }
 //! ```
 //!
 //! Most of the node types are fairly self-explanatory. Arrays are implemented
-//! as `Vec<Byml>`, and hash nodes as `FxHashMap<String, Byml>`.
+//! as `Vec<Byml>`, and maps as `FxHashMap<String, Byml>`. The new v7 hash maps
+//! are `FxHashMap<u32, Byml>` and `FxHashMap<u32, (Byml, u32)>`.
 //!
-//! For convenience, a `Byml` *known* to be an array or hash node can be
+//! For convenience, a `Byml` *known* to be an array or map can be
 //! indexed. **Panics if the node has the wrong type, the index has the wrong
 //! type, or the index is not found**.
 //! ```
@@ -99,11 +100,7 @@ const fn is_container_type(node_type: NodeType) -> bool {
 
 #[inline(always)]
 const fn is_valid_version(version: u16) -> bool {
-    if cfg!(feature = "byml7") {
-        (version >= 2 && version <= 4) || version == 7
-    } else {
-        version >= 2 && version <= 4
-    }
+    version >= 1 && version < 8
 }
 
 #[derive(Debug, thiserror::Error)]
@@ -123,6 +120,7 @@ pub enum BymlError {
 /// A BYML hash node.
 pub type Map = rustc_hash::FxHashMap<String, Byml>;
 pub type HashMap = rustc_hash::FxHashMap<u32, Byml>;
+pub type ValueHashMap = rustc_hash::FxHashMap<u32, (Byml, u32)>;
 
 /// Convenience type used for indexing into `Byml`s
 pub enum BymlIndex<'a> {
@@ -152,6 +150,12 @@ impl<'a> From<usize> for BymlIndex<'a> {
     }
 }
 
+impl<'a> From<u32> for BymlIndex<'a> {
+    fn from(value: u32) -> Self {
+        Self::HashIdx(value)
+    }
+}
+
 /// Represents a Nintendo binary YAML (BYML) document or node.
 #[cfg_attr(feature = "with-serde", derive(serde::Serialize, serde::Deserialize))]
 #[derive(Debug, Clone)]
@@ -169,7 +173,7 @@ pub enum Byml {
     /// Hash map of BYML nodes with u32 keys.
     HashMap(HashMap),
     /// Hash map of BYML nodes with u32 keys and additional value.
-    ValueHashMap(HashMap),
+    ValueHashMap(ValueHashMap),
     /// Boolean value.
     Bool(bool),
     /// 32-bit signed integer.
@@ -348,12 +352,30 @@ impl Byml {
         }
     }
 
-    /// Get a reference to the inner hash map of BYML nodes.
-    pub fn as_hash(&self) -> Result<&Map> {
+    /// Get a reference to the inner string-keyed hash map of BYML nodes.
+    pub fn as_map(&self) -> Result<&Map> {
         if let Self::Map(v) = self {
             Ok(v)
         } else {
-            Err(Error::TypeError(self.type_name(), "Hash"))
+            Err(Error::TypeError(self.type_name(), "Map"))
+        }
+    }
+
+    /// Get a reference to the inner u32-keyed hash map of BYML nodes.
+    pub fn as_hash_map(&self) -> Result<&HashMap> {
+        if let Self::HashMap(v) = self {
+            Ok(v)
+        } else {
+            Err(Error::TypeError(self.type_name(), "HashMap"))
+        }
+    }
+
+    /// Get a reference to the inner u32-keyed hash map of BYML nodes.
+    pub fn as_value_hash_map(&self) -> Result<&ValueHashMap> {
+        if let Self::ValueHashMap(v) = self {
+            Ok(v)
+        } else {
+            Err(Error::TypeError(self.type_name(), "ValueHashMap"))
         }
     }
 
@@ -448,11 +470,29 @@ impl Byml {
     }
 
     /// Get a mutable reference to the inner hash map of BYML nodes.
-    pub fn as_mut_hash(&mut self) -> Result<&mut Map> {
+    pub fn as_mut_map(&mut self) -> Result<&mut Map> {
         if let Self::Map(v) = self {
             Ok(v)
         } else {
             Err(Error::TypeError(self.type_name(), "Hash"))
+        }
+    }
+
+    /// Get a reference to the inner u32-keyed hash map of BYML nodes.
+    pub fn as_mut_hash_map(&mut self) -> Result<&mut HashMap> {
+        if let Self::HashMap(v) = self {
+            Ok(v)
+        } else {
+            Err(Error::TypeError(self.type_name(), "HashMap"))
+        }
+    }
+
+    /// Get a reference to the inner u32-keyed hash map of BYML nodes.
+    pub fn as_mut_value_hash_map(&mut self) -> Result<&mut ValueHashMap> {
+        if let Self::ValueHashMap(v) = self {
+            Ok(v)
+        } else {
+            Err(Error::TypeError(self.type_name(), "ValueHashMap"))
         }
     }
 
@@ -546,12 +586,30 @@ impl Byml {
         }
     }
 
-    /// Extract the inner hash value.
-    pub fn into_hash(self) -> Result<Map> {
+    /// Extract the inner map value.
+    pub fn into_map(self) -> Result<Map> {
         if let Self::Map(v) = self {
             Ok(v)
         } else {
-            Err(Error::TypeError(self.type_name(), "Hash"))
+            Err(Error::TypeError(self.type_name(), "Map"))
+        }
+    }
+
+    /// Extract the inner hash map value.
+    pub fn into_hash_map(self) -> Result<HashMap> {
+        if let Self::HashMap(v) = self {
+            Ok(v)
+        } else {
+            Err(Error::TypeError(self.type_name(), "HashMap"))
+        }
+    }
+
+    /// Extract the inner value hash map value.
+    pub fn into_value_hash_map(self) -> Result<ValueHashMap> {
+        if let Self::ValueHashMap(v) = self {
+            Ok(v)
+        } else {
+            Err(Error::TypeError(self.type_name(), "ValueHashMap"))
         }
     }
 }
@@ -657,12 +715,6 @@ impl TryFrom<Byml> for f64 {
     }
 }
 
-impl From<Vec<u8>> for Byml {
-    fn from(value: Vec<u8>) -> Self {
-        Self::BinaryData(value)
-    }
-}
-
 impl TryFrom<Byml> for Vec<u8> {
     type Error = Byml;
 
@@ -708,12 +760,35 @@ impl TryFrom<Byml> for Map {
     }
 }
 
+impl From<HashMap> for Byml {
+    fn from(value: HashMap) -> Self {
+        Self::HashMap(value)
+    }
+}
+
 impl TryFrom<Byml> for HashMap {
     type Error = Byml;
 
     fn try_from(value: Byml) -> std::result::Result<Self, Self::Error> {
         match value {
-            Byml::HashMap(map) | Byml::ValueHashMap(map) => Ok(map),
+            Byml::HashMap(map) => Ok(map),
+            _ => Err(value),
+        }
+    }
+}
+
+impl From<ValueHashMap> for Byml {
+    fn from(value: ValueHashMap) -> Self {
+        Self::ValueHashMap(value)
+    }
+}
+
+impl TryFrom<Byml> for ValueHashMap {
+    type Error = Byml;
+
+    fn try_from(value: Byml) -> std::result::Result<Self, Self::Error> {
+        match value {
+            Byml::ValueHashMap(map) => Ok(map),
             _ => Err(value),
         }
     }
@@ -760,11 +835,11 @@ impl TryFrom<Byml> for String {
     }
 }
 
-impl From<&[u8]> for Byml {
-    fn from(value: &[u8]) -> Self {
-        Self::BinaryData(value.to_vec())
-    }
-}
+// impl From<&[u8]> for Byml {
+//     fn from(value: &[u8]) -> Self {
+//         Self::BinaryData(value.to_vec())
+//     }
+// }
 
 impl From<&[Byml]> for Byml {
     fn from(value: &[Byml]) -> Self {
@@ -871,6 +946,8 @@ impl<'a, I: Into<BymlIndex<'a>>> std::ops::Index<I> for Byml {
         match (self, index.into()) {
             (Byml::Array(a), BymlIndex::ArrayIdx(i)) => &a[i],
             (Byml::Map(h), BymlIndex::StringIdx(k)) => &h[k],
+            (Byml::HashMap(h), BymlIndex::HashIdx(i)) => &h[&i],
+            (Byml::ValueHashMap(h), BymlIndex::HashIdx(i)) => &h[&i].0,
             _ => panic!("Wrong index type or node type."),
         }
     }
@@ -881,6 +958,12 @@ impl<'a, I: Into<BymlIndex<'a>>> std::ops::IndexMut<I> for Byml {
         match (self, index.into()) {
             (Byml::Array(a), BymlIndex::ArrayIdx(i)) => &mut a[i],
             (Byml::Map(h), BymlIndex::StringIdx(k)) => h.get_mut(k).expect("Key should be in hash"),
+            (Byml::HashMap(h), BymlIndex::HashIdx(i)) => {
+                h.get_mut(&i).expect("Key should be in hash")
+            }
+            (Byml::ValueHashMap(h), BymlIndex::HashIdx(i)) => {
+                &mut h.get_mut(&i).expect("Key should be in hash").0
+            }
             _ => panic!("Wrong index type or node type."),
         }
     }
@@ -892,7 +975,7 @@ impl Byml {
         match self {
             Byml::String(_) => NodeType::String,
             Byml::BinaryData(_) => NodeType::Binary,
-            Byml::FileData(_) => NodeType::Binary,
+            Byml::FileData(_) => NodeType::File,
             Byml::Array(_) => NodeType::Array,
             Byml::Map(_) => NodeType::Map,
             Byml::HashMap(_) => NodeType::HashMap,
@@ -914,6 +997,8 @@ impl Byml {
             self,
             Byml::Array(_)
                 | Byml::Map(_)
+                | Byml::HashMap(_)
+                | Byml::ValueHashMap(_)
                 | Byml::BinaryData(_)
                 | Byml::FileData(_)
                 | Byml::I64(_)
@@ -936,7 +1021,6 @@ pub(self) static FILES: &[&str] = &[
     "ActorInfo.product",
     "ElectricGenerator.Nin_NX_NVN.esetb",
     "USen",
-    #[cfg(feature = "byml7")]
     "Mrg_01e57204_MrgD100_B4-B3-B2-1A90E17A.bcett",
 ];
 
@@ -948,14 +1032,14 @@ mod tests {
     fn accessors() {
         let mut actorinfo =
             Byml::from_binary(std::fs::read("test/byml/ActorInfo.product.byml").unwrap()).unwrap();
-        let actorinfo_hash = actorinfo.as_mut_hash().unwrap();
+        let actorinfo_hash = actorinfo.as_mut_map().unwrap();
         for obj in actorinfo_hash
             .get_mut("Actors")
             .unwrap()
             .as_mut_array()
             .unwrap()
         {
-            let hash = obj.as_mut_hash().unwrap();
+            let hash = obj.as_mut_map().unwrap();
             *hash.get_mut("name").unwrap().as_mut_string().unwrap() = "test".into();
             assert_eq!(hash["name"].as_string().unwrap(), "test");
         }

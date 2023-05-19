@@ -72,8 +72,7 @@ impl<R: Read + Seek> BinReader<R> {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[binrw]
 struct ResHeaderInner {
-    /// Format version (2-4).
-    /// Supports 7 if experimental feature `byml7` enabled.
+    /// Format version (1-7).
     version: u16,
     /// Offset to the hash key table, relative to start (usually 0x010)
     /// May be 0 if no hash nodes are used. Must be a string table node (0xc2).
@@ -255,8 +254,8 @@ impl<R: Read + Seek> Parser<R> {
         Ok(Byml::Array(array))
     }
 
-    fn parse_hash_node(&mut self, offset: u32, size: u32) -> Result<Byml> {
-        let mut hash = Map::with_capacity_and_hasher(size as usize, Default::default());
+    fn parse_map_node(&mut self, offset: u32, size: u32) -> Result<Byml> {
+        let mut map = Map::with_capacity_and_hasher(size as usize, Default::default());
         for i in 0..size {
             let entry_offset = offset + 4 + 8 * i;
             let name_idx: u24 = self.reader.read_at(entry_offset as u64)?;
@@ -264,12 +263,46 @@ impl<R: Read + Seek> Parser<R> {
             let key = self
                 .hash_key_table
                 .get_string(name_idx.as_u32(), &mut self.reader)?;
-            hash.insert(
+            map.insert(
                 key,
                 self.parse_container_child_node(entry_offset + 4, node_type)?,
             );
         }
-        Ok(Byml::Map(hash))
+        Ok(Byml::Map(map))
+    }
+
+    fn parse_hash_map_node(&mut self, offset: u32, size: u32) -> Result<Byml> {
+        let mut map = HashMap::with_capacity_and_hasher(size as usize, Default::default());
+        let types_offset = offset + 4 + 8 * size;
+        for i in 0..size {
+            let entry_offset = offset + 4 + 8 * i;
+            let hash: u32 = self.reader.read_at(entry_offset as u64)?;
+            let node_type: NodeType = self.reader.read_at((types_offset + i) as u64)?;
+            map.insert(
+                hash,
+                self.parse_container_child_node(entry_offset + 4, node_type)?,
+            );
+        }
+        Ok(Byml::HashMap(map))
+    }
+
+    fn parse_value_hash_map_node(&mut self, offset: u32, size: u32) -> Result<Byml> {
+        let mut map = ValueHashMap::with_capacity_and_hasher(size as usize, Default::default());
+        let types_offset = offset + 4 + 12 * size;
+        for i in 0..size {
+            let entry_offset = offset + 4 + 12 * i;
+            let hash: u32 = self.reader.read_at((entry_offset + 4) as u64)?;
+            let node_type: NodeType = self.reader.read_at((types_offset + i) as u64)?;
+            let unknown: u32 = self.reader.read_at((entry_offset + 8) as u64)?;
+            map.insert(
+                hash,
+                (
+                    self.parse_container_child_node(entry_offset, node_type)?,
+                    unknown,
+                ),
+            );
+        }
+        Ok(Byml::ValueHashMap(map))
     }
 
     fn parse_container_node(&mut self, offset: u32) -> Result<Byml> {
@@ -277,7 +310,9 @@ impl<R: Read + Seek> Parser<R> {
         let size: u24 = self.reader.read()?;
         match node_type {
             NodeType::Array => self.parse_array_node(offset, size.as_u32()),
-            NodeType::Map => self.parse_hash_node(offset, size.as_u32()),
+            NodeType::Map => self.parse_map_node(offset, size.as_u32()),
+            NodeType::HashMap => self.parse_hash_map_node(offset, size.as_u32()),
+            NodeType::ValueHashMap => self.parse_value_hash_map_node(offset, size.as_u32()),
             _ => unreachable!("Invalid container node type"),
         }
     }
@@ -286,15 +321,6 @@ impl<R: Read + Seek> Parser<R> {
 #[cfg(test)]
 mod test {
     use super::*;
-
-    #[cfg(feature = "byml7")]
-    #[test]
-    fn parse_v7() {
-        let bytes =
-            std::fs::read("test/byml/Mrg_01e57204_MrgD100_B4-B3-B2-1A90E17A.bcett.byml").unwrap();
-        let byml = Byml::from_binary(bytes).unwrap();
-        println!("{}", byml.to_text().unwrap());
-    }
 
     #[test]
     fn from_bytes() {
@@ -306,7 +332,9 @@ mod test {
             let byml = Byml::from_binary(bytes).unwrap();
             match byml {
                 Byml::Array(arr) => println!("  Array with {} elements", arr.len()),
-                Byml::Map(hash) => println!("  Hash with {} entries", hash.len()),
+                Byml::Map(map) => println!("  Map with {} entries", map.len()),
+                Byml::HashMap(hash) => println!("  HashMap with {} entries", hash.len()),
+                Byml::ValueHashMap(hash) => println!("  ValueHashMap with {} entries", hash.len()),
                 _ => println!("{:?}", byml),
             }
         }
