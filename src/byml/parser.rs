@@ -163,7 +163,7 @@ impl<R: Read + Seek> Parser<R> {
             Endian::Little
         };
         if !is_valid_version(header.inner.version) {
-            return Err(Error::InvalidData("Unsupported BYML version (2 or 3 only)"));
+            return Err(Error::InvalidData("Unsupported BYML version (1-7 only)"));
         }
         let mut reader = BinReader::new(reader, endian);
         Ok(Self {
