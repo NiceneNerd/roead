@@ -102,7 +102,7 @@ impl<'a> Parser<'a> {
                     match tag {
                         "!u" => Ok(Byml::U32(i as u32)),
                         "!ul" => Ok(Byml::U64(i as u64)),
-                        "!l" => Ok(Byml::I64(i)),
+                        "!l" => Ok(Byml::I64(i as i64)),
                         _ => Ok(Byml::I32(i as i32)),
                     }
                 }
