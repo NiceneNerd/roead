@@ -41,7 +41,7 @@ impl<'a> Parser<'a> {
 
     fn parse_node(node: NodeRef<'a, '_, '_, &Tree<'a>>) -> Result<Byml> {
         if node.is_map()? {
-            Ok(Byml::Hash(
+            Ok(Byml::Map(
                 node.iter()?
                     .map(|child| {
                         let key = child.key()?;
@@ -102,10 +102,10 @@ impl<'a> Parser<'a> {
 
 #[inline(always)]
 fn should_use_inline(byml: &Byml) -> bool {
-    let is_simple = |by: &Byml| !matches!(by, Byml::Array(_) | Byml::Hash(_));
+    let is_simple = |by: &Byml| !matches!(by, Byml::Array(_) | Byml::Map(_));
     match byml {
         Byml::Array(arr) => arr.len() < 10 && arr.iter().all(is_simple),
-        Byml::Hash(hash) => hash.len() < 10 && hash.iter().all(|(_, v)| is_simple(v)),
+        Byml::Map(hash) => hash.len() < 10 && hash.iter().all(|(_, v)| is_simple(v)),
         _ => false,
     }
 }
@@ -135,7 +135,7 @@ impl<'a, 'b> Emitter<'a, 'b> {
                     Self::build_node(item, node)?;
                 }
             }
-            Byml::Hash(hash) => {
+            Byml::Map(hash) => {
                 if should_use_inline(byml) {
                     dest_node.change_type(ryml::NodeType::Map | ryml::NodeType::WipStyleFlowSl)?;
                 } else {
@@ -206,7 +206,7 @@ impl<'a, 'b> Emitter<'a, 'b> {
     fn emit(self) -> Result<std::string::String> {
         let Self(byml, mut tree) = self;
         match byml {
-            Byml::Hash(_) => tree.to_map(0)?,
+            Byml::Map(_) => tree.to_map(0)?,
             Byml::Array(_) => tree.to_seq(0)?,
             Byml::Null => return Ok("null".to_string()),
             _ => {

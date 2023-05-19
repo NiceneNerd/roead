@@ -26,7 +26,7 @@ impl Byml {
             return Err(Error::InvalidData("Unsupported BYML version (2-4 only)"));
         }
 
-        if !matches!(self, Byml::Hash(_) | Byml::Array(_) | Byml::Null) {
+        if !matches!(self, Byml::Map(_) | Byml::Array(_) | Byml::Null) {
             return Err(Error::TypeError(
                 format!("{:?}", self).into(),
                 "Hash, Array, or Null",
@@ -160,7 +160,7 @@ impl<'a, W: Write + Seek> WriteContext<'a, W> {
                         traverse(node, count, string_table, hash_key_table);
                     }
                 }
-                Byml::Hash(hash) => {
+                Byml::Map(hash) => {
                     for (key, node) in hash.iter() {
                         hash_key_table.add(key);
                         traverse(node, count, string_table, hash_key_table);
@@ -273,9 +273,9 @@ impl<'a, W: Write + Seek> WriteContext<'a, W> {
                     write_container_item(self, item, &mut non_inline_nodes)?;
                 }
             }
-            Byml::Hash(hash) => {
+            Byml::Map(hash) => {
                 non_inline_nodes.reserve(hash.len());
-                self.write(NodeType::Hash)?;
+                self.write(NodeType::Map)?;
                 self.write(u24(hash.len() as u32))?;
                 let sorted = hash.iter().collect::<BTreeMap<_, _>>();
                 for (key, item) in sorted.into_iter() {
@@ -295,7 +295,7 @@ impl<'a, W: Write + Seek> WriteContext<'a, W> {
                 self.write_at(offset, node.offset)?;
                 self.non_inline_node_data.insert(node.data, offset);
                 match node.data {
-                    Byml::Array(_) | Byml::Hash(_) => self.write_container_node(node.data)?,
+                    Byml::Array(_) | Byml::Map(_) => self.write_container_node(node.data)?,
                     _ => self.write_value_node(node.data)?,
                 }
             }
@@ -338,7 +338,7 @@ mod test {
 
     #[test]
     fn binary_roundtrip() {
-        println!("{}", std::mem::size_of::<Hash>());
+        println!("{}", std::mem::size_of::<Map>());
         for file in FILES {
             println!("{}", file);
             let bytes =

@@ -256,7 +256,7 @@ impl<R: Read + Seek> Parser<R> {
     }
 
     fn parse_hash_node(&mut self, offset: u32, size: u32) -> Result<Byml> {
-        let mut hash = Hash::with_capacity_and_hasher(size as usize, Default::default());
+        let mut hash = Map::with_capacity_and_hasher(size as usize, Default::default());
         for i in 0..size {
             let entry_offset = offset + 4 + 8 * i;
             let name_idx: u24 = self.reader.read_at(entry_offset as u64)?;
@@ -269,7 +269,7 @@ impl<R: Read + Seek> Parser<R> {
                 self.parse_container_child_node(entry_offset + 4, node_type)?,
             );
         }
-        Ok(Byml::Hash(hash))
+        Ok(Byml::Map(hash))
     }
 
     fn parse_container_node(&mut self, offset: u32) -> Result<Byml> {
@@ -277,7 +277,7 @@ impl<R: Read + Seek> Parser<R> {
         let size: u24 = self.reader.read()?;
         match node_type {
             NodeType::Array => self.parse_array_node(offset, size.as_u32()),
-            NodeType::Hash => self.parse_hash_node(offset, size.as_u32()),
+            NodeType::Map => self.parse_hash_node(offset, size.as_u32()),
             _ => unreachable!("Invalid container node type"),
         }
     }
@@ -306,7 +306,7 @@ mod test {
             let byml = Byml::from_binary(bytes).unwrap();
             match byml {
                 Byml::Array(arr) => println!("  Array with {} elements", arr.len()),
-                Byml::Hash(hash) => println!("  Hash with {} entries", hash.len()),
+                Byml::Map(hash) => println!("  Hash with {} entries", hash.len()),
                 _ => println!("{:?}", byml),
             }
         }

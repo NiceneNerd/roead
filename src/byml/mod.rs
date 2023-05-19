@@ -71,11 +71,13 @@ mod parser;
 #[brw(repr = u8)]
 #[repr(u8)]
 enum NodeType {
+    HashMap = 0x20,
+    ValueHashMap = 0x21,
     String = 0xa0,
     Binary = 0xa1,
     File = 0xa2,
     Array = 0xc0,
-    Hash = 0xc1,
+    Map = 0xc1,
     StringTable = 0xc2,
     Bool = 0xd0,
     I32 = 0xd1,
@@ -89,7 +91,10 @@ enum NodeType {
 
 #[inline(always)]
 const fn is_container_type(node_type: NodeType) -> bool {
-    matches!(node_type, NodeType::Array | NodeType::Hash)
+    matches!(
+        node_type,
+        NodeType::Array | NodeType::Map | NodeType::ValueHashMap | NodeType::HashMap
+    )
 }
 
 #[inline(always)]
@@ -116,25 +121,28 @@ pub enum BymlError {
 }
 
 /// A BYML hash node.
-pub type Hash = rustc_hash::FxHashMap<String, Byml>;
+pub type Map = rustc_hash::FxHashMap<String, Byml>;
+pub type HashMap = rustc_hash::FxHashMap<u32, Byml>;
 
 /// Convenience type used for indexing into `Byml`s
 pub enum BymlIndex<'a> {
     /// Index into a hash node. The key is a string.
-    HashIdx(&'a str),
+    StringIdx(&'a str),
+    /// Index into a hash node. The key is a u32 hash.
+    HashIdx(u32),
     /// Index into an array node. The index is an integer.
     ArrayIdx(usize),
 }
 
 impl<'a> From<&'a str> for BymlIndex<'a> {
     fn from(s: &'a str) -> Self {
-        Self::HashIdx(s)
+        Self::StringIdx(s)
     }
 }
 
 impl<'a> From<&'a String> for BymlIndex<'a> {
     fn from(s: &'a String) -> Self {
-        Self::HashIdx(s)
+        Self::StringIdx(s)
     }
 }
 
@@ -156,8 +164,12 @@ pub enum Byml {
     FileData(Vec<u8>),
     /// Array of BYML nodes.
     Array(Vec<Byml>),
-    /// Hash map of BYML nodes.
-    Hash(Hash),
+    /// Hash map of BYML nodes with string keys.
+    Map(Map),
+    /// Hash map of BYML nodes with u32 keys.
+    HashMap(HashMap),
+    /// Hash map of BYML nodes with u32 keys and additional value.
+    ValueHashMap(HashMap),
     /// Boolean value.
     Bool(bool),
     /// 32-bit signed integer.
@@ -183,7 +195,9 @@ impl Byml {
             Byml::BinaryData(_) => "Binary".into(),
             Byml::FileData(_) => "File".into(),
             Byml::Array(_) => "Array".into(),
-            Byml::Hash(_) => "Hash".into(),
+            Byml::Map(_) => "Map".into(),
+            Byml::HashMap(_) => "HashMap".into(),
+            Byml::ValueHashMap(_) => "ValueHashMap".into(),
             Byml::Bool(_) => "Bool".into(),
             Byml::I32(_) => "I32".into(),
             Byml::Float(_) => "Float".into(),
@@ -335,8 +349,8 @@ impl Byml {
     }
 
     /// Get a reference to the inner hash map of BYML nodes.
-    pub fn as_hash(&self) -> Result<&Hash> {
-        if let Self::Hash(v) = self {
+    pub fn as_hash(&self) -> Result<&Map> {
+        if let Self::Map(v) = self {
             Ok(v)
         } else {
             Err(Error::TypeError(self.type_name(), "Hash"))
@@ -434,8 +448,8 @@ impl Byml {
     }
 
     /// Get a mutable reference to the inner hash map of BYML nodes.
-    pub fn as_mut_hash(&mut self) -> Result<&mut Hash> {
-        if let Self::Hash(v) = self {
+    pub fn as_mut_hash(&mut self) -> Result<&mut Map> {
+        if let Self::Map(v) = self {
             Ok(v)
         } else {
             Err(Error::TypeError(self.type_name(), "Hash"))
@@ -533,8 +547,8 @@ impl Byml {
     }
 
     /// Extract the inner hash value.
-    pub fn into_hash(self) -> Result<Hash> {
-        if let Self::Hash(v) = self {
+    pub fn into_hash(self) -> Result<Map> {
+        if let Self::Map(v) = self {
             Ok(v)
         } else {
             Err(Error::TypeError(self.type_name(), "Hash"))
@@ -677,18 +691,29 @@ impl TryFrom<Byml> for Vec<Byml> {
     }
 }
 
-impl From<Hash> for Byml {
-    fn from(value: Hash) -> Self {
-        Self::Hash(value)
+impl From<Map> for Byml {
+    fn from(value: Map) -> Self {
+        Self::Map(value)
     }
 }
 
-impl TryFrom<Byml> for Hash {
+impl TryFrom<Byml> for Map {
     type Error = Byml;
 
     fn try_from(value: Byml) -> std::result::Result<Self, Self::Error> {
         match value {
-            Byml::Hash(v) => Ok(v),
+            Byml::Map(v) => Ok(v),
+            _ => Err(value),
+        }
+    }
+}
+
+impl TryFrom<Byml> for HashMap {
+    type Error = Byml;
+
+    fn try_from(value: Byml) -> std::result::Result<Self, Self::Error> {
+        match value {
+            Byml::HashMap(map) | Byml::ValueHashMap(map) => Ok(map),
             _ => Err(value),
         }
     }
@@ -749,7 +774,7 @@ impl From<&[Byml]> for Byml {
 
 impl<S: Into<String>> FromIterator<(S, Byml)> for Byml {
     fn from_iter<T: IntoIterator<Item = (S, Byml)>>(iter: T) -> Self {
-        Self::Hash(iter.into_iter().map(|(k, v)| (k.into(), v)).collect())
+        Self::Map(iter.into_iter().map(|(k, v)| (k.into(), v)).collect())
     }
 }
 
@@ -772,7 +797,9 @@ impl PartialEq for Byml {
             (Byml::BinaryData(d1), Byml::BinaryData(d2)) => d1 == d2,
             (Byml::FileData(d1), Byml::FileData(d2)) => d1 == d2,
             (Byml::Array(a1), Byml::Array(a2)) => a1 == a2,
-            (Byml::Hash(h1), Byml::Hash(h2)) => h1 == h2,
+            (Byml::Map(h1), Byml::Map(h2)) => h1 == h2,
+            (Byml::HashMap(h1), Byml::HashMap(h2)) => h1 == h2,
+            (Byml::ValueHashMap(h1), Byml::ValueHashMap(h2)) => h1 == h2,
             (Byml::Bool(b1), Byml::Bool(b2)) => b1 == b2,
             (Byml::I32(i1), Byml::I32(i2)) => i1 == i2,
             (Byml::Float(f1), Byml::Float(f2)) => almost::equal(*f1, *f2),
@@ -801,7 +828,19 @@ impl std::hash::Hash for Byml {
             Byml::BinaryData(b) => b.hash(state),
             Byml::FileData(b) => b.hash(state),
             Byml::Array(a) => a.hash(state),
-            Byml::Hash(h) => {
+            Byml::Map(h) => {
+                for (k, v) in h.iter() {
+                    k.hash(state);
+                    v.hash(state);
+                }
+            }
+            Byml::HashMap(h) => {
+                for (k, v) in h.iter() {
+                    k.hash(state);
+                    v.hash(state);
+                }
+            }
+            Byml::ValueHashMap(h) => {
                 for (k, v) in h.iter() {
                     k.hash(state);
                     v.hash(state);
@@ -831,7 +870,7 @@ impl<'a, I: Into<BymlIndex<'a>>> std::ops::Index<I> for Byml {
     fn index(&self, index: I) -> &Self::Output {
         match (self, index.into()) {
             (Byml::Array(a), BymlIndex::ArrayIdx(i)) => &a[i],
-            (Byml::Hash(h), BymlIndex::HashIdx(k)) => &h[k],
+            (Byml::Map(h), BymlIndex::StringIdx(k)) => &h[k],
             _ => panic!("Wrong index type or node type."),
         }
     }
@@ -841,7 +880,7 @@ impl<'a, I: Into<BymlIndex<'a>>> std::ops::IndexMut<I> for Byml {
     fn index_mut(&mut self, index: I) -> &mut Self::Output {
         match (self, index.into()) {
             (Byml::Array(a), BymlIndex::ArrayIdx(i)) => &mut a[i],
-            (Byml::Hash(h), BymlIndex::HashIdx(k)) => h.get_mut(k).expect("Key should be in hash"),
+            (Byml::Map(h), BymlIndex::StringIdx(k)) => h.get_mut(k).expect("Key should be in hash"),
             _ => panic!("Wrong index type or node type."),
         }
     }
@@ -855,7 +894,9 @@ impl Byml {
             Byml::BinaryData(_) => NodeType::Binary,
             Byml::FileData(_) => NodeType::Binary,
             Byml::Array(_) => NodeType::Array,
-            Byml::Hash(_) => NodeType::Hash,
+            Byml::Map(_) => NodeType::Map,
+            Byml::HashMap(_) => NodeType::HashMap,
+            Byml::ValueHashMap(_) => NodeType::ValueHashMap,
             Byml::Bool(_) => NodeType::Bool,
             Byml::I32(_) => NodeType::I32,
             Byml::Float(_) => NodeType::Float,
@@ -872,7 +913,7 @@ impl Byml {
         matches!(
             self,
             Byml::Array(_)
-                | Byml::Hash(_)
+                | Byml::Map(_)
                 | Byml::BinaryData(_)
                 | Byml::FileData(_)
                 | Byml::I64(_)
@@ -894,6 +935,7 @@ pub(self) static FILES: &[&str] = &[
     "Preset0_Field",
     "ActorInfo.product",
     "ElectricGenerator.Nin_NX_NVN.esetb",
+    "USen",
     #[cfg(feature = "byml7")]
     "Mrg_01e57204_MrgD100_B4-B3-B2-1A90E17A.bcett",
 ];
