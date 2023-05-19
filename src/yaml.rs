@@ -90,7 +90,7 @@ pub(crate) fn parse_scalar(
         {
             match lexical::parse(value) {
                 Ok(v) => return Ok(Scalar::Int(v)),
-                Err(e) => {
+                Err(_) => {
                     if tag_type == Some(TagBasedType::Int) {
                         if value.starts_with("0x") {
                             match lexical::parse_with_options::<
