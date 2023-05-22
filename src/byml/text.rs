@@ -12,8 +12,10 @@ impl Byml {
 
     /// Serialize the document to YAML. This can only be done for Null, Array,
     /// or Hash nodes.
-    pub fn to_text(&self) -> Result<std::string::String> {
-        Emitter::new(self).emit()
+    pub fn to_text(&self) -> std::string::String {
+        Emitter::new(self)
+            .emit()
+            .expect("BYML must be container or null to serialize")
     }
 }
 
@@ -310,7 +312,7 @@ mod test {
             )
             .unwrap();
             let byml = Byml::from_text(text).unwrap();
-            let text = byml.to_text().unwrap();
+            let text = byml.to_text();
             println!("{}", &text);
             let byml = Byml::from_text(text).unwrap();
             assert_eq!(byml, byml);
