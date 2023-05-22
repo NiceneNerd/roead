@@ -150,6 +150,13 @@ impl<'a> From<usize> for BymlIndex<'a> {
     }
 }
 
+impl<'a> From<i32> for BymlIndex<'a> {
+    fn from(value: i32) -> Self {
+        assert!(!value.is_negative());
+        Self::ArrayIdx(value as usize)
+    }
+}
+
 impl<'a> From<u32> for BymlIndex<'a> {
     fn from(value: u32) -> Self {
         Self::HashIdx(value)
