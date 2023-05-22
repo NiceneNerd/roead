@@ -41,15 +41,45 @@ impl<'a> Parser<'a> {
 
     fn parse_node(node: NodeRef<'a, '_, '_, &Tree<'a>>) -> Result<Byml> {
         if node.is_map()? {
-            Ok(Byml::Hash(
-                node.iter()?
-                    .map(|child| {
-                        let key = child.key()?;
-                        let value = Self::parse_node(child.clone())?;
-                        Ok((key.into(), value))
-                    })
-                    .collect::<Result<_>>()?,
-            ))
+            match node.val_tag().unwrap_or("") {
+                "!h" => {
+                    Ok(Byml::HashMap(
+                        node.iter()?
+                            .map(|child| {
+                                let key = child.key()?.parse().map_err(|_| {
+                                    Error::Any(format!("Expected integer hash key"))
+                                })?;
+                                let value = Self::parse_node(child.clone())?;
+                                Ok((key, value))
+                            })
+                            .collect::<Result<_>>()?,
+                    ))
+                }
+                "!vh" => {
+                    Ok(Byml::ValueHashMap(
+                        node.iter()?
+                            .map(|child| {
+                                let key = child.key()?.parse().map_err(|_| {
+                                    Error::Any(format!("Expected integer hash key"))
+                                })?;
+                                let value = Self::parse_node(child.clone())?;
+                                Ok((key, (value, 0)))
+                            })
+                            .collect::<Result<_>>()?,
+                    ))
+                }
+                _ => {
+                    Ok(Byml::Map(
+                        node.iter()?
+                            .map(|child| {
+                                let key = child.key()?;
+                                let value = Self::parse_node(child.clone())?;
+                                Ok((key.into(), value))
+                            })
+                            .collect::<Result<_>>()?,
+                    ))
+                }
+            }
         } else if node.is_seq()? {
             Ok(Byml::Array(
                 node.iter()?
@@ -72,7 +102,7 @@ impl<'a> Parser<'a> {
                     match tag {
                         "!u" => Ok(Byml::U32(i as u32)),
                         "!ul" => Ok(Byml::U64(i as u64)),
-                        "!l" => Ok(Byml::I64(i)),
+                        "!l" => Ok(Byml::I64(i as i64)),
                         _ => Ok(Byml::I32(i as i32)),
                     }
                 }
@@ -102,10 +132,10 @@ impl<'a> Parser<'a> {
 
 #[inline(always)]
 fn should_use_inline(byml: &Byml) -> bool {
-    let is_simple = |by: &Byml| !matches!(by, Byml::Array(_) | Byml::Hash(_));
+    let is_simple = |by: &Byml| !matches!(by, Byml::Array(_) | Byml::Map(_));
     match byml {
         Byml::Array(arr) => arr.len() < 10 && arr.iter().all(is_simple),
-        Byml::Hash(hash) => hash.len() < 10 && hash.iter().all(|(_, v)| is_simple(v)),
+        Byml::Map(hash) => hash.len() < 10 && hash.iter().all(|(_, v)| is_simple(v)),
         _ => false,
     }
 }
@@ -135,7 +165,7 @@ impl<'a, 'b> Emitter<'a, 'b> {
                     Self::build_node(item, node)?;
                 }
             }
-            Byml::Hash(hash) => {
+            Byml::Map(hash) => {
                 if should_use_inline(byml) {
                     dest_node.change_type(ryml::NodeType::Map | ryml::NodeType::WipStyleFlowSl)?;
                 } else {
@@ -152,6 +182,36 @@ impl<'a, 'b> Emitter<'a, 'b> {
                     }
                     Self::build_node(value, node)?;
                 }
+            }
+            Byml::HashMap(hash) => {
+                if should_use_inline(byml) {
+                    dest_node.change_type(ryml::NodeType::Map | ryml::NodeType::WipStyleFlowSl)?;
+                } else {
+                    dest_node.change_type(ryml::NodeType::Map)?;
+                }
+                let mut map_items = hash.iter().collect::<Vec<_>>();
+                map_items.sort_by(|a, b| a.0.cmp(b.0));
+                for (key, value) in map_items {
+                    let mut node = dest_node.append_child()?;
+                    node.set_key(&key.to_string())?;
+                    Self::build_node(value, node)?;
+                }
+                dest_node.set_val_tag("!h")?;
+            }
+            Byml::ValueHashMap(hash) => {
+                if should_use_inline(byml) {
+                    dest_node.change_type(ryml::NodeType::Map | ryml::NodeType::WipStyleFlowSl)?;
+                } else {
+                    dest_node.change_type(ryml::NodeType::Map)?;
+                }
+                let mut map_items = hash.iter().collect::<Vec<_>>();
+                map_items.sort_by(|a, b| a.0.cmp(b.0));
+                for (key, (value, _)) in map_items {
+                    let mut node = dest_node.append_child()?;
+                    node.set_key(&key.to_string())?;
+                    Self::build_node(value, node)?;
+                }
+                dest_node.set_val_tag("!vh")?;
             }
             scalar => {
                 match scalar {
@@ -206,7 +266,7 @@ impl<'a, 'b> Emitter<'a, 'b> {
     fn emit(self) -> Result<std::string::String> {
         let Self(byml, mut tree) = self;
         match byml {
-            Byml::Hash(_) => tree.to_map(0)?,
+            Byml::Map(_) | Byml::HashMap(_) | Byml::ValueHashMap(_) => tree.to_map(0)?,
             Byml::Array(_) => tree.to_seq(0)?,
             Byml::Null => return Ok("null".to_string()),
             _ => {

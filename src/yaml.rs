@@ -23,10 +23,11 @@ pub(crate) fn get_tag_based_type(tag: &str) -> Option<TagBasedType> {
     }
 }
 
+#[derive(Debug)]
 pub(crate) enum Scalar {
     Null,
     Bool(bool),
-    Int(i64),
+    Int(i128),
     Float(f64),
     String(smartstring::alias::String),
 }
@@ -93,7 +94,7 @@ pub(crate) fn parse_scalar(
                     if tag_type == Some(TagBasedType::Int) {
                         if value.starts_with("0x") {
                             match lexical::parse_with_options::<
-                                i64,
+                                i128,
                                 _,
                                 { lexical::NumberFormatBuilder::hexadecimal() },
                             >(
