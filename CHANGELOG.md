@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.23.1]
+
+### Changed
+
+- Updated ryml to 0.3.2, which *may* fix YAML issues with some TOTK BYML files.
+
 ## [0.23.0]
 
 ### Added

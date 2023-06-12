@@ -1,7 +1,7 @@
 [package]
 name = "roead"
 description = "Rust bindings for oead C++ library for common Nintendo formats"
-version = "0.23.0"
+version = "0.23.1"
 authors = ["Caleb Smith <c.smith@tuta.io>"]
 license = "GPL-3.0-or-later"
 readme = "README.md"
@@ -32,7 +32,7 @@ parking_lot = { version = "0.12.1", optional = true }
 num-integer = { version = "0.1.45", optional = true }
 num-traits = { version = "0.2.15", optional = true }
 rustc-hash = "1.1.0"
-ryml = { version = "0.2.0", optional = true }
+ryml = { version = "0.3.2", optional = true, features = ["std"] }
 serde = { version = "1.0.139", features = ["derive"], optional = true }
 serde_json = { version = "1.0.82", optional = true }
 smartstring = "1"
