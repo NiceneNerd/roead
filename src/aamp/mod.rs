@@ -1699,6 +1699,16 @@ impl ParameterIO {
     }
 }
 
+/// Convenience macro to construct a [`ParameterObject`] with map literal syntax.
+/// Example:
+///
+/// ```
+/// # use roead::aamp::*;
+/// let pobj = params!(
+///     "somekey" => Parameter::Bool(true)
+/// );
+/// ```
+///
 /// Adapted from https://github.com/bluss/maplit/blob/master/src/lib.rs
 #[macro_export]
 macro_rules! params {
@@ -1721,6 +1731,21 @@ macro_rules! params {
 }
 pub use params;
 
+/// Convenience macro to construct a [`ParameterObjectMap`] with map literal
+/// syntax. Example:
+///
+/// ```
+/// # use roead::aamp::*;
+/// let plist = ParameterList {
+///     objects: objs!(
+///         "someobj" => params!(
+///             "someparam" => Parameter::Bool(true)
+///         )
+///     ),
+///     lists: Default::default()
+/// };
+/// ```
+///
 /// Adapted from https://github.com/bluss/maplit/blob/master/src/lib.rs
 #[macro_export]
 macro_rules! objs {
@@ -1743,6 +1768,19 @@ macro_rules! objs {
 }
 pub use objs;
 
+/// Convenience macro to construct a [`ParameterListMap`] with map literal
+/// syntax. Example:
+///
+/// ```
+/// # use roead::aamp::*;
+/// let plist = ParameterList {
+///     objects: Default::default(),
+///     lists: lists!(
+///         "somelist" => ParameterList::new()
+///     )
+/// };
+/// ```
+///
 /// Adapted from https://github.com/bluss/maplit/blob/master/src/lib.rs
 #[macro_export]
 macro_rules! lists {

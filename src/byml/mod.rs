@@ -1015,6 +1015,17 @@ impl Byml {
     }
 }
 
+/// Convenience macro to construct a [`Byml`] map using map literal syntax.
+/// Example:
+///
+/// ```
+/// # use roead::byml::*;
+/// let bmap = map!(
+///     "SomeKey" => Byml::Bool(true),
+///     "AnotherKey" => Byml::I32(0)
+/// );
+/// ```
+///
 /// Adapted from https://github.com/bluss/maplit/blob/master/src/lib.rs
 #[macro_export]
 macro_rules! map {
@@ -1037,6 +1048,17 @@ macro_rules! map {
 }
 pub use map;
 
+/// Convenience macro to construct a [`Byml`] array using array literal syntax.
+/// Example:
+///
+/// ```
+/// # use roead::byml::*;
+/// let arr = array!(
+///     Byml::Bool(true),
+///     Byml::I32(0),
+///     Byml::String("test".into())
+/// );
+/// ```
 #[macro_export]
 macro_rules! array {
     () => (
@@ -1046,14 +1068,10 @@ macro_rules! array {
         $crate::byml::Byml::Array(vec![$elem, $n])
     );
     ($($x:expr),+ $(,)?) => (
-        $crate::byml::Byml::Array(<[_]>::into_vec(
-            // This rustc_box is not required, but it produces a dramatic improvement in compile
-            // time when constructing arrays with many elements.
-            #[rustc_box]
-            $crate::boxed::Box::new([$($x),+])
-        ))
+        $crate::byml::Byml::Array(vec![$($x),+])
     );
 }
+pub use array;
 
 #[cfg(test)]
 pub(self) static FILES: &[&str] = &[
@@ -1098,5 +1116,7 @@ mod tests {
             "test" => "bob".into()
         );
         assert_eq!(map["test"], Byml::String("bob".into()));
+        let arr = array!(Byml::String("bob".into()), Byml::Bool(true));
+        assert_eq!(arr.as_array().unwrap().len(), 2);
     }
 }
