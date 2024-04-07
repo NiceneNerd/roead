@@ -292,10 +292,13 @@ impl SarcWriter {
         self.add_alignment_requirement("sharcb".to_owned(), 0x1000);
         self.add_alignment_requirement("sharc".to_owned(), 0x1000);
         self.add_alignment_requirement("baglmf".to_owned(), 0x80);
-        self.add_alignment_requirement("bffnt".to_owned(), match self.endian {
-            Endian::Big => 0x2000,
-            Endian::Little => 0x1000,
-        });
+        self.add_alignment_requirement(
+            "bffnt".to_owned(),
+            match self.endian {
+                Endian::Big => 0x2000,
+                Endian::Little => 0x1000,
+            },
+        );
     }
 
     /// Set the minimum data alignment.
@@ -451,7 +454,7 @@ impl SarcWriter {
     where
         String: Borrow<Q>,
     {
-        self.files.remove(name);
+        self.files.shift_remove(name);
     }
 
     /// Get a file's data from the archive, for convience.

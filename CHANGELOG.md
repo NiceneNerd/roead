@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.24.0]
+
+### Changed
+
+- Update dependencies, including breaking `indexmap` changes
+
 ## [0.23.1]
 
 ### Changed
