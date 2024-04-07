@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.25.0]
+
+### Added
+
+- Added `map` and `vec` BYML macros, plus `params`, `objs`, `lists` AAMP
+  macros.
+
 ## [0.24.0]
 
 ### Changed

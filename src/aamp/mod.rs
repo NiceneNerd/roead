@@ -1539,7 +1539,7 @@ pub struct ParameterList {
     /// Map of child parameter objects.
     pub objects: ParameterObjectMap,
     /// Map of child parameter lists.
-    pub lists:   ParameterListMap,
+    pub lists: ParameterListMap,
 }
 
 impl ParameterListing for ParameterList {
@@ -1697,4 +1697,89 @@ impl ParameterIO {
         self.param_root = list;
         self
     }
+}
+
+/// Adapted from https://github.com/bluss/maplit/blob/master/src/lib.rs
+#[macro_export]
+macro_rules! params {
+    (@single $($x:tt)*) => (());
+    (@count $($rest:expr),*) => (<[()]>::len(&[$(params!(@single $rest)),*]));
+
+    ($($key:expr => $value:expr,)+) => { params!($($key => $value),+) };
+    ($($key:expr => $value:expr),*) => {
+        {
+            let _cap = params!(@count $($key),*);
+            let mut _map = ::indexmap::IndexMap::<$crate::aamp::Name, $crate::aamp::Parameter, ::std::hash::BuildHasherDefault<::rustc_hash::FxHasher>>::default();
+            _map.reserve(_cap);
+
+            $(
+                let _ = _map.insert($key.into(), $value);
+            )*
+            $crate::aamp::ParameterObject(_map)
+        }
+    };
+}
+pub use params;
+
+/// Adapted from https://github.com/bluss/maplit/blob/master/src/lib.rs
+#[macro_export]
+macro_rules! objs {
+    (@single $($x:tt)*) => (());
+    (@count $($rest:expr),*) => (<[()]>::len(&[$(objs!(@single $rest)),*]));
+
+    ($($key:expr => $value:expr,)+) => { objs!($($key => $value),+) };
+    ($($key:expr => $value:expr),*) => {
+        {
+            let _cap = objs!(@count $($key),*);
+            let mut _map = ::indexmap::IndexMap::<$crate::aamp::Name, $crate::aamp::ParameterObject, ::std::hash::BuildHasherDefault<::rustc_hash::FxHasher>>::default();
+            _map.reserve(_cap);
+
+            $(
+                let _ = _map.insert($key.into(), $value);
+            )*
+            $crate::aamp::ParameterObjectMap(_map)
+        }
+    };
+}
+pub use objs;
+
+/// Adapted from https://github.com/bluss/maplit/blob/master/src/lib.rs
+#[macro_export]
+macro_rules! lists {
+    (@single $($x:tt)*) => (());
+    (@count $($rest:expr),*) => (<[()]>::len(&[$(lists!(@single $rest)),*]));
+
+    ($($key:expr => $value:expr,)+) => { lists!($($key => $value),+) };
+    ($($key:expr => $value:expr),*) => {
+        {
+            let _cap = lists!(@count $($key),*);
+            let mut _map = ::indexmap::IndexMap::<$crate::aamp::Name, $crate::aamp::ParameterList, ::std::hash::BuildHasherDefault<::rustc_hash::FxHasher>>::default();
+            _map.reserve(_cap);
+
+            $(
+                let _ = _map.insert($key.into(), $value);
+            )*
+            $crate::aamp::ParameterListMap(_map)
+        }
+    };
+}
+pub use lists;
+
+#[test]
+fn macros() {
+    let pio = ParameterIO {
+        data_type: "xml".into(),
+        version: 10,
+        param_root: ParameterList {
+            lists: lists!(
+                "test1" => ParameterList::new()
+            ),
+            objects: objs!(
+                "test2" => params!(
+                    "test3" => Parameter::Bool(false)
+                )
+            ),
+        },
+    };
+    dbg!(pio);
 }

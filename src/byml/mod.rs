@@ -1015,6 +1015,46 @@ impl Byml {
     }
 }
 
+/// Adapted from https://github.com/bluss/maplit/blob/master/src/lib.rs
+#[macro_export]
+macro_rules! map {
+    (@single $($x:tt)*) => (());
+    (@count $($rest:expr),*) => (<[()]>::len(&[$(map!(@single $rest)),*]));
+
+    ($($key:expr => $value:expr,)+) => { map!($($key => $value),+) };
+    ($($key:expr => $value:expr),*) => {
+        {
+            let _cap = map!(@count $($key),*);
+            let mut _map = $crate::byml::Map::default();
+            _map.reserve(_cap);
+
+            $(
+                let _ = _map.insert(::smartstring::alias::String::from($key), $value);
+            )*
+            $crate::byml::Byml::Map(_map)
+        }
+    };
+}
+pub use map;
+
+#[macro_export]
+macro_rules! array {
+    () => (
+        $crate::byml::Byml::Array(Default::default())
+    );
+    ($elem:expr; $n:expr) => (
+        $crate::byml::Byml::Array(vec![$elem, $n])
+    );
+    ($($x:expr),+ $(,)?) => (
+        $crate::byml::Byml::Array(<[_]>::into_vec(
+            // This rustc_box is not required, but it produces a dramatic improvement in compile
+            // time when constructing arrays with many elements.
+            #[rustc_box]
+            $crate::boxed::Box::new([$($x),+])
+        ))
+    );
+}
+
 #[cfg(test)]
 pub(self) static FILES: &[&str] = &[
     "A-1_Dynamic",
@@ -1050,5 +1090,13 @@ mod tests {
             *hash.get_mut("name").unwrap().as_mut_string().unwrap() = "test".into();
             assert_eq!(hash["name"].as_string().unwrap(), "test");
         }
+    }
+
+    #[test]
+    fn macro_test() {
+        let map = map!(
+            "test" => "bob".into()
+        );
+        assert_eq!(map["test"], Byml::String("bob".into()));
     }
 }
