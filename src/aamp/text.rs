@@ -51,7 +51,14 @@ fn scalar_to_value(tag: &str, scalar: Scalar) -> Result<Parameter> {
         }
         Scalar::Float(f) => Parameter::F32(f as f32),
         Scalar::Bool(b) => Parameter::Bool(b),
-        Scalar::Null => return Err(Error::InvalidData("AAMP does not support null values")),
+        Scalar::Null => {
+            match tag {
+                "!str32" => Parameter::String32(Default::default()),
+                "!str64" => Parameter::String64(Default::default()),
+                "!str256" => Parameter::String256(Default::default()),
+                _ => return Err(Error::InvalidData("AAMP does not support null values")),
+            }
+        }
     })
 }
 
