@@ -1053,11 +1053,7 @@ pub use map;
 ///
 /// ```
 /// # use roead::byml::*;
-/// let arr = array!(
-///     Byml::Bool(true),
-///     Byml::I32(0),
-///     Byml::String("test".into())
-/// );
+/// let arr = array!(Byml::Bool(true), Byml::I32(0), Byml::String("test".into()));
 /// ```
 #[macro_export]
 macro_rules! array {
@@ -1074,7 +1070,7 @@ macro_rules! array {
 pub use array;
 
 #[cfg(test)]
-pub(self) static FILES: &[&str] = &[
+static FILES: &[&str] = &[
     "A-1_Dynamic",
     "D-3_Dynamic",
     "EventInfo.product",

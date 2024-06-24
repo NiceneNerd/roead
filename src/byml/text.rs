@@ -49,7 +49,7 @@ impl<'a> Parser<'a> {
                         node.iter()?
                             .map(|child| {
                                 let key = child.key()?.parse().map_err(|_| {
-                                    Error::Any(format!("Expected integer hash key"))
+                                    Error::Any("Expected integer hash key".to_owned())
                                 })?;
                                 let value = Self::parse_node(child.clone())?;
                                 Ok((key, value))
@@ -62,7 +62,7 @@ impl<'a> Parser<'a> {
                         node.iter()?
                             .map(|child| {
                                 let key = child.key()?.parse().map_err(|_| {
-                                    Error::Any(format!("Expected integer hash key"))
+                                    Error::Any("Expected integer hash key".to_owned())
                                 })?;
                                 let value = Self::parse_node(child.clone())?;
                                 Ok((key, (value, 0)))
