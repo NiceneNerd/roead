@@ -56,7 +56,7 @@ fn scalar_to_value(tag: &str, scalar: Scalar) -> Result<Parameter> {
                 "!str32" => Parameter::String32(Default::default()),
                 "!str64" => Parameter::String64(Default::default()),
                 "!str256" => Parameter::String256(Default::default()),
-                _ => return Err(Error::InvalidData("AAMP does not support null values")),
+                _ => Parameter::StringRef(Default::default()),
             }
         }
     })
