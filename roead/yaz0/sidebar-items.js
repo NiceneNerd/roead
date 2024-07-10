@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"fn":["compress","compress_if","compress_with_options","decompress","decompress_if","decompress_into","decompress_unchecked","get_header"],"struct":["CompressOptions","Header"]};
