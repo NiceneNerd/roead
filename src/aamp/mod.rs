@@ -1539,7 +1539,7 @@ pub struct ParameterList {
     /// Map of child parameter objects.
     pub objects: ParameterObjectMap,
     /// Map of child parameter lists.
-    pub lists: ParameterListMap,
+    pub lists:   ParameterListMap,
 }
 
 impl ParameterListing for ParameterList {
@@ -1809,7 +1809,7 @@ fn macros() {
         data_type: "xml".into(),
         version: 10,
         param_root: ParameterList {
-            lists: lists!(
+            lists:   lists!(
                 "test1" => ParameterList::new()
             ),
             objects: objs!(

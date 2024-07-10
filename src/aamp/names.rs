@@ -1,6 +1,7 @@
 use std::{
     borrow::Cow,
     collections::hash_map::{Entry, VacantEntry},
+    fmt::Write,
     sync::Arc,
 };
 
@@ -15,60 +16,79 @@ static NUMBERED_NAMES: &str = include_str!("../../data/botw_numbered_names.txt")
 
 /// Since there are basically no good runtime string formatting options in Rust,
 /// we'll just do this instead.
-struct ChildFormatIterator<'a> {
-    pub string: &'a str,
-    pub pos: usize,
-    pub index: usize,
+struct ChildFormatIterator<'a, 'b> {
+    string: &'a str,
+    pos: usize,
+    index: usize,
+    buf: &'b mut std::string::String,
 }
 
-impl Iterator for ChildFormatIterator<'_> {
-    type Item = std::string::String;
-
-    fn next(&mut self) -> Option<Self::Item> {
-        let idx = self.index;
-        self.index += 1;
-        match idx {
-            0 => Some(format!("{}{}", self.string, self.pos)),
-            1 => Some(format!("{}{:02}", self.string, self.pos)),
-            2 => Some(format!("{}{:03}", self.string, self.pos)),
-            3 => Some(format!("{}_{}", self.string, self.pos)),
-            4 => Some(format!("{}_{:02}", self.string, self.pos)),
-            5 => Some(format!("{}_{:03}", self.string, self.pos)),
-            _ => None,
+impl<'a, 'b> ChildFormatIterator<'a, 'b> {
+    pub fn new(string: &'a str, pos: usize, buf: &'b mut std::string::String) -> Self {
+        ChildFormatIterator {
+            string,
+            pos,
+            index: 0,
+            buf,
         }
     }
 }
 
-impl ExactSizeIterator for ChildFormatIterator<'_> {
+impl<'a, 'b> Iterator for ChildFormatIterator<'a, 'b> {
+    type Item = u32;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        self.buf.clear(); // Clear the buffer for reuse
+
+        use std::fmt::Write;
+        let result = match self.index {
+            0 => write!(self.buf, "{}{}", self.string, self.pos),
+            1 => write!(self.buf, "{}{:02}", self.string, self.pos),
+            2 => write!(self.buf, "{}{:03}", self.string, self.pos),
+            3 => write!(self.buf, "{}_{}", self.string, self.pos),
+            4 => write!(self.buf, "{}_{:02}", self.string, self.pos),
+            5 => write!(self.buf, "{}_{:03}", self.string, self.pos),
+            _ => return None,
+        };
+
+        self.index += 1;
+        result.ok().map(|_| hash_name(self.buf.as_str()))
+    }
+}
+
+impl ExactSizeIterator for ChildFormatIterator<'_, '_> {
     fn len(&self) -> usize {
         6
     }
 }
 
 #[inline(always)]
-fn format_number(format: &str, pos: usize) -> std::string::String {
+fn format_number(format: &str, pos: usize, buf: &mut std::string::String) {
+    buf.clear();
     match format {
-        "%d" | "%u" => format!("{}", pos),
-        "%02d" | "%02u" => format!("{:02}", pos),
-        "%03d" => format!("{:03}", pos),
-        "%04d" => format!("{:04}", pos),
+        "%d" | "%u" => write!(buf, "{}", pos),
+        "%02d" | "%02u" => write!(buf, "{:02}", pos),
+        "%03d" => write!(buf, "{:03}", pos),
+        "%04d" => write!(buf, "{:04}", pos),
         _ => unsafe { std::hint::unreachable_unchecked() },
     }
+    .expect("Format failure")
 }
 
-fn format_numbered_name(name: &str, pos: usize) -> std::string::String {
-    for fmt in ["%d", "%02d", "%03d", "%04d", "%u", "%02u"].iter() {
+fn format_numbered_name(name: &str, pos: usize, buf: &mut std::string::String) {
+    for fmt in ["%d", "%02d", "%03d", "%04d", "%u", "%02u"] {
         if name.contains(fmt) {
+            buf.clear();
             let mut split = name.split(fmt);
-            return [
-                split.next().expect("string should have format var"),
-                &format_number(fmt, pos),
-                split.next().unwrap_or(""),
-            ]
-            .join("");
+            format_number(fmt, pos, buf);
+            buf.insert_str(0, unsafe { split.next().unwrap_unchecked() });
+            if let Some(suf) = split.next() {
+                buf.push_str(suf);
+            }
+            return;
         }
     }
-    unsafe { std::hint::unreachable_unchecked() }
+    unsafe { core::hint::unreachable_unchecked() }
 }
 
 macro_rules! free_cow {
@@ -137,20 +157,17 @@ impl<'a> NameTable<'a> {
     /// The table is automatically updated with any newly found names if an
     /// indice-based guess was necessary.
     pub fn get_name(&self, hash: u32, index: usize, parent_hash: u32) -> Option<&Cow<'_, str>> {
-        fn test_names<'a: 'b, 'b>(
+        fn test_names<'a: 'b, 'b, 'c>(
             entry: VacantEntry<'b, u32, Cow<'a, str>>,
             hash: u32,
             index: usize,
             prefix: &str,
+            buf: &'c mut std::string::String,
         ) -> std::result::Result<&'b Cow<'a, str>, VacantEntry<'b, u32, Cow<'a, str>>> {
             for i in index..(index + 1) {
-                for fmt in (ChildFormatIterator {
-                    string: prefix,
-                    pos: i,
-                    index: 0,
-                }) {
-                    if hash_name(&fmt) == hash {
-                        let name = entry.insert(fmt.into());
+                for guess_hash in ChildFormatIterator::new(prefix, i, buf) {
+                    if guess_hash == hash {
+                        let name = entry.insert(buf.to_string().into());
                         return Ok(free_cow!(name, 'a));
                     }
                 }
@@ -164,26 +181,31 @@ impl<'a> NameTable<'a> {
             Entry::Occupied(entry) => Some(free_cow!(entry.get(), 'a)),
             Entry::Vacant(entry) => {
                 let mut entry = entry;
+                let mut guess_buffer = std::string::String::with_capacity(256);
                 if let Some(parent_name) = parent_name
                 // Try to guess the name from the parent structure if possible.
                 {
-                    match test_names(entry, hash, index, parent_name)
-                        .or_else(|entry| test_names(entry, hash, index, "Children"))
-                        .or_else(|entry| test_names(entry, hash, index, "Child"))
+                    let guess = test_names(entry, hash, index, parent_name, &mut guess_buffer)
                         .or_else(|entry| {
+                            test_names(entry, hash, index, "Children", &mut guess_buffer)
+                        })
+                        .or_else(|entry| test_names(entry, hash, index, "Child", &mut guess_buffer))
+                        .or_else(|mut entry| {
                             // Sometimes the parent name is plural and the object names are
                             // singular.
-                            let mut entry = entry;
                             for suffix in ["s", "es", "List"] {
                                 if let Some(singular) = parent_name.strip_suffix(suffix) {
-                                    match test_names(entry, hash, index, singular) {
+                                    let guess =
+                                        test_names(entry, hash, index, singular, &mut guess_buffer);
+                                    match guess {
                                         Ok(found) => return Ok(found),
                                         Err(ret_entry) => entry = ret_entry,
                                     }
                                 }
                             }
                             Err(entry)
-                        }) {
+                        });
+                    match guess {
                         Ok(found) => return Some(free_cow!(found, 'a)),
                         Err(ret_entry) => {
                             entry = ret_entry;
@@ -193,9 +215,9 @@ impl<'a> NameTable<'a> {
                 // Last resort: test all numbered names.
                 for format in &self.numbered_names {
                     for i in 0..(index + 2) {
-                        let name = format_numbered_name(format, i);
-                        if hash_name(&name) == hash {
-                            let name = entry.insert(name.into());
+                        format_numbered_name(format, i, &mut guess_buffer);
+                        if hash_name(&guess_buffer) == hash {
+                            let name = entry.insert(guess_buffer.to_string().into());
                             return Some(free_cow!(name, 'a));
                         }
                     }
