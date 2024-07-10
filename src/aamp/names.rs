@@ -35,7 +35,7 @@ impl<'a, 'b> ChildFormatIterator<'a, 'b> {
 }
 
 impl<'a, 'b> Iterator for ChildFormatIterator<'a, 'b> {
-    type Item = &'b str;
+    type Item = u32;
 
     fn next(&mut self) -> Option<Self::Item> {
         self.buf.clear(); // Clear the buffer for reuse
@@ -52,7 +52,7 @@ impl<'a, 'b> Iterator for ChildFormatIterator<'a, 'b> {
         };
 
         self.index += 1;
-        result.ok().map(|_| self.buf.as_str())
+        result.ok().map(|_| hash_name(self.buf.as_str()))
     }
 }
 
@@ -88,7 +88,7 @@ fn format_numbered_name(name: &str, pos: usize, buf: &mut std::string::String) {
             return;
         }
     }
-    unsafe { std::hint::unreachable_unchecked() }
+    unsafe { core::hint::unreachable_unchecked() }
 }
 
 macro_rules! free_cow {
@@ -165,9 +165,9 @@ impl<'a> NameTable<'a> {
             buf: &'c mut std::string::String,
         ) -> std::result::Result<&'b Cow<'a, str>, VacantEntry<'b, u32, Cow<'a, str>>> {
             for i in index..(index + 1) {
-                for fmt in ChildFormatIterator::new(prefix, i, buf) {
-                    if hash_name(&fmt) == hash {
-                        let name = entry.insert(fmt.into());
+                for guess_hash in ChildFormatIterator::new(prefix, i, buf) {
+                    if guess_hash == hash {
+                        let name = entry.insert(buf.to_string().into());
                         return Ok(free_cow!(name, 'a));
                     }
                 }
