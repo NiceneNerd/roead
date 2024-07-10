@@ -33,6 +33,7 @@
 //! a non-existent key will panic.
 mod names;
 mod parser;
+mod reader;
 #[cfg(feature = "yaml")]
 mod text;
 mod writer;
@@ -126,7 +127,7 @@ enum Type {
     StringRef,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Copy, Clone)]
 #[binrw]
 #[brw(little, magic = b"AAMP")]
 struct ResHeader {

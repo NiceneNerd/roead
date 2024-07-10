@@ -1,6 +1,7 @@
-use std::io::{Read, Seek};
-
-use binrw::prelude::*;
+use binrw::{
+    io::{Read, Seek},
+    prelude::*,
+};
 
 use super::*;
 use crate::{util::SeekShim, Error, Result};
@@ -19,24 +20,38 @@ impl ParameterIO {
         #[cfg(feature = "yaz0")]
         {
             if data.as_ref().starts_with(b"Yaz0") {
-                return Parser::new(std::io::Cursor::new(crate::yaz0::decompress(
+                return Parser::new(binrw::io::Cursor::new(crate::yaz0::decompress(
                     data.as_ref(),
                 )?))?
                 .parse();
             }
         }
-        Parser::new(std::io::Cursor::new(data.as_ref()))?.parse()
+        Parser::new(binrw::io::Cursor::new(data.as_ref()))?.parse()
     }
 }
 
-struct Parser<R: Read + Seek> {
+pub(super) struct Parser<R: Read + Seek> {
     reader: R,
     header: ResHeader,
     endian: binrw::Endian,
 }
 
+impl<R> Copy for Parser<R> where R: Read + Seek + Copy {}
+impl<R> Clone for Parser<R>
+where
+    R: Read + Seek + Clone,
+{
+    fn clone(&self) -> Self {
+        Self {
+            reader: self.reader.clone(),
+            header: self.header,
+            endian: self.endian,
+        }
+    }
+}
+
 impl<R: Read + Seek> Parser<R> {
-    fn new(mut reader: R) -> Result<Self> {
+    pub(super) fn new(mut reader: R) -> Result<Self> {
         if SeekShim::stream_len(&mut reader)? < 0x30 {
             return Err(Error::InvalidData("Incomplete parameter archive"));
         }
@@ -83,7 +98,8 @@ impl<R: Read + Seek> Parser<R> {
 
     #[inline]
     fn seek(&mut self, offset: u32) -> Result<()> {
-        self.reader.seek(std::io::SeekFrom::Start(offset as u64))?;
+        self.reader
+            .seek(binrw::io::SeekFrom::Start(offset as u64))?;
         Ok(())
     }
 
@@ -105,8 +121,7 @@ impl<R: Read + Seek> Parser<R> {
         Ok(unsafe { std::str::from_utf8_unchecked(&string_[..len]) }.into())
     }
 
-    #[inline]
-    fn read_at<'a, T: BinRead<Args<'a> = ()>>(&mut self, offset: u32) -> Result<T> {
+    pub(super) fn read_at<'a, T: BinRead<Args<'a> = ()>>(&mut self, offset: u32) -> Result<T> {
         let old_pos = self.reader.stream_position()? as u32;
         self.seek(offset)?;
         let val = self.read()?;
@@ -135,6 +150,18 @@ impl<R: Read + Seek> Parser<R> {
             buf.push(self.read()?);
         }
         Ok(buf)
+    }
+
+    pub(super) fn read_parameter<'a, T: Into<Parameter> + BinRead<Args<'a> = ()>>(
+        &mut self,
+        offset: u32,
+    ) -> Result<(Name, T)> {
+        self.seek(offset)?;
+        let info: ResParameter = self.read()?;
+        let data_offset = info.data_rel_offset.as_u32() * 4 + offset;
+        self.seek(data_offset)?;
+        let value = self.read()?;
+        Ok((info.name, value))
     }
 
     fn parse_parameter(&mut self, offset: u32) -> Result<(Name, Parameter)> {
