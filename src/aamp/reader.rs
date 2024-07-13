@@ -64,8 +64,7 @@ impl<R: Read + Seek> ParameterObjectReader<R> {
         &mut self,
         index: usize,
     ) -> Option<T> {
-        if index > self.len() {}
-        todo!()
+        self.try_get_at(index).ok().flatten()
     }
 
     pub fn try_get<T: Into<Parameter> + BinRead<Args<'static> = ()>>(
@@ -90,7 +89,7 @@ impl<R: Read + Seek> ParameterObjectReader<R> {
         &mut self,
         index: usize,
     ) -> Result<Option<T>> {
-        if index > self.obj_header.param_count as usize {
+        if index >= self.obj_header.param_count as usize {
             return Ok(None);
         }
         let offset = self.obj_header.params_rel_offset as u32 * 4 + self.offset;

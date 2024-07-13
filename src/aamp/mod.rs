@@ -99,7 +99,7 @@ fn check_hasher() {
     assert_eq!(HASHED, HASH);
 }
 
-#[derive(Debug)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
 #[binrw::binrw]
 #[repr(u8)]
 #[brw(repr = u8)]
@@ -125,6 +125,40 @@ enum Type {
     BufferU32,
     BufferBinary,
     StringRef,
+}
+
+impl Type {
+    fn name(&self) -> &str {
+        match self {
+            Self::Bool => "Bool",
+            Self::F32 => "F32",
+            Self::Int => "Int",
+            Self::Vec2 => "Vec2",
+            Self::Vec3 => "Vec3",
+            Self::Vec4 => "Vec4",
+            Self::Color => "Color",
+            Self::String32 => "String32",
+            Self::String64 => "String64",
+            Self::Curve1 => "Curve1",
+            Self::Curve2 => "Curve2",
+            Self::Curve3 => "Curve3",
+            Self::Curve4 => "Curve4",
+            Self::BufferInt => "BufferInt",
+            Self::BufferF32 => "BufferF32",
+            Self::String256 => "String256",
+            Self::Quat => "Quat",
+            Self::U32 => "U32",
+            Self::BufferU32 => "BufferU32",
+            Self::BufferBinary => "BufferBinary",
+            Self::StringRef => "StringRef",
+        }
+    }
+}
+
+impl std::fmt::Display for Type {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str(self.name())
+    }
 }
 
 #[derive(Debug, Copy, Clone)]

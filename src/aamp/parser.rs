@@ -30,10 +30,166 @@ impl ParameterIO {
     }
 }
 
+trait ParseParam<'a>: Sized {
+    const VARIANT: Type;
+
+    fn parse_value<R: Read + Seek>(parser: &'a mut Parser<R>, data_offset: u32) -> Result<Self>;
+
+    fn parse<R: Read + Seek>(parser: &'a mut Parser<R>, offset: u32) -> Result<Self> {
+        parser.seek(offset)?;
+        let info: ResParameter = parser.read()?;
+        if info.type_ != Self::VARIANT {
+            Err(Error::TypeError(
+                info.type_.name().into(),
+                Self::VARIANT.name(),
+            ))
+        } else {
+            let data_offset = info.data_rel_offset.as_u32() * 4 + offset;
+            parser.seek(data_offset)?;
+            Self::parse_value(parser, data_offset)
+        }
+    }
+}
+
+impl ParseParam<'_> for bool {
+    const VARIANT: Type = Type::Bool;
+
+    fn parse_value<R: Read + Seek>(parser: &mut Parser<R>, _data_offset: u32) -> Result<Self> {
+        parser.read::<u32>().map(|v| v != 0)
+    }
+}
+
+impl ParseParam<'_> for f32 {
+    const VARIANT: Type = Type::F32;
+
+    fn parse_value<R: Read + Seek>(parser: &mut Parser<R>, _data_offset: u32) -> Result<Self> {
+        parser.read::<f32>()
+    }
+}
+
+impl ParseParam<'_> for i32 {
+    const VARIANT: Type = Type::Int;
+
+    fn parse_value<R: Read + Seek>(parser: &mut Parser<R>, _data_offset: u32) -> Result<Self> {
+        parser.read()
+    }
+}
+
+impl ParseParam<'_> for Vector2f {
+    const VARIANT: Type = Type::Vec2;
+
+    fn parse_value<R: Read + Seek>(parser: &mut Parser<R>, _data_offset: u32) -> Result<Self> {
+        parser.read()
+    }
+}
+impl ParseParam<'_> for Vector3f {
+    const VARIANT: Type = Type::Vec3;
+
+    fn parse_value<R: Read + Seek>(parser: &mut Parser<R>, _data_offset: u32) -> Result<Self> {
+        parser.read()
+    }
+}
+impl ParseParam<'_> for Vector4f {
+    const VARIANT: Type = Type::Vec4;
+
+    fn parse_value<R: Read + Seek>(parser: &mut Parser<R>, _data_offset: u32) -> Result<Self> {
+        parser.read()
+    }
+}
+impl ParseParam<'_> for Quat {
+    const VARIANT: Type = Type::Quat;
+
+    fn parse_value<R: Read + Seek>(parser: &mut Parser<R>, _data_offset: u32) -> Result<Self> {
+        parser.read()
+    }
+}
+impl ParseParam<'_> for Color {
+    const VARIANT: Type = Type::Color;
+
+    fn parse_value<R: Read + Seek>(parser: &mut Parser<R>, _data_offset: u32) -> Result<Self> {
+        parser.read()
+    }
+}
+
+impl ParseParam<'_> for u32 {
+    const VARIANT: Type = Type::U32;
+
+    fn parse_value<R: Read + Seek>(parser: &mut Parser<R>, _data_offset: u32) -> Result<Self> {
+        parser.read()
+    }
+}
+
+impl ParseParam<'_> for [Curve; 1] {
+    const VARIANT: Type = Type::Curve1;
+
+    fn parse_value<R: Read + Seek>(parser: &mut Parser<R>, _data_offset: u32) -> Result<Self> {
+        parser.read()
+    }
+}
+impl ParseParam<'_> for [Curve; 2] {
+    const VARIANT: Type = Type::Curve2;
+
+    fn parse_value<R: Read + Seek>(parser: &mut Parser<R>, _data_offset: u32) -> Result<Self> {
+        parser.read()
+    }
+}
+impl ParseParam<'_> for [Curve; 3] {
+    const VARIANT: Type = Type::Curve3;
+
+    fn parse_value<R: Read + Seek>(parser: &mut Parser<R>, _data_offset: u32) -> Result<Self> {
+        parser.read()
+    }
+}
+impl ParseParam<'_> for [Curve; 4] {
+    const VARIANT: Type = Type::Curve4;
+
+    fn parse_value<R: Read + Seek>(parser: &mut Parser<R>, _data_offset: u32) -> Result<Self> {
+        parser.read()
+    }
+}
+
+impl ParseParam<'_> for FixedSafeString<32> {
+    const VARIANT: Type = Type::String32;
+
+    fn parse_value<R: Read + Seek>(parser: &mut Parser<R>, _data_offset: u32) -> Result<Self> {
+        parser.read()
+    }
+}
+impl ParseParam<'_> for FixedSafeString<64> {
+    const VARIANT: Type = Type::String64;
+
+    fn parse_value<R: Read + Seek>(parser: &mut Parser<R>, _data_offset: u32) -> Result<Self> {
+        parser.read()
+    }
+}
+impl ParseParam<'_> for FixedSafeString<256> {
+    const VARIANT: Type = Type::String256;
+
+    fn parse_value<R: Read + Seek>(parser: &mut Parser<R>, _data_offset: u32) -> Result<Self> {
+        parser.read()
+    }
+}
+
+impl<'a> ParseParam<'a> for &'a str {
+    const VARIANT: Type = Type::StringRef;
+
+    fn parse_value<R: Read + Seek>(parser: &'a mut Parser<R>, _data_offset: u32) -> Result<Self> {
+        let mut c: u8 = parser.read()?;
+        let mut len = 0;
+        while c != 0 {
+            parser.string_buf[len] = c;
+            len += 1;
+            c = parser.read()?;
+        }
+        Ok(unsafe { std::str::from_utf8_unchecked(&parser.string_buf[..len]) })
+    }
+}
+
 pub(super) struct Parser<R: Read + Seek> {
     reader: R,
     header: ResHeader,
     endian: binrw::Endian,
+    string_buf: [u8; 4096],
 }
 
 impl<R> Copy for Parser<R> where R: Read + Seek + Copy {}
@@ -46,6 +202,7 @@ where
             reader: self.reader.clone(),
             header: self.header,
             endian: self.endian,
+            string_buf: self.string_buf,
         }
     }
 }
@@ -75,6 +232,7 @@ impl<R: Read + Seek> Parser<R> {
             reader,
             header,
             endian: binrw::Endian::Little,
+            string_buf: [0; 4096],
         })
     }
 
@@ -110,15 +268,14 @@ impl<R: Read + Seek> Parser<R> {
 
     #[inline]
     fn read_null_string(&mut self) -> Result<String> {
-        let mut string_ = [0u8; 0x256];
         let mut c: u8 = self.read()?;
         let mut len = 0;
         while c != 0 {
-            string_[len] = c;
+            self.string_buf[len] = c;
             len += 1;
             c = self.read()?;
         }
-        Ok(unsafe { std::str::from_utf8_unchecked(&string_[..len]) }.into())
+        Ok(unsafe { std::str::from_utf8_unchecked(&self.string_buf[..len]) }.into())
     }
 
     pub(super) fn read_at<'a, T: BinRead<Args<'a> = ()>>(&mut self, offset: u32) -> Result<T> {
