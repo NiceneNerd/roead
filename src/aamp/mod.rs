@@ -103,7 +103,7 @@ fn check_hasher() {
 #[binrw::binrw]
 #[repr(u8)]
 #[brw(repr = u8)]
-enum Type {
+pub enum Type {
     Bool = 0,
     F32,
     Int,
@@ -198,7 +198,7 @@ struct ResParameterObj {
     param_count: u16,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
 #[binrw]
 #[brw(little)]
 struct ResParameterList {

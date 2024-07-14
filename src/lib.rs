@@ -103,7 +103,8 @@ pub enum Error {
     Any(String),
 }
 
-#[cfg_attr(feature = "sarc", binrw::binread, brw(repr = u16))]
+#[cfg_attr(feature = "sarc", derive(binrw::BinRead))]
+#[cfg_attr(feature = "sarc", br(repr = u16))]
 #[derive(Debug, Eq, PartialEq, Copy, Clone)]
 #[repr(u16)]
 /// Represents endianness where applicable.
