@@ -55,14 +55,14 @@ fn in_nan(input: &str) -> bool {
 // not useful.
 fn parse_int(value: &str) -> Result<i128> {
     lexical::parse(value)
-        .or_else(|_| lexical::parse_with_options::<
-            i128,
-            _,
-            { lexical::NumberFormatBuilder::hexadecimal() },
-        >(
-            value.strip_prefix("0x").ok_or(lexical::Error::InvalidBasePrefix)?,
-            &lexical::ParseIntegerOptions::default(),
-        ))
+        .or_else(|_| {
+            lexical::parse_with_options::<i128, _, { lexical::NumberFormatBuilder::hexadecimal() }>(
+                value
+                    .strip_prefix("0x")
+                    .ok_or(lexical::Error::InvalidBasePrefix)?,
+                &lexical::ParseIntegerOptions::default(),
+            )
+        })
         .map_err(|_| Error::InvalidDataD(jstr!("Invalid integer: {value}")))
 }
 
@@ -100,10 +100,18 @@ pub(crate) fn parse_scalar(
         }
     } else if matches!(value, "true" | "false") {
         Ok(Scalar::Bool(&value[..1] == "t"))
-    } else if is_possible_double && !is_quoted && parse_float(value).is_ok() {
-        Ok(Scalar::Float(parse_float(value)?))
-    } else if !value.is_empty() && !is_quoted && parse_int(value).is_ok() {
-        Ok(Scalar::Int(parse_int(value)?))
+    } else if let Some(float) = is_possible_double
+        .then(|| (!is_quoted).then(|| parse_float(value).ok()))
+        .flatten()
+        .flatten()
+    {
+        Ok(Scalar::Float(float))
+    } else if let Some(int) = (!value.is_empty())
+        .then(|| (!is_quoted).then(|| parse_int(value).ok()))
+        .flatten()
+        .flatten()
+    {
+        Ok(Scalar::Int(int))
     } else if matches!(value, "null" | "~" | "NULL") {
         Ok(Scalar::Null)
     } else {
