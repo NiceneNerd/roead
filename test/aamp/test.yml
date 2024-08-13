@@ -31,4 +31,7 @@ param_root: !list
       StringRef_1: strtest
       StringRef_2: "fkisfj 2929 jdj"
       StringRef_3: "29103913"
+      "0": quoted int key
+    "1": !obj
+      "56": More quoted int keys
   lists: {}
