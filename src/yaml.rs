@@ -50,6 +50,37 @@ fn in_nan(input: &str) -> bool {
     matches!(input, ".nan" | ".NaN" | ".NAN")
 }
 
+#[inline]
+// Integer conversions. Not YAML 1.2 compliant: base 8 is not supported as it's
+// not useful.
+fn parse_int(value: &str) -> Result<i128> {
+    lexical::parse(value)
+        .or_else(|_| {
+            lexical::parse_with_options::<i128, _, { lexical::NumberFormatBuilder::hexadecimal() }>(
+                value
+                    .strip_prefix("0x")
+                    .ok_or(lexical::Error::InvalidBasePrefix)?,
+                &lexical::ParseIntegerOptions::default(),
+            )
+        })
+        .map_err(|_| Error::InvalidDataD(jstr!("Invalid integer: {value}")))
+}
+
+#[inline]
+// Floating-point conversions.
+fn parse_float(value: &str) -> Result<f64> {
+    if is_infinity(value) {
+        Ok(f64::INFINITY)
+    } else if is_negative_infinity(value) {
+        Ok(f64::NEG_INFINITY)
+    } else if in_nan(value) {
+        Ok(f64::NAN)
+    } else {
+        lexical::parse(value.as_bytes())
+            .map_err(|_| Error::InvalidDataD(jstr!("Invalid float: {value}")))
+    }
+}
+
 /// Deliberately not compliant to the YAML 1.2 standard to get rid of unused
 /// features that harm performance.
 #[inline]
@@ -58,69 +89,34 @@ pub(crate) fn parse_scalar(
     value: &str,
     is_quoted: bool,
 ) -> Result<Scalar> {
-    if tag_type == Some(TagBasedType::Bool) || matches!(value, "true" | "false") {
+    let is_possible_double = value.contains('.');
+    if let Some(type_) = tag_type {
+        match type_ {
+            TagBasedType::Null => Ok(Scalar::Null),
+            TagBasedType::Bool => Ok(Scalar::Bool(matches!(value, "true" | "True"))),
+            TagBasedType::Int => Ok(Scalar::Int(parse_int(value)?)),
+            TagBasedType::Float => Ok(Scalar::Float(parse_float(value)?)),
+            TagBasedType::Str => Ok(Scalar::String(value.into())),
+        }
+    } else if matches!(value, "true" | "false") {
         Ok(Scalar::Bool(&value[..1] == "t"))
+    } else if let Some(float) = is_possible_double
+        .then(|| (!is_quoted).then(|| parse_float(value).ok()))
+        .flatten()
+        .flatten()
+    {
+        Ok(Scalar::Float(float))
+    } else if let Some(int) = (!value.is_empty())
+        .then(|| (!is_quoted).then(|| parse_int(value).ok()))
+        .flatten()
+        .flatten()
+    {
+        Ok(Scalar::Int(int))
+    } else if matches!(value, "null" | "~" | "NULL") {
+        Ok(Scalar::Null)
     } else {
-        // Floating-point conversions.
-        let is_possible_double = value.contains('.');
-        if tag_type == Some(TagBasedType::Float)
-            || (tag_type.is_none() && is_possible_double && !is_quoted)
-        {
-            if is_infinity(value) {
-                return Ok(Scalar::Float(f64::INFINITY));
-            } else if is_negative_infinity(value) {
-                return Ok(Scalar::Float(f64::NEG_INFINITY));
-            } else if in_nan(value) {
-                return Ok(Scalar::Float(f64::NAN));
-            } else {
-                match lexical::parse(value.as_bytes()) {
-                    Ok(v) => return Ok(Scalar::Float(v)),
-                    Err(_) => {
-                        if tag_type == Some(TagBasedType::Float) {
-                            return Err(Error::InvalidDataD(jstr!("Invalid float: {value}")));
-                        }
-                    }
-                }
-            }
-        }
-        // Integer conversions. Not YAML 1.2 compliant: base 8 is not supported as it's
-        // not useful.
-        if tag_type == Some(TagBasedType::Int)
-            || (tag_type.is_none() && !value.is_empty() && !is_quoted)
-        {
-            match lexical::parse(value) {
-                Ok(v) => return Ok(Scalar::Int(v)),
-                Err(_) => {
-                    if tag_type == Some(TagBasedType::Int) {
-                        if value.starts_with("0x") {
-                            match lexical::parse_with_options::<
-                                i128,
-                                _,
-                                { lexical::NumberFormatBuilder::hexadecimal() },
-                            >(
-                                value.trim_start_matches("0x"),
-                                &lexical::ParseIntegerOptions::default(),
-                            ) {
-                                Ok(v) => return Ok(Scalar::Int(v)),
-                                Err(_) => {
-                                    return Err(Error::InvalidDataD(jstr!(
-                                        "Invalid integer: {value}"
-                                    )));
-                                }
-                            }
-                        }
-                    } else if tag_type == Some(TagBasedType::Int) {
-                        return Err(Error::InvalidDataD(jstr!("Invalid integer: {value}")));
-                    }
-                }
-            }
-        }
-        if tag_type == Some(TagBasedType::Null) || matches!(value, "null" | "~" | "NULL" | "Null") {
-            Ok(Scalar::Null)
-        } else {
-            // Fall back to treating the value as a string.
-            Ok(Scalar::String(value.into()))
-        }
+        // Fall back to treating the value as a string.
+        Ok(Scalar::String(value.into()))
     }
 }
 
@@ -135,6 +131,8 @@ pub(crate) fn string_needs_quotes(value: &str) -> bool {
                 || lexical::parse::<f64, &[u8]>(value.as_bytes()).is_ok()))
         || lexical::parse::<u64, &[u8]>(value.as_bytes()).is_ok()
         || value == "null"
+        || value == "!"
+        || value == "NULL"
 }
 
 macro_rules! format_hex {

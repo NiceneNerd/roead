@@ -191,13 +191,15 @@ macro_rules! read_map {
         for child in $node.iter()? {
             let key = child.key()?;
             let value = $fn(&child)?;
-            if !$node.is_key_quoted()? {
-                if let Ok(hash) = lexical::parse::<u64, &str>(key) {
-                    $m.insert(hash as u32, value);
-                    continue;
-                }
+            let quoted = unsafe { matches!(key.as_ptr().sub(1).read(), b'\'' | b'"') };
+            if let Some(hash) = (!quoted)
+                .then(|| lexical::parse::<u32, &str>(key).ok())
+                .flatten()
+            {
+                $m.insert(hash, value);
+            } else {
+                $m.insert(hash_name(key), value);
             }
-            $m.insert(hash_name(key), value);
         }
     };
 }
@@ -465,6 +467,7 @@ mod tests {
     }
 
     static TEST_NAMES: &[&str] = &[
+        "TestContent",
         "Bool_0",
         "Bool_1",
         "F32_0",
@@ -492,6 +495,9 @@ mod tests {
         "StringRef_1",
         "StringRef_2",
         "StringRef_3",
+        "0",
+        "1",
+        "56",
     ];
 
     #[test]
@@ -524,6 +530,27 @@ mod tests {
             let data = std::fs::read(file).unwrap();
             let pio = ParameterIO::from_binary(data).unwrap();
             pio.to_text();
+        }
+    }
+
+    #[test]
+    fn bin_text_roundtrip() {
+        for file in jwalk::WalkDir::new("test/aamp")
+            .into_iter()
+            .filter_map(|f| {
+                f.ok().and_then(|f| {
+                    (f.file_type().is_file() && !f.file_name().to_str().unwrap().ends_with("yml"))
+                        .then(|| f.path())
+                })
+            })
+        {
+            println!("{}", file.file_name().unwrap().to_str().unwrap());
+            let data = std::fs::read(file).unwrap();
+            let pio = ParameterIO::from_binary(data).unwrap();
+            let text = pio.to_text();
+            // dbg!(&text);
+            let pio2 = ParameterIO::from_text(text).unwrap();
+            assert_eq!(pio, pio2);
         }
     }
 }
