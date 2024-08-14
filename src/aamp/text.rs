@@ -255,7 +255,7 @@ macro_rules! fill_node_from_struct {
         $node.change_type(ryml::NodeType::Seq | ryml::NodeType::WipStyleFlowSl)?;
         $(
             let mut _child = $node.append_child()?;
-            _child.set_val(&lexical::to_string($struct.$field))?;
+            _child.set_val(&write_float($struct.$field as f64)?)?;
         )+
         $node.set_val_tag($tag)?;
     }};
@@ -273,7 +273,7 @@ fn write_curves<'a, 't, const N: usize>(
         b.set_val(&lexical::to_string(curve.b))?;
         for float in curve.floats {
             let mut f = node.append_child()?;
-            f.set_val(&lexical::to_string(float))?;
+            f.set_val(&write_float(float as f64)?)?;
         }
     }
     node.set_val_tag("!curve")?;
@@ -307,7 +307,7 @@ fn write_parameter<'a, 't>(
 ) -> Result<()> {
     match param {
         Parameter::Bool(b) => node.set_val(if *b { "true" } else { "false" })?,
-        Parameter::F32(f) => node.set_val(&lexical::to_string(*f))?,
+        Parameter::F32(f) => node.set_val(&write_float(*f as f64)?)?,
         Parameter::I32(i) => node.set_val(&lexical::to_string(*i))?,
         Parameter::Vec2(v) => fill_node_from_struct!(node, "!vec2", v, x, y),
         Parameter::Vec3(v) => fill_node_from_struct!(node, "!vec3", v, x, y, z),
