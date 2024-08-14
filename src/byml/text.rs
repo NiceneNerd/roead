@@ -225,9 +225,9 @@ impl<'a, 'b> Emitter<'a, 'b> {
                         }
                     }
                     Byml::Bool(b) => dest_node.set_val(if *b { "true" } else { "false" })?,
-                    Byml::Float(f) => dest_node.set_val(&lexical::to_string(*f))?,
+                    Byml::Float(f) => dest_node.set_val(&write_float(*f as f64)?)?,
                     Byml::Double(d) => {
-                        dest_node.set_val(&lexical::to_string(*d))?;
+                        dest_node.set_val(&write_float(*d)?)?;
                         dest_node.set_val_tag("!f64")?;
                     }
                     Byml::I32(i) => dest_node.set_val(&lexical::to_string(*i))?,
@@ -317,5 +317,13 @@ mod test {
             let byml = Byml::from_text(text).unwrap();
             assert_eq!(byml, byml);
         }
+    }
+
+    #[test]
+    fn negative_zero() {
+        let text = "Test: [0.0, -0.0, 1.2]";
+        let byml = Byml::from_text(text).unwrap();
+        let text2 = byml.to_text();
+        assert!(text2.contains("-0.0"));
     }
 }

@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## Fixed
+
+- Fixed issues parsing `Null` strings and quoted numeric keys in YAML for AAMP files
+- Fixed missing negative sign when emitting `-0.0` in YAML
+
 ## [0.25.3]
 
 ## Changed
