@@ -33,7 +33,7 @@
 //! a non-existent key will panic.
 mod names;
 mod parser;
-mod reader;
+pub mod reader;
 #[cfg(feature = "yaml")]
 mod text;
 mod writer;
@@ -180,7 +180,7 @@ struct ResHeader {
     unknown_section_size: u32, // 0x2C
 }
 
-#[derive(Debug)]
+#[derive(Debug, Copy, Clone)]
 #[binrw]
 #[brw(little)]
 struct ResParameter {
