@@ -1,8 +1,8 @@
 use core::str;
 
 use join_str::jstr;
+use num_traits::Zero;
 use once_cell::sync::Lazy;
-use ryml::NodeRef;
 
 use crate::{Error, Result};
 
@@ -89,22 +89,23 @@ pub(crate) fn write_float(value: f64) -> Result<parking_lot::MappedRwLockReadGua
     use lexical_core::{FormattedSize, ToLexical};
     static BUF: Lazy<parking_lot::RwLock<[u8; f64::FORMATTED_SIZE_DECIMAL + 1]>> =
         Lazy::new(|| parking_lot::RwLock::new([0; f64::FORMATTED_SIZE_DECIMAL + 1]));
-    let len = unsafe {
-        let mut buffer = BUF.write();
-        let extra;
-        let buf = if value == -0.0 {
-            buffer[0] = b'-';
-            extra = 1;
-            &mut buffer[1..]
-        } else {
-            extra = 0;
-            &mut buffer[..f64::FORMATTED_SIZE_DECIMAL]
-        };
-        value.to_lexical_unchecked(buf).len() + extra
+    let mut buffer = BUF.write();
+    let extra;
+    let buf = if value.is_sign_negative() && value.is_zero() {
+        buffer[0] = b'-';
+        extra = 1;
+        &mut buffer[1..]
+    } else {
+        extra = 0;
+        &mut buffer[..f64::FORMATTED_SIZE_DECIMAL]
     };
-    Ok(parking_lot::RwLockReadGuard::map(BUF.read(), |buf| {
-        unsafe { core::str::from_utf8_unchecked(&buf[..len]) }
-    }))
+    unsafe {
+        let len = value.to_lexical_unchecked(buf).len() + extra;
+        Ok(parking_lot::RwLockReadGuard::map(
+            parking_lot::RwLockWriteGuard::downgrade(buffer),
+            |buf| core::str::from_utf8_unchecked(&buf[..len]),
+        ))
+    }
 }
 
 /// Deliberately not compliant to the YAML 1.2 standard to get rid of unused
