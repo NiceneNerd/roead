@@ -324,6 +324,6 @@ mod test {
         let text = "Test: [0.0, -0.0, 1.2]";
         let byml = Byml::from_text(text).unwrap();
         let text2 = byml.to_text();
-        assert!(text2.contains("-0.0"));
+        assert!(text2.contains("0.0") && text2.contains("-0.0"));
     }
 }
