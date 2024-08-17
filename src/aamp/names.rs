@@ -1,13 +1,13 @@
 use std::{
     borrow::Cow,
-    collections::hash_map::{Entry, VacantEntry},
     fmt::Write,
-    sync::Arc,
+    sync::{Arc, LazyLock},
 };
 
-use once_cell::sync::Lazy;
-use parking_lot::RwLock;
-use rustc_hash::FxHashMap;
+use scc::{
+    hash_map::{Entry, VacantEntry},
+    HashMap,
+};
 
 use super::*;
 
@@ -154,7 +154,7 @@ macro_rules! free_cow {
 /// strings from Breath of the Wild’s executable.
 #[derive(Default)]
 pub struct NameTable<'a> {
-    names: RwLock<FxHashMap<u32, Cow<'a, str>>>,
+    names: HashMap<u32, Cow<'a, str>, rustc_hash::FxBuildHasher>,
 }
 
 impl<'a> NameTable<'a> {
@@ -162,7 +162,13 @@ impl<'a> NameTable<'a> {
     pub fn new(botw_strings: bool) -> NameTable<'a> {
         if botw_strings {
             Self {
-                names: RwLock::new(NAMES.lines().map(|n| (hash_name(n), n.into())).collect()),
+                names: {
+                    let map = HashMap::with_capacity_and_hasher(58469, rustc_hash::FxBuildHasher);
+                    for line in NAMES.lines() {
+                        let _ = map.insert(hash_name(line), line.into());
+                    }
+                    map
+                },
             }
         } else {
             Default::default()
@@ -173,25 +179,19 @@ impl<'a> NameTable<'a> {
     pub fn add_name(&self, name: impl Into<Cow<'a, str>>) {
         let name = name.into();
         let hash = hash_name(&name);
-        self.names.write().entry(hash).or_insert(name);
+        self.names.entry(hash).or_insert(name);
     }
 
     /// Add a known string to the name table if you already know the hash (to
     /// avoid computing it).
     pub fn add_name_with_hash(&self, name: impl Into<Cow<'a, str>>, hash: u32) {
-        self.names
-            .write()
-            .entry(hash)
-            .or_insert_with(|| name.into());
+        self.names.entry(hash).or_insert_with(|| name.into());
     }
 
     /// Add a known string to the name table.
     pub fn add_name_str<'s: 'a>(&'a self, name: &'s str) {
         let hash = hash_name(name);
-        self.names
-            .write()
-            .entry(hash)
-            .or_insert_with(|| name.into());
+        self.names.entry(hash).or_insert_with(|| name.into());
     }
 
     /// Tries to guess the name that is associated with the given hash and index
@@ -201,26 +201,28 @@ impl<'a> NameTable<'a> {
     /// indice-based guess was necessary.
     pub fn get_name(&self, hash: u32, index: usize, parent_hash: u32) -> Option<&Cow<'_, str>> {
         fn test_names<'a: 'b, 'b, 'c>(
-            entry: VacantEntry<'b, u32, Cow<'a, str>>,
+            entry: VacantEntry<'b, u32, Cow<'a, str>, rustc_hash::FxBuildHasher>,
             hash: u32,
             index: usize,
             prefix: &str,
             buf: &'c mut StringBuffer,
-        ) -> std::result::Result<&'b Cow<'a, str>, VacantEntry<'b, u32, Cow<'a, str>>> {
+        ) -> std::result::Result<
+            &'b Cow<'a, str>,
+            VacantEntry<'b, u32, Cow<'a, str>, rustc_hash::FxBuildHasher>,
+        > {
             for i in index..(index + 1) {
                 for guess_hash in ChildFormatIterator::new(prefix, i, buf) {
                     if guess_hash == hash {
-                        let name = entry.insert(buf.to_string().into());
-                        return Ok(free_cow!(name, 'a));
+                        let name = entry.insert_entry(buf.to_string().into());
+                        return Ok(free_cow!(name.get(), 'a));
                     }
                 }
             }
             Err(entry)
         }
 
-        let mut names = self.names.write();
-        let parent_name = names.get(&parent_hash).map(|c| free_cow!(c, 'a));
-        match names.entry(hash) {
+        let parent_name = self.names.get(&parent_hash).map(|c| free_cow!(c.get(), 'a));
+        match self.names.entry(hash) {
             Entry::Occupied(entry) => Some(free_cow!(entry.get(), 'a)),
             Entry::Vacant(entry) => {
                 let mut entry = entry;
@@ -260,8 +262,9 @@ impl<'a> NameTable<'a> {
                     for i in 0..(index + 2) {
                         format_numbered_name(format, i, &mut guess_buffer);
                         if hash_name(&guess_buffer) == hash {
-                            let name = entry.insert(Cow::Owned(guess_buffer.as_str().to_owned()));
-                            return Some(free_cow!(name, 'a));
+                            let name =
+                                entry.insert_entry(Cow::Owned(guess_buffer.as_str().to_owned()));
+                            return Some(free_cow!(name.get(), 'a));
                         }
                     }
                 }
@@ -271,12 +274,12 @@ impl<'a> NameTable<'a> {
     }
 }
 
-static DEFAULT_NAME_TABLE: Lazy<Arc<NameTable<'static>>> =
-    Lazy::new(|| Arc::new(NameTable::new(true)));
+static DEFAULT_NAME_TABLE: LazyLock<Arc<NameTable<'static>>> =
+    LazyLock::new(|| Arc::new(NameTable::new(true)));
 
 /// Returns the default instance of the name table, which is automatically
 /// populated with Breath of the Wild strings. It is initialised on first use
 /// and has interior mutability.
-pub fn get_default_name_table() -> &'static Lazy<Arc<NameTable<'static>>> {
+pub fn get_default_name_table() -> &'static LazyLock<Arc<NameTable<'static>>> {
     &DEFAULT_NAME_TABLE
 }

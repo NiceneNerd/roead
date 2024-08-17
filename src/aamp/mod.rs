@@ -1,7 +1,7 @@
 //! Port of the `oead::aamp` module.
 //!
 //! Only version 2, little endian and UTF-8 binary parameter archives are
-//! supported. All parameter types including buffers are supported.  
+//! supported. All parameter types including buffers are supported.
 //! The YAML output is compatible with the pure Python aamp library.
 //!
 //! The main type is the `ParameterIO`, which will usually be constructed
@@ -31,6 +31,7 @@
 //! [`ParameterListMap`]) can take either a name or a hash for key-based
 //! operations, and likewise can be indexed by the same. As usual, indexing into
 //! a non-existent key will panic.
+#[cfg(feature = "aamp-names")]
 mod names;
 mod parser;
 #[cfg(feature = "yaml")]
@@ -38,6 +39,7 @@ mod text;
 mod writer;
 use binrw::binrw;
 use indexmap::IndexMap;
+#[cfg(feature = "aamp-names")]
 pub use names::{get_default_name_table, NameTable};
 use num_traits::AsPrimitive;
 #[cfg(feature = "with-serde")]
@@ -1322,10 +1324,13 @@ impl AsRef<u32> for Name {
 
 impl std::fmt::Display for Name {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        #[cfg(feature = "aamp-names")]
         match names::get_default_name_table().get_name(self.0, 0, 0) {
             Some(name) => name.fmt(f),
             None => self.0.fmt(f),
         }
+        #[cfg(not(feature = "aamp-names"))]
+        self.0.fmt(f)
     }
 }
 
@@ -1539,7 +1544,7 @@ pub struct ParameterList {
     /// Map of child parameter objects.
     pub objects: ParameterObjectMap,
     /// Map of child parameter lists.
-    pub lists:   ParameterListMap,
+    pub lists: ParameterListMap,
 }
 
 impl ParameterListing for ParameterList {
@@ -1809,7 +1814,7 @@ fn macros() {
         data_type: "xml".into(),
         version: 10,
         param_root: ParameterList {
-            lists:   lists!(
+            lists: lists!(
                 "test1" => ParameterList::new()
             ),
             objects: objs!(

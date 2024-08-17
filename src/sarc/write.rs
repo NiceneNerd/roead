@@ -3,12 +3,12 @@ use std::{
     hash::Hash,
     io::{Cursor, Seek, SeekFrom},
     ops::Deref,
+    sync::LazyLock,
 };
 
 use binrw::{io::Write, BinReaderExt, BinWrite};
 use indexmap::IndexMap;
 use num_integer::Integer;
-use once_cell::sync::Lazy;
 use rustc_hash::{FxHashMap, FxHashSet};
 use serde::Deserialize;
 
@@ -37,7 +37,7 @@ impl BinWrite for Endian {
 }
 
 fn get_botw_factory_names() -> &'static FxHashSet<&'static str> {
-    static FACTOR_NAMES: Lazy<FxHashSet<&'static str>> = Lazy::new(|| {
+    static FACTOR_NAMES: LazyLock<FxHashSet<&'static str>> = LazyLock::new(|| {
         FACTORY_INFO
             .split('\n')
             .map(|line| unsafe { line.split('\t').next().unwrap_unchecked() })
@@ -67,7 +67,7 @@ fn align(pos: usize, alignment: usize) -> usize {
 }
 
 fn get_agl_env_alignment_requirements() -> &'static Vec<(String, usize)> {
-    static AGLENV_ALIGN: Lazy<Vec<(String, usize)>> = Lazy::new(|| {
+    static AGLENV_ALIGN: LazyLock<Vec<(String, usize)>> = LazyLock::new(|| {
         unsafe { serde_json::from_str::<Vec<AglEnvInfo>>(AGLENV_INFO).unwrap_unchecked() }
             .into_iter()
             .filter_map(|e| (e.align >= 0).then_some((e.align as usize, e)))

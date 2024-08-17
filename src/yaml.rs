@@ -1,8 +1,8 @@
 use core::str;
 
+use std::sync::LazyLock;
 use join_str::jstr;
 use num_traits::Zero;
-use once_cell::sync::Lazy;
 
 use crate::{Error, Result};
 
@@ -87,8 +87,8 @@ fn parse_float(value: &str) -> Result<f64> {
 
 pub(crate) fn write_float(value: f64) -> Result<parking_lot::MappedRwLockReadGuard<'static, str>> {
     use lexical_core::{FormattedSize, ToLexical};
-    static BUF: Lazy<parking_lot::RwLock<[u8; f64::FORMATTED_SIZE_DECIMAL + 1]>> =
-        Lazy::new(|| parking_lot::RwLock::new([0; f64::FORMATTED_SIZE_DECIMAL + 1]));
+    static BUF: LazyLock<parking_lot::RwLock<[u8; f64::FORMATTED_SIZE_DECIMAL + 1]>> =
+        LazyLock::new(|| parking_lot::RwLock::new([0; f64::FORMATTED_SIZE_DECIMAL + 1]));
     let mut buffer = BUF.write();
     let extra;
     let buf = if value.is_sign_negative() && value.is_zero() {

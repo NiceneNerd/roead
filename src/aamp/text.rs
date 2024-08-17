@@ -437,6 +437,8 @@ fn write_parameter_io(tree: &mut Tree<'_>, pio: &ParameterIO) -> Result<()> {
 
 #[cfg(test)]
 mod tests {
+    use rayon::prelude::*;
+
     use super::*;
 
     #[test]
@@ -535,22 +537,23 @@ mod tests {
 
     #[test]
     fn bin_text_roundtrip() {
-        for file in jwalk::WalkDir::new("test/aamp")
+        jwalk::WalkDir::new("test/aamp")
             .into_iter()
+            .par_bridge()
             .filter_map(|f| {
                 f.ok().and_then(|f| {
                     (f.file_type().is_file() && !f.file_name().to_str().unwrap().ends_with("yml"))
                         .then(|| f.path())
                 })
             })
-        {
-            println!("{}", file.file_name().unwrap().to_str().unwrap());
-            let data = std::fs::read(file).unwrap();
-            let pio = ParameterIO::from_binary(data).unwrap();
-            let text = pio.to_text();
-            // dbg!(&text);
-            let pio2 = ParameterIO::from_text(text).unwrap();
-            assert_eq!(pio, pio2);
-        }
+            .for_each(|file| {
+                println!("{}", file.file_name().unwrap().to_str().unwrap());
+                let data = std::fs::read(file).unwrap();
+                let pio = ParameterIO::from_binary(data).unwrap();
+                let text = pio.to_text();
+                // dbg!(&text);
+                let pio2 = ParameterIO::from_text(text).unwrap();
+                assert_eq!(pio, pio2);
+            });
     }
 }
