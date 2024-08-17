@@ -22,6 +22,8 @@ jobs:
         submodules: "recursive"
     - name: Install Rust toolchain
       uses: actions-rs/toolchain@v1
+      with:
+        toolchain: stable
     - name: install-cmake
       uses: Symbitic/install-cmake@v0.1.0
     - name: Setup Windows PATH
