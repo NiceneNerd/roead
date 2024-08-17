@@ -29,7 +29,7 @@
 //!     Error::TypeError(..)
 //! ));
 //! ```
-use binrw::{io::*, BinRead};
+use binrw::io::*;
 use parser::{ParseParam, Parser};
 
 use super::*;
@@ -481,10 +481,21 @@ impl<'a> ParameterObjectReader<'a> {
         }
     }
 
+    /// Attempts to get the value of a parameter with a given key which may be any of the four
+    /// parameter string types, returning as a [`&str`].
+    ///
+    /// Return [`None`] if the index is out of range or if any parsing errors occur. If you need
+    /// to catch the error information, use [`ParameterObjectReader::try_get_str`].
     pub fn get_str(&'a self, name: impl Into<Name>) -> Option<&'a str> {
         self.try_get_str(name).ok().flatten()
     }
 
+    /// Attempts to get the value of a parameter which may be any of the four parameter string
+    /// types, returning as a [`&str`].
+    ///
+    /// Returns [`Ok`]`(`[`None`]`)` if the parameter with the key does not exist. Otherwise, it
+    /// will return [`Ok`]`(`[`Some`]`::<T>)` if there was no error and the parameter exists, or
+    /// an error if there was a parsing error.
     pub fn try_get_str(&'a self, name: impl Into<Name>) -> Result<Option<&'a str>> {
         self._try_get_str(name.into())
     }
@@ -503,10 +514,21 @@ impl<'a> ParameterObjectReader<'a> {
         Ok(None)
     }
 
+    /// Attempts to get the value of the parameter at the given index which may be any of the four
+    /// parameter string types, returning as a [`&str`].
+    ///
+    /// Return [`None`] if the index is out of range or if any parsing errors occur. If you need
+    /// to catch the error information, use [`ParameterObjectReader::try_get_str_at`].
     pub fn get_str_at(&'a self, index: usize) -> Option<&'a str> {
         self.try_get_str_at(index).ok().flatten()
     }
 
+    /// Attempts to get the value of the parameter at the given index which may be any of the four
+    /// parameter string types, returning as a [`&str`].
+    ///
+    /// Returns [`Ok`]`(`[`None`]`)` if the parameter with the key does not exist. Otherwise, it
+    /// will return [`Ok`]`(`[`Some`]`::<T>)` if there was no error and the parameter exists, or
+    /// an error if there was a parsing error.
     pub fn try_get_str_at(&'a self, index: usize) -> Result<Option<&'a str>> {
         if index >= self.header.param_count as usize {
             return Ok(None);
@@ -535,6 +557,10 @@ impl<'a> ParameterObjectReader<'a> {
     }
 }
 
+/// Readonly parameter value.
+///
+/// Unlike [`Parameter`], there are no convenience methods implemented on this type, but you can
+/// still do nearly everything by matching.
 pub enum ParameterValue<'a> {
     /// Boolean.
     Bool(bool),

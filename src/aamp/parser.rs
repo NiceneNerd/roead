@@ -1,3 +1,5 @@
+#![allow(private_interfaces)]
+
 use core::cell::UnsafeCell;
 
 use binrw::{
@@ -32,7 +34,8 @@ impl ParameterIO {
     }
 }
 
-pub(crate) trait ParseParam<'a>: Sized {
+#[doc(hidden)]
+pub trait ParseParam<'a>: Sized {
     const VARIANT: Type;
 
     fn parse(parser: &'a Parser<Cursor<&'a [u8]>>, data_offset: u32) -> Result<Self>;
@@ -222,7 +225,7 @@ impl<'a> ParseParam<'a> for &'a [i32] {
     }
 }
 
-pub(super) struct Parser<R: Read + Seek> {
+pub(crate) struct Parser<R: Read + Seek> {
     reader: UnsafeCell<R>,
     pub(super) header: ResHeader,
     endian: binrw::Endian,
