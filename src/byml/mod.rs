@@ -895,12 +895,6 @@ impl PartialEq for Byml {
     }
 }
 
-impl PartialEq<Byml> for &Byml {
-    fn eq(&self, other: &Byml) -> bool {
-        self == other
-    }
-}
-
 impl Eq for &Byml {}
 
 impl std::hash::Hash for Byml {

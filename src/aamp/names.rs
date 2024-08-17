@@ -14,17 +14,35 @@ use super::*;
 static NAMES: &str = include_str!("../../data/botw_hashed_names.txt");
 static NUMBERED_NAMES: &str = include_str!("../../data/botw_numbered_names.txt");
 
+type StringBuffer = crate::types::FixedSafeString<256>;
+
+impl<const N: usize> Write for crate::types::FixedSafeString<N> {
+    fn write_str(&mut self, s: &str) -> std::fmt::Result {
+        match s
+            .len()
+            .min(N.saturating_sub(self.len).saturating_sub(s.len()))
+        {
+            0 => Ok(()),
+            len => {
+                self.data[self.len..self.len + len].copy_from_slice(s.as_bytes());
+                self.len += len;
+                Ok(())
+            }
+        }
+    }
+}
+
 /// Since there are basically no good runtime string formatting options in Rust,
 /// we'll just do this instead.
 struct ChildFormatIterator<'a, 'b> {
     string: &'a str,
     pos: usize,
     index: usize,
-    buf: &'b mut std::string::String,
+    buf: &'b mut StringBuffer,
 }
 
 impl<'a, 'b> ChildFormatIterator<'a, 'b> {
-    pub fn new(string: &'a str, pos: usize, buf: &'b mut std::string::String) -> Self {
+    pub fn new(string: &'a str, pos: usize, buf: &'b mut StringBuffer) -> Self {
         ChildFormatIterator {
             string,
             pos,
@@ -62,33 +80,60 @@ impl ExactSizeIterator for ChildFormatIterator<'_, '_> {
     }
 }
 
-#[inline(always)]
-fn format_number(format: &str, pos: usize, buf: &mut std::string::String) {
+fn format_numbered_name(name: &str, pos: usize, buf: &mut StringBuffer) {
     buf.clear();
-    match format {
-        "%d" | "%u" => write!(buf, "{}", pos),
-        "%02d" | "%02u" => write!(buf, "{:02}", pos),
-        "%03d" => write!(buf, "{:03}", pos),
-        "%04d" => write!(buf, "{:04}", pos),
-        _ => unsafe { std::hint::unreachable_unchecked() },
-    }
-    .expect("Format failure")
-}
 
-fn format_numbered_name(name: &str, pos: usize, buf: &mut std::string::String) {
-    for fmt in ["%d", "%02d", "%03d", "%04d", "%u", "%02u"] {
-        if name.contains(fmt) {
-            buf.clear();
-            let mut split = name.split(fmt);
-            format_number(fmt, pos, buf);
-            buf.insert_str(0, unsafe { split.next().unwrap_unchecked() });
-            if let Some(suf) = split.next() {
-                buf.push_str(suf);
-            }
-            return;
+    if name.contains("%d") {
+        let mut split = name.split("%d");
+        let prefix = unsafe { split.next().unwrap_unchecked() };
+        buf.insert_str(0, prefix);
+        write!(buf, "{}", pos).expect("Format failure");
+        if let Some(suffix) = split.next() {
+            buf.push_str(suffix);
         }
+    } else if name.contains("%02d") {
+        let mut split = name.split("%02d");
+        let prefix = unsafe { split.next().unwrap_unchecked() };
+        buf.insert_str(0, prefix);
+        write!(buf, "{:02}", pos).expect("Format failure");
+        if let Some(suffix) = split.next() {
+            buf.push_str(suffix);
+        }
+    } else if name.contains("%03d") {
+        let mut split = name.split("%03d");
+        let prefix = unsafe { split.next().unwrap_unchecked() };
+        buf.insert_str(0, prefix);
+        write!(buf, "{:03}", pos).expect("Format failure");
+        if let Some(suffix) = split.next() {
+            buf.push_str(suffix);
+        }
+    } else if name.contains("%04d") {
+        let mut split = name.split("%04d");
+        let prefix = unsafe { split.next().unwrap_unchecked() };
+        buf.insert_str(0, prefix);
+        write!(buf, "{:04}", pos).expect("Format failure");
+        if let Some(suffix) = split.next() {
+            buf.push_str(suffix);
+        }
+    } else if name.contains("%u") {
+        let mut split = name.split("%u");
+        let prefix = unsafe { split.next().unwrap_unchecked() };
+        buf.insert_str(0, prefix);
+        write!(buf, "{}", pos).expect("Format failure");
+        if let Some(suffix) = split.next() {
+            buf.push_str(suffix);
+        }
+    } else if name.contains("%02u") {
+        let mut split = name.split("%02u");
+        let prefix = unsafe { split.next().unwrap_unchecked() };
+        buf.insert_str(0, prefix);
+        write!(buf, "{:02}", pos).expect("Format failure");
+        if let Some(suffix) = split.next() {
+            buf.push_str(suffix);
+        }
+    } else {
+        unsafe { core::hint::unreachable_unchecked() }
     }
-    unsafe { core::hint::unreachable_unchecked() }
 }
 
 macro_rules! free_cow {
@@ -107,10 +152,9 @@ macro_rules! free_cow {
 ///
 /// When serializing to YAML, by default roead will use a table that contains
 /// strings from Breath of the Wild’s executable.
-#[derive(Debug, Default)]
+#[derive(Default)]
 pub struct NameTable<'a> {
     names: RwLock<FxHashMap<u32, Cow<'a, str>>>,
-    numbered_names: Vec<&'a str>,
 }
 
 impl<'a> NameTable<'a> {
@@ -119,7 +163,6 @@ impl<'a> NameTable<'a> {
         if botw_strings {
             Self {
                 names: RwLock::new(NAMES.lines().map(|n| (hash_name(n), n.into())).collect()),
-                numbered_names: NUMBERED_NAMES.lines().collect(),
             }
         } else {
             Default::default()
@@ -162,7 +205,7 @@ impl<'a> NameTable<'a> {
             hash: u32,
             index: usize,
             prefix: &str,
-            buf: &'c mut std::string::String,
+            buf: &'c mut StringBuffer,
         ) -> std::result::Result<&'b Cow<'a, str>, VacantEntry<'b, u32, Cow<'a, str>>> {
             for i in index..(index + 1) {
                 for guess_hash in ChildFormatIterator::new(prefix, i, buf) {
@@ -181,7 +224,7 @@ impl<'a> NameTable<'a> {
             Entry::Occupied(entry) => Some(free_cow!(entry.get(), 'a)),
             Entry::Vacant(entry) => {
                 let mut entry = entry;
-                let mut guess_buffer = std::string::String::with_capacity(256);
+                let mut guess_buffer = StringBuffer::default();
                 if let Some(parent_name) = parent_name
                 // Try to guess the name from the parent structure if possible.
                 {
@@ -213,11 +256,11 @@ impl<'a> NameTable<'a> {
                     }
                 }
                 // Last resort: test all numbered names.
-                for format in &self.numbered_names {
+                for format in NUMBERED_NAMES.lines() {
                     for i in 0..(index + 2) {
                         format_numbered_name(format, i, &mut guess_buffer);
                         if hash_name(&guess_buffer) == hash {
-                            let name = entry.insert(guess_buffer.to_string().into());
+                            let name = entry.insert(Cow::Owned(guess_buffer.as_str().to_owned()));
                             return Some(free_cow!(name, 'a));
                         }
                     }

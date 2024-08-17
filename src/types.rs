@@ -20,8 +20,8 @@ use serde::{Deserialize, Serialize};
 )]
 #[derive(Clone, Copy, PartialEq, Eq, Hash, PartialOrd)]
 pub struct FixedSafeString<const N: usize> {
-    data: [u8; N],
-    len:  usize,
+    pub(crate) data: [u8; N],
+    pub(crate) len:  usize,
 }
 
 impl<const N: usize> Default for FixedSafeString<N> {
@@ -43,6 +43,45 @@ impl<const N: usize> FixedSafeString<N> {
     /// Extracts a string slice from the owned string.
     pub fn as_str(&self) -> &str {
         self.as_ref()
+    }
+
+    pub fn clear(&mut self) {
+        self.len = 0;
+    }
+
+    pub fn push_str(&mut self, s: &str) {
+        let available_space = N.saturating_sub(self.len);
+        let copy_len = s.len().min(available_space);
+        if copy_len > 0 {
+            self.data[self.len..self.len + copy_len].copy_from_slice(&s.as_bytes()[..copy_len]);
+            self.len += copy_len;
+        }
+    }
+
+    pub fn insert_str(&mut self, index: usize, s: &str) {
+        if index > self.len {
+            return; // If index is out of bounds, do nothing
+        }
+
+        let insert_len = s.len();
+        let new_len = (self.len + insert_len).min(N);
+
+        // Determine how much space the inserted string can occupy
+        let copy_len = new_len.saturating_sub(index);
+
+        if copy_len > 0 {
+            // Shift the existing data to make room for the new string slice
+            let shift_len = (self.len - index).min(new_len - insert_len);
+            self.data
+                .copy_within(index..index + shift_len, index + insert_len);
+
+            // Insert the new string slice
+            self.data[index..index + copy_len.min(insert_len)]
+                .copy_from_slice(&s.as_bytes()[..copy_len.min(insert_len)]);
+
+            // Adjust the length of the string
+            self.len = new_len;
+        }
     }
 }
 
