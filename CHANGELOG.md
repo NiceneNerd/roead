@@ -5,9 +5,15 @@ All notable changes to roead will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [Unreleased]
+## [1.0.0] - 2024-08-17
 
-## Fixed
+** Changed
+
+- Drastically improved multithreaded AAMP->YAML performance
+- Updated a number of deps
+- Bumped MSRV to 1.80 for stable `LazyLock`
+
+** Fixed
 
 - Fixed issues parsing `Null` strings and quoted numeric keys in YAML for AAMP files
 - Fixed missing negative sign when emitting `-0.0` in YAML
