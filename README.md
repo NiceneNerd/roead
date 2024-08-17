@@ -34,7 +34,7 @@ For API documentation, see the docs for each module.
 ## Building from Source
 
 Most of roead is pure Rust and can compiled with any relatively recent release.
-The stable MSRV is 1.69. However, the yaz0 module provides FFI bindings to oead
+The stable MSRV is 1.80. However, the yaz0 module provides FFI bindings to oead
 code, so to use it the following additional requirements are necessary:
 
 - CMake 3.12+
