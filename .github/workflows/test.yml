@@ -22,8 +22,6 @@ jobs:
         submodules: "recursive"
     - name: Install Rust toolchain
       uses: actions-rs/toolchain@v1
-      with:
-        toolchain: nightly
     - name: install-cmake
       uses: Symbitic/install-cmake@v0.1.0
     - name: Setup Windows PATH
@@ -36,4 +34,4 @@ jobs:
         cmake .
         cmake --build .
     - name: Run tests
-      run: cargo +nightly test --all-features
+      run: cargo test --all-features
