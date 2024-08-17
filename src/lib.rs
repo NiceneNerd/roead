@@ -52,6 +52,7 @@
 //!
 //! This project is licensed under the GPLv3+ license. oead is licensed under
 //! the GPLv2+ license.
+#![cfg_attr(all(doc, CHANNEL_NIGHTLY), feature(doc_auto_cfg))]
 #![cfg_attr(not(test), deny(clippy::unwrap_used))]
 #[cfg(feature = "aamp")]
 pub mod aamp;

@@ -1020,7 +1020,7 @@ impl Byml {
 /// );
 /// ```
 ///
-/// Adapted from https://github.com/bluss/maplit/blob/master/src/lib.rs
+/// Adapted from <https://github.com/bluss/maplit/blob/master/src/lib.rs>
 #[macro_export]
 macro_rules! map {
     (@single $($x:tt)*) => (());

@@ -1,4 +1,7 @@
 use std::{env, path::Path};
+
+use rustc_version::{version_meta, Channel};
+
 #[cfg(feature = "yaz0")]
 fn build_zlib() {
     let target = env::var("TARGET").unwrap();
@@ -24,7 +27,7 @@ fn build_zlib() {
 }
 
 #[cfg(feature = "yaz0")]
-fn main() {
+fn build_yaz0() {
     build_zlib();
     let mut builder = cxx_build::bridge("src/yaz0.rs");
     builder
@@ -65,5 +68,16 @@ fn main() {
     );
 }
 
-#[cfg(not(feature = "yaz0"))]
-fn main() {}
+fn main() {
+    // Set cfg flags depending on release channel
+    let channel = match version_meta().unwrap().channel {
+        Channel::Stable => "CHANNEL_STABLE",
+        Channel::Beta => "CHANNEL_BETA",
+        Channel::Nightly => "CHANNEL_NIGHTLY",
+        Channel::Dev => "CHANNEL_DEV",
+    };
+    println!("cargo:rustc-cfg={}", channel);
+    println!("cargo::rustc-check-cfg=cfg({})", channel);
+    #[cfg(feature = "yaz0")]
+    build_yaz0();
+}

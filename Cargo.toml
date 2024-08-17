@@ -43,6 +43,7 @@ smartstring = "1"
 thiserror = "1"
 
 [build-dependencies]
+rustc_version = "0.4.0"
 cxx-build = { version = "1.0.71", optional = true }
 
 [dev-dependencies]
@@ -51,10 +52,13 @@ rayon = "1.10"
 
 [features]
 aamp = ["almost", "binrw", "indexmap", "num-traits"]
-aamp-names = ["aamp", "scc"]
+aamp-names = ["scc"]
 byml = ["binrw", "almost", "num-traits"]
 sarc = ["binrw", "num-integer", "serde", "serde_json", "indexmap"]
 yaz0 = ["cxx", "cxx-build"]
 yaml = ["ryml", "lexical", "lexical-core", "base64", "parking_lot", "aamp-names"]
 with-serde = ["serde", "smartstring/serde", "indexmap/serde"]
 default = ["aamp", "byml", "sarc", "yaz0"]
+
+[lints.rust]
+unexpected_cfgs = { level = "warn", check-cfg = ['cfg(CHANNEL_NIGHTLY)'] }
