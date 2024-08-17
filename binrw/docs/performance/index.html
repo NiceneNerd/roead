@@ -1,0 +1,53 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Tips for high performance parsing and serialisation."><title>binrw::docs::performance - Rust</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-46f98efaafac5295.ttf.woff2,FiraSans-Regular-018c141bf0843ffd.woff2,FiraSans-Medium-8f9a781e4970d388.woff2,SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2,SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2" crossorigin href="../../../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../../static.files/rustdoc-b25d77b18a16a9a4.css"><meta name="rustdoc-vars" data-root-path="../../../" data-static-root-path="../../../static.files/" data-current-crate="binrw" data-themes="" data-resource-suffix="" data-rustdoc-version="1.82.0-nightly (506052d49 2024-08-16)" data-channel="nightly" data-search-js="search-ef54e092fea9c776.js" data-settings-js="settings-4313503d2e1961c2.js" ><script src="../../../static.files/storage-118b08c4c78b968e.js"></script><script defer src="../sidebar-items.js"></script><script defer src="../../../static.files/main-cb0df477c2d67d00.js"></script><noscript><link rel="stylesheet" href="../../../static.files/noscript-3b12f09e550e0385.css"></noscript><link rel="alternate icon" type="image/png" href="../../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc mod"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle" title="show sidebar"></button></nav><nav class="sidebar"><div class="sidebar-crate"><h2><a href="../../../binrw/index.html">binrw</a><span class="version">0.14.0</span></h2></div><h2 class="location"><a href="#">Module performance</a></h2><div class="sidebar-elems"><h2><a href="../index.html">In binrw::<wbr>docs</a></h2></div></nav><div class="sidebar-resizer"></div><main><div class="width-limiter"><rustdoc-search></rustdoc-search><section id="main-content" class="content"><div class="main-heading"><h1>Module <a href="../../index.html">binrw</a>::<wbr><a href="../index.html">docs</a>::<wbr><a class="mod" href="#">performance</a><button id="copy-path" title="Copy item path to clipboard">Copy item path</button></h1><span class="out-of-band"><a class="src" href="../../../src/binrw/docs.rs.html#6">source</a> · <button id="toggle-all-docs" title="collapse all docs">[<span>&#x2212;</span>]</button></span></div><details class="toggle top-doc" open><summary class="hideme"><span>Expand description</span></summary><div class="docblock"><p>Tips for high performance parsing and serialisation.</p>
+<h2 id="use-buffered-inputs"><a class="doc-anchor" href="#use-buffered-inputs">§</a>Use buffered inputs</h2>
+<p>During parsing, binrw regularly <a href="../../io/trait.Seek.html#method.stream_position" title="method binrw::io::Seek::stream_position">queries the position</a>
+of the input stream to provide byte- and field-accurate error reporting. It will
+also rewind the stream when an enum variant fails to parse to try the next one,
+or when unrecoverable errors occur to leave the input stream in a consistent
+state.</p>
+<p>In-memory streams like <a href="../../io/struct.Cursor.html" title="struct binrw::io::Cursor"><code>std::io::Cursor</code></a> have no problem with this access
+pattern, but others like <a href="https://doc.rust-lang.org/nightly/std/fs/struct.File.html" title="struct std::fs::File"><code>std::fs::File</code></a> may be unexpectedly slow due to
+system call overhead. To improve performance of these stream types, simply wrap
+them with <a href="../../io/struct.BufReader.html" title="struct binrw::io::BufReader"><code>BufReader</code></a>.</p>
+<p><strong><a href="https://doc.rust-lang.org/nightly/std/io/buffered/bufreader/struct.BufReader.html" title="struct std::io::buffered::bufreader::BufReader"><code>std::io::BufReader</code></a> from the standard library invalidates its buffer every
+time a seek occurs so may make performance worse.</strong> Use only the binrw wrapper
+or some other alternative that does not invalidate its internal buffer on seek.</p>
+<h2 id="most-common-enum-variants-first"><a class="doc-anchor" href="#most-common-enum-variants-first">§</a>Most common enum variants first</h2>
+<p>binrw parsing starts at the top of an enum and works its way down the list of
+variants until one of them parses successfully. Putting the most common variants
+first will reduce the amount of work binrw needs to do to parse an enum.</p>
+<h2 id="discard-enum-errors"><a class="doc-anchor" href="#discard-enum-errors">§</a>Discard enum errors</h2>
+<p>When parsing an enum, binrw generates an <a href="../../enum.Error.html" title="enum binrw::Error"><code>Error</code></a> for each
+variant that fails parsing. By default, these errors are all collected in a
+<a href="https://doc.rust-lang.org/nightly/alloc/vec/struct.Vec.html" title="struct alloc::vec::Vec"><code>Vec</code></a> until one variant parses successfully (at which point they are
+discarded) or until parsing fails (at which point they are passed to the
+caller).</p>
+<p>The <a href="../attribute/index.html#enum-errors" title="mod binrw::docs::attribute"><code>#[br(return_unexpected_error)]</code></a>
+directive stops binrw from collecting any variant parsing errors, which
+eliminates extra work spent allocating and freeing memory for storing errors.
+The downside is that <a href="../../enum.Error.html#variant.NoVariantMatch" title="variant binrw::Error::NoVariantMatch">only the stream position</a>
+can be provided when an enum fails to parse because the errors were thrown away.</p>
+<h2 id="use-specific-types-for-faster-block-io"><a class="doc-anchor" href="#use-specific-types-for-faster-block-io">§</a>Use specific types for faster block I/O</h2>
+<p>To improve performance when reading or writing large blocks of data, binrw uses
+a fake specialisation technique to generate optimised I/O calls for certain
+types:</p>
+<div><table><thead><tr><th>Type</th><th>Read</th><th>Write</th></tr></thead><tbody>
+<tr><td><code>Vec&lt;u8&gt;</code></td><td>yes</td><td>yes</td></tr>
+<tr><td><code>Vec&lt;i8&gt;</code></td><td>yes</td><td>yes</td></tr>
+<tr><td><code>Vec&lt;u16&gt;</code></td><td>yes</td><td>no</td></tr>
+<tr><td><code>Vec&lt;i16&gt;</code></td><td>yes</td><td>no</td></tr>
+<tr><td><code>Vec&lt;u32&gt;</code></td><td>yes</td><td>no</td></tr>
+<tr><td><code>Vec&lt;i32&gt;</code></td><td>yes</td><td>no</td></tr>
+<tr><td><code>Vec&lt;u64&gt;</code></td><td>yes</td><td>no</td></tr>
+<tr><td><code>Vec&lt;i64&gt;</code></td><td>yes</td><td>no</td></tr>
+<tr><td><code>Vec&lt;u128&gt;</code></td><td>yes</td><td>no</td></tr>
+<tr><td><code>Vec&lt;i128&gt;</code></td><td>yes</td><td>no</td></tr>
+<tr><td><code>[u8; N]</code></td><td>no</td><td>yes</td></tr>
+<tr><td><code>Box&lt;[u8]&gt;</code></td><td>no</td><td>yes</td></tr>
+</tbody></table>
+</div><h2 id="avoid-random-access-patterns"><a class="doc-anchor" href="#avoid-random-access-patterns">§</a>Avoid random access patterns</h2>
+<p>Reading data non-sequentially may reduce the effectiveness of hardware
+prefetching and cause read buffers to be flushed prematurely and excessively.</p>
+<p>See the <a href="../../file_ptr/index.html" title="mod binrw::file_ptr"><code>file_ptr</code></a> documentation for details on how to
+improve performance by avoiding extra seeking when parsing offset tables.</p>
+</div></details></section></div></main></body></html>

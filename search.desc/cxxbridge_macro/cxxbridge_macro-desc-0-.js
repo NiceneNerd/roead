@@ -1,0 +1,1 @@
+searchState.loadedDescShard("cxxbridge_macro", 0, "<code>#[cxx::bridge] mod ffi { ... }</code>")

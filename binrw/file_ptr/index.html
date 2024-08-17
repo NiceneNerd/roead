@@ -1,0 +1,93 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Type definitions and helpers for handling indirection within a file."><title>binrw::file_ptr - Rust</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-46f98efaafac5295.ttf.woff2,FiraSans-Regular-018c141bf0843ffd.woff2,FiraSans-Medium-8f9a781e4970d388.woff2,SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2,SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2" crossorigin href="../../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../static.files/rustdoc-b25d77b18a16a9a4.css"><meta name="rustdoc-vars" data-root-path="../../" data-static-root-path="../../static.files/" data-current-crate="binrw" data-themes="" data-resource-suffix="" data-rustdoc-version="1.82.0-nightly (506052d49 2024-08-16)" data-channel="nightly" data-search-js="search-ef54e092fea9c776.js" data-settings-js="settings-4313503d2e1961c2.js" ><script src="../../static.files/storage-118b08c4c78b968e.js"></script><script defer src="../sidebar-items.js"></script><script defer src="../../static.files/main-cb0df477c2d67d00.js"></script><noscript><link rel="stylesheet" href="../../static.files/noscript-3b12f09e550e0385.css"></noscript><link rel="alternate icon" type="image/png" href="../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc mod"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle" title="show sidebar"></button></nav><nav class="sidebar"><div class="sidebar-crate"><h2><a href="../../binrw/index.html">binrw</a><span class="version">0.14.0</span></h2></div><h2 class="location"><a href="#">Module file_<wbr>ptr</a></h2><div class="sidebar-elems"><section><ul class="block"><li><a href="#structs">Structs</a></li><li><a href="#traits">Traits</a></li><li><a href="#functions">Functions</a></li><li><a href="#types">Type Aliases</a></li></ul></section><h2><a href="../index.html">In crate binrw</a></h2></div></nav><div class="sidebar-resizer"></div><main><div class="width-limiter"><rustdoc-search></rustdoc-search><section id="main-content" class="content"><div class="main-heading"><h1>Module <a href="../index.html">binrw</a>::<wbr><a class="mod" href="#">file_ptr</a><button id="copy-path" title="Copy item path to clipboard">Copy item path</button></h1><span class="out-of-band"><a class="src" href="../../src/binrw/file_ptr.rs.html#1-609">source</a> · <button id="toggle-all-docs" title="collapse all docs">[<span>&#x2212;</span>]</button></span></div><details class="toggle top-doc" open><summary class="hideme"><span>Expand description</span></summary><div class="docblock"><p>Type definitions and helpers for handling indirection within a file.</p>
+<h2 id="best-practices"><a class="doc-anchor" href="#best-practices">§</a>Best practices</h2>
+<p>Indirections that are not collections (e.g. a single offset to a global file
+header) can use <code>FilePtr</code> to immediately read the offset and then parse the
+pointed-to value. However, using <code>FilePtr</code> inside a collection is
+inefficient because it seeks to and reads each pointed-to value immediately
+after the offset is read. In these cases, it is faster to read the offset
+table into a collection (e.g. <code>Vec&lt;u32&gt;</code>) and then either pass it to
+<a href="fn.parse_from_iter.html" title="fn binrw::file_ptr::parse_from_iter"><code>parse_from_iter</code></a> or write a function that is called to lazily load values
+as needed.</p>
+<h3 id="using-parse_from_iter-to-read-an-offset-table"><a class="doc-anchor" href="#using-parse_from_iter-to-read-an-offset-table">§</a>Using <code>parse_from_iter</code> to read an offset table</h3><h4 id="with-relative-offsets"><a class="doc-anchor" href="#with-relative-offsets">§</a>With relative offsets</h4>
+<p>In this example, the offsets in the offset table start counting from the
+beginning of the values section, and are in a random order.</p>
+<p>Since the values section exists immediately after the offset table, no
+seeking is required before reading the values.</p>
+<p>Since the offsets are in a random order, the position of the stream must be
+returned to a known state using <code>restore_position</code> on the values field.
+Then, <code>seek_before</code> is used on the next field to skip past the values data
+and continue reading the rest of the object.</p>
+
+<div class="example-wrap"><pre class="rust rust-example-rendered"><code><span class="kw">use </span>binrw::file_ptr::parse_from_iter;
+
+<span class="attr">#[derive(BinRead)]
+#[br(big)]
+</span><span class="kw">struct </span>Object {
+    count: u16,
+    <span class="attr">#[br(args { count: count.into() })]
+    </span>offsets: Vec&lt;u16&gt;,
+    <span class="attr">#[br(parse_with = parse_from_iter(offsets.iter().copied()), restore_position)]
+    </span>values: Vec&lt;u8&gt;,
+    <span class="attr">#[br(seek_before(SeekFrom::Current(count.into())))]
+    </span>extra: u16,
+}
+</code></pre></div>
+<h4 id="with-absolute-offsets"><a class="doc-anchor" href="#with-absolute-offsets">§</a>With absolute offsets</h4>
+<p>In this example, the offsets in the offset table start from the beginning of
+the file, and are in sequential order.</p>
+<p>Since the offsets start from the beginning of the file, it is necessary to
+use <code>seek_before</code> to reposition the stream to the beginning of the file
+before reading the values.</p>
+<p>Since the offsets are in order, no seeking is required after the values are
+read, since the stream will already be pointed at the end of the values
+section.</p>
+
+<div class="example-wrap"><pre class="rust rust-example-rendered"><code><span class="kw">use </span>binrw::file_ptr::parse_from_iter;
+
+<span class="attr">#[derive(BinRead)]
+#[br(big)]
+</span><span class="kw">struct </span>Object {
+    count: u16,
+    <span class="attr">#[br(args { count: count.into() })]
+    </span>offsets: Vec&lt;u16&gt;,
+    <span class="attr">#[br(
+        parse_with = parse_from_iter(offsets.iter().copied()),
+        seek_before(SeekFrom::Start(<span class="number">0</span>))
+    )]
+    </span>values: Vec&lt;u8&gt;,
+    extra: u16,
+}
+</code></pre></div>
+<h3 id="using-a-function-to-lazily-load-values"><a class="doc-anchor" href="#using-a-function-to-lazily-load-values">§</a>Using a function to lazily load values</h3>
+<p>In this example, only the offset table is parsed. Values pointed to by the
+offset table are loaded on demand by calling <code>Object::get</code> as needed at
+runtime.</p>
+
+<div class="example-wrap"><pre class="rust rust-example-rendered"><code>
+<span class="attr">#[derive(BinRead)]
+#[br(big)]
+</span><span class="kw">struct </span>Item(u8);
+
+<span class="attr">#[derive(BinRead)]
+#[br(big, stream = s)]
+</span><span class="kw">struct </span>Object {
+    count: u16,
+    <span class="attr">#[br(args { count: count.into() })]
+    </span>offsets: Vec&lt;u16&gt;,
+    <span class="attr">#[br(try_calc = s.stream_position())]
+    </span>data_offset: u64,
+}
+
+<span class="kw">impl </span>Object {
+    <span class="kw">pub fn </span>get&lt;R: Read + Seek&gt;(<span class="kw-2">&amp;</span><span class="self">self</span>, source: <span class="kw-2">&amp;mut </span>R, index: usize) -&gt; <span class="prelude-ty">Option</span>&lt;BinResult&lt;Item&gt;&gt; {
+        <span class="self">self</span>.offsets.get(index).map(|offset| {
+            <span class="kw">let </span>offset = <span class="self">self</span>.data_offset + u64::from(<span class="kw-2">*</span>offset);
+            source.seek(SeekFrom::Start(offset))<span class="question-mark">?</span>;
+            Item::read(source)
+        })
+    }
+}
+</code></pre></div>
+</div></details><h2 id="structs" class="section-header">Structs<a href="#structs" class="anchor">§</a></h2><ul class="item-table"><li><div class="item-name"><a class="struct" href="struct.FilePtr.html" title="struct binrw::file_ptr::FilePtr">FilePtr</a></div><div class="desc docblock-short">A wrapper type which represents a layer of indirection within a file.</div></li><li><div class="item-name"><a class="struct" href="struct.FilePtrArgs.html" title="struct binrw::file_ptr::FilePtrArgs">File<wbr>PtrArgs</a></div><div class="desc docblock-short">Named arguments for the <a href="../trait.BinRead.html#tymethod.read_options" title="associated function binrw::BinRead::read_options"><code>BinRead::read_options()</code></a> implementation of <a href="../struct.FilePtr.html" title="struct binrw::FilePtr"><code>FilePtr</code></a>.</div></li><li><div class="item-name"><a class="struct" href="struct.FilePtrArgsBuilder.html" title="struct binrw::file_ptr::FilePtrArgsBuilder">File<wbr>PtrArgs<wbr>Builder</a></div><div class="desc docblock-short">A builder for <a href="struct.FilePtrArgs.html" title="struct binrw::file_ptr::FilePtrArgs"><code>FilePtrArgs</code></a> objects. Compatible with <a href="../macro.args.html" title="macro binrw::args"><code>binrw::args!</code></a>.</div></li></ul><h2 id="traits" class="section-header">Traits<a href="#traits" class="anchor">§</a></h2><ul class="item-table"><li><div class="item-name"><a class="trait" href="trait.IntoSeekFrom.html" title="trait binrw::file_ptr::IntoSeekFrom">Into<wbr>Seek<wbr>From</a></div><div class="desc docblock-short">A trait to convert from an integer into <a href="../io/enum.SeekFrom.html#variant.Current" title="variant binrw::io::SeekFrom::Current"><code>SeekFrom::Current</code></a>.</div></li></ul><h2 id="functions" class="section-header">Functions<a href="#functions" class="anchor">§</a></h2><ul class="item-table"><li><div class="item-name"><a class="fn" href="fn.parse_from_iter.html" title="fn binrw::file_ptr::parse_from_iter">parse_<wbr>from_<wbr>iter</a></div><div class="desc docblock-short">Creates a parser that reads a collection of values from an iterator of
+file offsets using the <a href="../trait.BinRead.html" title="trait binrw::BinRead"><code>BinRead</code></a> implementation of <code>Value</code>.</div></li><li><div class="item-name"><a class="fn" href="fn.parse_from_iter_with.html" title="fn binrw::file_ptr::parse_from_iter_with">parse_<wbr>from_<wbr>iter_<wbr>with</a></div><div class="desc docblock-short">Creates a parser that reads a collection of values from an iterator of
+file offsets using the given <code>parser</code> function.</div></li></ul><h2 id="types" class="section-header">Type Aliases<a href="#types" class="anchor">§</a></h2><ul class="item-table"><li><div class="item-name"><a class="type" href="type.FilePtr8.html" title="type binrw::file_ptr::FilePtr8">File<wbr>Ptr8</a></div><div class="desc docblock-short">A type alias for <a href="../struct.FilePtr.html" title="struct binrw::FilePtr"><code>FilePtr</code></a> with 8-bit offsets.</div></li><li><div class="item-name"><a class="type" href="type.FilePtr16.html" title="type binrw::file_ptr::FilePtr16">File<wbr>Ptr16</a></div><div class="desc docblock-short">A type alias for <a href="../struct.FilePtr.html" title="struct binrw::FilePtr"><code>FilePtr</code></a> with 16-bit offsets.</div></li><li><div class="item-name"><a class="type" href="type.FilePtr32.html" title="type binrw::file_ptr::FilePtr32">File<wbr>Ptr32</a></div><div class="desc docblock-short">A type alias for <a href="../struct.FilePtr.html" title="struct binrw::FilePtr"><code>FilePtr</code></a> with 32-bit offsets.</div></li><li><div class="item-name"><a class="type" href="type.FilePtr64.html" title="type binrw::file_ptr::FilePtr64">File<wbr>Ptr64</a></div><div class="desc docblock-short">A type alias for <a href="../struct.FilePtr.html" title="struct binrw::FilePtr"><code>FilePtr</code></a> with 64-bit offsets.</div></li><li><div class="item-name"><a class="type" href="type.FilePtr128.html" title="type binrw::file_ptr::FilePtr128">File<wbr>Ptr128</a></div><div class="desc docblock-short">A type alias for <a href="../struct.FilePtr.html" title="struct binrw::FilePtr"><code>FilePtr</code></a> with 128-bit offsets.</div></li><li><div class="item-name"><a class="type" href="type.NonZeroFilePtr8.html" title="type binrw::file_ptr::NonZeroFilePtr8">NonZero<wbr>File<wbr>Ptr8</a></div><div class="desc docblock-short">A type alias for <a href="../struct.FilePtr.html" title="struct binrw::FilePtr"><code>FilePtr</code></a> with non-zero 8-bit offsets.</div></li><li><div class="item-name"><a class="type" href="type.NonZeroFilePtr16.html" title="type binrw::file_ptr::NonZeroFilePtr16">NonZero<wbr>File<wbr>Ptr16</a></div><div class="desc docblock-short">A type alias for <a href="../struct.FilePtr.html" title="struct binrw::FilePtr"><code>FilePtr</code></a> with non-zero 16-bit offsets.</div></li><li><div class="item-name"><a class="type" href="type.NonZeroFilePtr32.html" title="type binrw::file_ptr::NonZeroFilePtr32">NonZero<wbr>File<wbr>Ptr32</a></div><div class="desc docblock-short">A type alias for <a href="../struct.FilePtr.html" title="struct binrw::FilePtr"><code>FilePtr</code></a> with non-zero 32-bit offsets.</div></li><li><div class="item-name"><a class="type" href="type.NonZeroFilePtr64.html" title="type binrw::file_ptr::NonZeroFilePtr64">NonZero<wbr>File<wbr>Ptr64</a></div><div class="desc docblock-short">A type alias for <a href="../struct.FilePtr.html" title="struct binrw::FilePtr"><code>FilePtr</code></a> with non-zero 64-bit offsets.</div></li><li><div class="item-name"><a class="type" href="type.NonZeroFilePtr128.html" title="type binrw::file_ptr::NonZeroFilePtr128">NonZero<wbr>File<wbr>Ptr128</a></div><div class="desc docblock-short">A type alias for <a href="../struct.FilePtr.html" title="struct binrw::FilePtr"><code>FilePtr</code></a> with non-zero 128-bit offsets.</div></li></ul></section></div></main></body></html>

@@ -1,0 +1,154 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="binrw helps you write maintainable &#38; easy-to-read declarative binary data readers and writers using ✨macro magic✨."><title>binrw - Rust</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-46f98efaafac5295.ttf.woff2,FiraSans-Regular-018c141bf0843ffd.woff2,FiraSans-Medium-8f9a781e4970d388.woff2,SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2,SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2" crossorigin href="../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../static.files/rustdoc-b25d77b18a16a9a4.css"><meta name="rustdoc-vars" data-root-path="../" data-static-root-path="../static.files/" data-current-crate="binrw" data-themes="" data-resource-suffix="" data-rustdoc-version="1.82.0-nightly (506052d49 2024-08-16)" data-channel="nightly" data-search-js="search-ef54e092fea9c776.js" data-settings-js="settings-4313503d2e1961c2.js" ><script src="../static.files/storage-118b08c4c78b968e.js"></script><script defer src="../crates.js"></script><script defer src="../static.files/main-cb0df477c2d67d00.js"></script><noscript><link rel="stylesheet" href="../static.files/noscript-3b12f09e550e0385.css"></noscript><link rel="alternate icon" type="image/png" href="../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc mod crate"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle" title="show sidebar"></button></nav><nav class="sidebar"><div class="sidebar-crate"><h2><a href="../binrw/index.html">binrw</a><span class="version">0.14.0</span></h2></div><div class="sidebar-elems"><ul class="block"><li><a id="all-types" href="all.html">All Items</a></li></ul><section><ul class="block"><li><a href="#modules">Modules</a></li><li><a href="#macros">Macros</a></li><li><a href="#structs">Structs</a></li><li><a href="#enums">Enums</a></li><li><a href="#traits">Traits</a></li><li><a href="#types">Type Aliases</a></li><li><a href="#attributes">Attribute Macros</a></li><li><a href="#derives">Derive Macros</a></li></ul></section></div></nav><div class="sidebar-resizer"></div><main><div class="width-limiter"><rustdoc-search></rustdoc-search><section id="main-content" class="content"><div class="main-heading"><h1>Crate <a class="mod" href="#">binrw</a><button id="copy-path" title="Copy item path to clipboard">Copy item path</button></h1><span class="out-of-band"><a class="src" href="../src/binrw/lib.rs.html#1-338">source</a> · <button id="toggle-all-docs" title="collapse all docs">[<span>&#x2212;</span>]</button></span></div><details class="toggle top-doc" open><summary class="hideme"><span>Expand description</span></summary><div class="docblock"><style>
+.intro { display: flex; flex-direction: column-reverse; }
+.ql { display: table; border-bottom: thin solid var(--color-border, #ddd); margin-bottom: .75em; padding-bottom: .75em; }
+.ql_h.ql_h.ql_h { border: initial; font: inherit; font-size: 1em; font-weight: bold; padding: 0 .75em 0 0; white-space: nowrap; width: 0; }
+.ql > * { display: table-row; }
+.ql > *     > * { display: table-cell; }
+.ql > * + * > *,
+.ql > * + * > .ql_h.ql_h { padding-top: .25em; }
+.ql p { display: inline; margin: 0 .75em 0 0; }
+.ql p:last-child { margin-right: 0; }
+.ql code { white-space: nowrap; }
+</style>
+<div class="intro">
+<p>binrw helps you write maintainable &amp; easy-to-read declarative binary data
+readers and writers using ✨macro magic✨.</p>
+<div class="ql">
+<nav>
+<h2 class="ql_h">Quick links</h2>
+<div>
+<p><a href="docs/attribute/index.html" title="mod binrw::docs::attribute"><code>#[br]</code>/<code>#[bw]</code>/<code>#[brw]</code></a></p>
+<p><a href="trait.BinReaderExt.html" title="trait binrw::BinReaderExt"><code>BinReaderExt</code></a></p>
+<p><a href="trait.BinWriterExt.html" title="trait binrw::BinWriterExt"><code>BinWriterExt</code></a></p>
+<p><a href="helpers/index.html" title="mod binrw::helpers"><code>helpers</code></a></p>
+</div>
+</nav>
+<nav>
+<h2 class="ql_h">Need help?</h2>
+<div>
+<p><a href="https://github.com/jam1garner/binrw/discussions/categories/q-a">GitHub</a></p>
+<p><a href="https://discord.gg/ABy4Qh549j">Discord</a></p>
+<p><a href="https://matrix.to/#/%23binrw:matrix.org">Matrix</a></p>
+<p><a href="docs/index.html" title="mod binrw::docs">More documentation</a></p>
+</div>
+</nav>
+</div>
+</div>
+<p>Adding <a href="attr.binrw.html" title="attr binrw::binrw"><code>#[binrw]</code></a> (or <code>#[derive(BinRead, BinWrite)]</code>) to a
+struct or enum generates a parser that can read that type from raw data and a
+serialiser that can write it back:</p>
+
+<div class="example-wrap"><pre class="rust rust-example-rendered"><code><span class="kw">use </span>binrw::{
+    binrw,    <span class="comment">// #[binrw] attribute
+    </span>BinRead,  <span class="comment">// trait for reading
+    </span>BinWrite, <span class="comment">// trait for writing
+</span>};
+
+<span class="attr">#[binrw]
+#[brw(little)]
+</span><span class="kw">struct </span>Point(i16, i16);
+
+<span class="comment">// Read a point from bytes
+</span><span class="kw">let </span>point = Point::read(<span class="kw-2">&amp;mut </span>Cursor::new(<span class="string">b"\x80\x02\xe0\x01"</span>)).unwrap();
+<span class="macro">assert_eq!</span>(point, Point(<span class="number">640</span>, <span class="number">480</span>));
+
+<span class="comment">// Write the point back to bytes
+</span><span class="kw">let </span><span class="kw-2">mut </span>writer = Cursor::new(Vec::new());
+point.write(<span class="kw-2">&amp;mut </span>writer).unwrap();
+<span class="macro">assert_eq!</span>(writer.into_inner(), <span class="string">b"\x80\x02\xe0\x01"</span>);</code></pre></div>
+<p>binrw types are composable and nestable, so everything just works as expected
+without any special logic or glue code:</p>
+
+<div class="example-wrap"><pre class="rust rust-example-rendered"><code><span class="attr">#[derive(BinRead)]
+#[br(big, magic = <span class="string">b"SHAP"</span>)]
+</span><span class="kw">enum </span>Shape {
+    <span class="attr">#[br(magic(<span class="number">0u8</span>))] </span>Rect {
+        left: i16, top: i16, right: i16, bottom: i16
+    },
+    <span class="attr">#[br(magic(<span class="number">1u8</span>))] </span>Oval { origin: Point, rx: u8, ry: u8 }
+}
+
+<span class="kw">let </span>oval = Shape::read(<span class="kw-2">&amp;mut </span>Cursor::new(<span class="string">b"SHAP\x01\x80\x02\xe0\x01\x2a\x15"</span>)).unwrap();
+<span class="macro">assert_eq!</span>(oval, Shape::Oval { origin: Point(<span class="number">640</span>, <span class="number">480</span>), rx: <span class="number">42</span>, ry: <span class="number">21 </span>});</code></pre></div>
+<p>Types that can’t implement binrw traits directly (e.g. types from third party
+crates) can also be read and written using
+<a href="docs/attribute/index.html#custom-parserswriters" title="mod binrw::docs::attribute">free parser functions</a> or by
+<a href="docs/attribute/index.html#map" title="mod binrw::docs::attribute">mapping values</a>.</p>
+<p>Unlike “zero-copy” libraries, the in-memory representation of binrw structs
+doesn’t need to match the raw data. This can allow for better memory
+performance, especially on architectures where unaligned memory access is
+slow. Also, because data is never <a href="https://doc.rust-lang.org/nightly/core/intrinsics/fn.transmute.html" title="fn core::intrinsics::transmute">transmuted</a>, there
+is no risk of undefined behaviour.</p>
+<h2 id="input-and-output"><a class="doc-anchor" href="#input-and-output">§</a>Input and output</h2>
+<p>binrw reads data from any object that implements <a href="io/trait.Read.html" title="trait binrw::io::Read"><code>io::Read</code></a> + <a href="io/trait.Seek.html" title="trait binrw::io::Seek"><code>io::Seek</code></a>,
+and writes data to any object that implements <a href="io/trait.Write.html" title="trait binrw::io::Write"><code>io::Write</code></a> + <a href="io/trait.Seek.html" title="trait binrw::io::Seek"><code>io::Seek</code></a>.
+(Unseekable streams are also supported, but require a <a href="io/struct.NoSeek.html" title="struct binrw::io::NoSeek">wrapper</a>.)
+This means that data can come from memory, network, disk, or any other streaming
+source. It also means that low-level data operations like
+<a href="io/struct.BufReader.html" title="struct binrw::io::BufReader">buffering</a> and compression are efficient and easy to
+implement.</p>
+<p>binrw also includes extension traits for conveniently <a href="trait.BinReaderExt.html" title="trait binrw::BinReaderExt">reading</a>
+and <a href="trait.BinWriterExt.html" title="trait binrw::BinWriterExt">writing</a> directly on the stream objects:</p>
+
+<div class="example-wrap"><pre class="rust rust-example-rendered"><code><span class="kw">use </span>binrw::{BinReaderExt, BinWriterExt};
+
+<span class="kw">let </span><span class="kw-2">mut </span>stream = Cursor::new(<span class="string">b"\x00\x0a"</span>.to_vec());
+<span class="kw">let </span>val: u16 = stream.read_be().unwrap();
+<span class="macro">assert_eq!</span>(val, <span class="number">0xa</span>);
+
+<span class="kw">let </span>val = val + <span class="number">0x10</span>;
+stream.write_be(<span class="kw-2">&amp;</span>val).unwrap();
+<span class="macro">assert_eq!</span>(stream.into_inner(), <span class="string">b"\x00\x0a\x00\x1a"</span>);</code></pre></div>
+<h2 id="directives"><a class="doc-anchor" href="#directives">§</a>Directives</h2>
+<p>Handling things like magic numbers, byte ordering, and padding &amp; alignment
+is typical when working with binary data, so binrw includes a variety of
+<a href="docs/attribute/index.html" title="mod binrw::docs::attribute">built-in directives</a> for these common cases that can be applied
+using the <code>#[br]</code>, <code>#[bw]</code>, and <code>#[brw]</code> attributes:</p>
+
+<div class="example-wrap"><pre class="rust rust-example-rendered"><code><span class="attr">#[binrw]
+#[brw(big, magic = <span class="string">b"DOG"</span>, assert(name.len() != <span class="number">0</span>))]
+</span><span class="kw">struct </span>Dog {
+    <span class="attr">#[bw(try_calc(u8::try_from(bone_piles.len())))]
+    </span>bone_pile_count: u8,
+
+    <span class="attr">#[br(count = bone_pile_count)]
+    </span>bone_piles: Vec&lt;u16&gt;,
+
+    <span class="attr">#[br(align_before = <span class="number">0xA</span>)]
+    </span>name: NullString
+}
+
+<span class="kw">let </span><span class="kw-2">mut </span>data = Cursor::new(<span class="string">b"DOG\x02\x00\x01\x00\x12\0\0Rudy\0"</span>);
+<span class="kw">let </span>dog = Dog::read(<span class="kw-2">&amp;mut </span>data).unwrap();
+<span class="macro">assert_eq!</span>(dog.bone_piles, <span class="kw-2">&amp;</span>[<span class="number">0x1</span>, <span class="number">0x12</span>]);
+<span class="macro">assert_eq!</span>(dog.name.to_string(), <span class="string">"Rudy"</span>)</code></pre></div>
+<p>Directives can also reference earlier fields by name. For tuple types,
+earlier fields are addressable by <code>self_N</code>, where <code>N</code> is the index of the
+field.</p>
+<p>See the <a href="docs/attribute/index.html" title="mod binrw::docs::attribute">attribute documentation</a> for the full list of
+available directives.</p>
+<h2 id="built-in-implementations"><a class="doc-anchor" href="#built-in-implementations">§</a>Built-in implementations</h2>
+<p>Implementations for all primitive data types, arrays, tuples, and standard
+Rust types like <a href="https://doc.rust-lang.org/nightly/alloc/vec/struct.Vec.html" title="struct alloc::vec::Vec"><code>Vec</code></a> are included, along with parsers for other
+frequently used binary data patterns like
+<a href="struct.NullString.html" title="struct binrw::NullString">null-terminated strings</a> and
+<a href="struct.FilePtr.html" title="struct binrw::FilePtr">indirect addressing using offsets</a>. Convenient access into
+bitfields is possible using crates like
+<a href="docs/attribute/index.html#using-map-on-a-struct-to-create-a-bit-field" title="mod binrw::docs::attribute">modular-bitfield</a>.</p>
+<p>See the <a href="trait.BinRead.html#foreign-impls" title="trait binrw::BinRead"><code>BinRead</code></a> and
+<a href="trait.BinWrite.html#foreign-impls" title="trait binrw::BinWrite"><code>BinWrite</code></a> traits for the full list of built-in
+implementations.</p>
+<h2 id="no_std-support"><a class="doc-anchor" href="#no_std-support">§</a><code>no_std</code> support</h2>
+<p>binrw supports <code>no_std</code> and includes a compatible subset of <a href="io/index.html" title="mod binrw::io"><code>io</code></a>
+functionality. The <a href="https://doc.rust-lang.org/nightly/alloc/index.html" title="mod alloc"><code>alloc</code></a> crate is required.</p>
+</div></details><h2 id="modules" class="section-header">Modules<a href="#modules" class="anchor">§</a></h2><ul class="item-table"><li><div class="item-name"><a class="mod" href="docs/index.html" title="mod binrw::docs">docs</a></div><div class="desc docblock-short">Additional long-form documentation and reference material.</div></li><li><div class="item-name"><a class="mod" href="endian/index.html" title="mod binrw::endian">endian</a></div><div class="desc docblock-short">Type definitions for byte order handling.</div></li><li><div class="item-name"><a class="mod" href="error/index.html" title="mod binrw::error">error</a></div><div class="desc docblock-short">Functions and type definitions for handling errors.</div></li><li><div class="item-name"><a class="mod" href="file_ptr/index.html" title="mod binrw::file_ptr">file_<wbr>ptr</a></div><div class="desc docblock-short">Type definitions and helpers for handling indirection within a file.</div></li><li><div class="item-name"><a class="mod" href="helpers/index.html" title="mod binrw::helpers">helpers</a></div><div class="desc docblock-short">Helper functions for reading and writing data.</div></li><li><div class="item-name"><a class="mod" href="io/index.html" title="mod binrw::io">io</a></div><div class="desc docblock-short">Traits, helpers, and type definitions for core I/O functionality.</div></li><li><div class="item-name"><a class="mod" href="meta/index.html" title="mod binrw::meta">meta</a></div><div class="desc docblock-short">Traits that expose information about the way types are parsed or serialised.</div></li><li><div class="item-name"><a class="mod" href="prelude/index.html" title="mod binrw::prelude">prelude</a></div><div class="desc docblock-short">The binrw prelude.</div></li><li><div class="item-name"><a class="mod" href="punctuated/index.html" title="mod binrw::punctuated">punctuated</a></div><div class="desc docblock-short">Type definitions for wrappers which parse interleaved data.</div></li></ul><h2 id="macros" class="section-header">Macros<a href="#macros" class="anchor">§</a></h2><ul class="item-table"><li><div class="item-name"><a class="macro" href="macro.args.html" title="macro binrw::args">args</a></div><div class="desc docblock-short">A convenience macro for constructing
+<a href="docs/attribute/index.html#named-arguments" title="mod binrw::docs::attribute">named arguments</a>.</div></li></ul><h2 id="structs" class="section-header">Structs<a href="#structs" class="anchor">§</a></h2><ul class="item-table"><li><div class="item-name"><a class="struct" href="struct.FilePtr.html" title="struct binrw::FilePtr">FilePtr</a></div><div class="desc docblock-short">A wrapper type which represents a layer of indirection within a file.</div></li><li><div class="item-name"><a class="struct" href="struct.NullString.html" title="struct binrw::NullString">Null<wbr>String</a></div><div class="desc docblock-short">A null-terminated 8-bit string.</div></li><li><div class="item-name"><a class="struct" href="struct.NullWideString.html" title="struct binrw::NullWideString">Null<wbr>Wide<wbr>String</a></div><div class="desc docblock-short">A null-terminated 16-bit string.</div></li><li><div class="item-name"><a class="struct" href="struct.PosValue.html" title="struct binrw::PosValue">PosValue</a></div><div class="desc docblock-short">A wrapper that stores a value’s position alongside the value.</div></li><li><div class="item-name"><a class="struct" href="struct.VecArgs.html" title="struct binrw::VecArgs">VecArgs</a></div><div class="desc docblock-short">Named arguments for the <a href="trait.BinRead.html#tymethod.read_options" title="associated function binrw::BinRead::read_options"><code>BinRead::read_options()</code></a> implementation of <a href="https://doc.rust-lang.org/nightly/alloc/vec/struct.Vec.html" title="struct alloc::vec::Vec"><code>Vec</code></a>.</div></li></ul><h2 id="enums" class="section-header">Enums<a href="#enums" class="anchor">§</a></h2><ul class="item-table"><li><div class="item-name"><a class="enum" href="enum.Endian.html" title="enum binrw::Endian">Endian</a></div><div class="desc docblock-short">Defines the order of bytes in a multi-byte type.</div></li><li><div class="item-name"><a class="enum" href="enum.Error.html" title="enum binrw::Error">Error</a></div><div class="desc docblock-short">The error type used by <a href="trait.BinRead.html" title="trait binrw::BinRead"><code>BinRead</code></a>.</div></li></ul><h2 id="traits" class="section-header">Traits<a href="#traits" class="anchor">§</a></h2><ul class="item-table"><li><div class="item-name"><a class="trait" href="trait.BinRead.html" title="trait binrw::BinRead">BinRead</a></div><div class="desc docblock-short">The <code>BinRead</code> trait reads data from streams and converts it into objects.</div></li><li><div class="item-name"><a class="trait" href="trait.BinReaderExt.html" title="trait binrw::BinReaderExt">BinReader<wbr>Ext</a></div><div class="desc docblock-short">Extension methods for reading <a href="trait.BinRead.html" title="trait binrw::BinRead"><code>BinRead</code></a> objects directly from a reader.</div></li><li><div class="item-name"><a class="trait" href="trait.BinWrite.html" title="trait binrw::BinWrite">BinWrite</a></div><div class="desc docblock-short">The <code>BinWrite</code> trait serialises objects and writes them to streams.</div></li><li><div class="item-name"><a class="trait" href="trait.BinWriterExt.html" title="trait binrw::BinWriterExt">BinWriter<wbr>Ext</a></div><div class="desc docblock-short">Extension methods for writing <a href="trait.BinWrite.html" title="trait binrw::BinWrite"><code>BinWrite</code></a> objects directly to a writer.</div></li><li><div class="item-name"><a class="trait" href="trait.NamedArgs.html" title="trait binrw::NamedArgs">Named<wbr>Args</a></div><div class="desc docblock-short">The <code>NamedArgs</code> trait allows
+<a href="docs/attribute/index.html#named-arguments" title="mod binrw::docs::attribute">named arguments</a> objects
+to be constructed using a builder that checks for correctness at compile
+time.</div></li></ul><h2 id="types" class="section-header">Type Aliases<a href="#types" class="anchor">§</a></h2><ul class="item-table"><li><div class="item-name"><a class="type" href="type.BinResult.html" title="type binrw::BinResult">BinResult</a></div><div class="desc docblock-short">A specialized <a href="https://doc.rust-lang.org/nightly/core/result/enum.Result.html" title="enum core::result::Result"><code>Result</code></a> type for binrw operations.</div></li><li><div class="item-name"><a class="type" href="type.FilePtr8.html" title="type binrw::FilePtr8">File<wbr>Ptr8</a></div><div class="desc docblock-short">A type alias for <a href="struct.FilePtr.html" title="struct binrw::FilePtr"><code>FilePtr</code></a> with 8-bit offsets.</div></li><li><div class="item-name"><a class="type" href="type.FilePtr16.html" title="type binrw::FilePtr16">File<wbr>Ptr16</a></div><div class="desc docblock-short">A type alias for <a href="struct.FilePtr.html" title="struct binrw::FilePtr"><code>FilePtr</code></a> with 16-bit offsets.</div></li><li><div class="item-name"><a class="type" href="type.FilePtr32.html" title="type binrw::FilePtr32">File<wbr>Ptr32</a></div><div class="desc docblock-short">A type alias for <a href="struct.FilePtr.html" title="struct binrw::FilePtr"><code>FilePtr</code></a> with 32-bit offsets.</div></li><li><div class="item-name"><a class="type" href="type.FilePtr64.html" title="type binrw::FilePtr64">File<wbr>Ptr64</a></div><div class="desc docblock-short">A type alias for <a href="struct.FilePtr.html" title="struct binrw::FilePtr"><code>FilePtr</code></a> with 64-bit offsets.</div></li><li><div class="item-name"><a class="type" href="type.FilePtr128.html" title="type binrw::FilePtr128">File<wbr>Ptr128</a></div><div class="desc docblock-short">A type alias for <a href="struct.FilePtr.html" title="struct binrw::FilePtr"><code>FilePtr</code></a> with 128-bit offsets.</div></li></ul><h2 id="attributes" class="section-header">Attribute Macros<a href="#attributes" class="anchor">§</a></h2><ul class="item-table"><li><div class="item-name"><a class="attr" href="attr.binread.html" title="attr binrw::binread">binread</a></div><div class="desc docblock-short">Attribute macro used to generate an impl of the trait <a href="trait.BinRead.html" title="trait binrw::BinRead"><code>BinRead</code></a> with
+support for <a href="docs/attribute/index.html#temp" title="mod binrw::docs::attribute">temporary variables</a>.</div></li><li><div class="item-name"><a class="attr" href="attr.binrw.html" title="attr binrw::binrw">binrw</a></div><div class="desc docblock-short">Attribute macro used to generate an impl of both <a href="trait.BinRead.html" title="trait binrw::BinRead"><code>BinRead</code></a> and
+<a href="trait.BinWrite.html" title="trait binrw::BinWrite"><code>BinWrite</code></a> traits with support for
+<a href="docs/attribute/index.html#temp" title="mod binrw::docs::attribute">temporary variables</a>.</div></li><li><div class="item-name"><a class="attr" href="attr.binwrite.html" title="attr binrw::binwrite">binwrite</a></div><div class="desc docblock-short">Attribute macro used to generate an impl of the trait <a href="trait.BinWrite.html" title="trait binrw::BinWrite"><code>BinWrite</code></a> with
+support for <a href="docs/attribute/index.html#temp" title="mod binrw::docs::attribute">temporary variables</a>.</div></li><li><div class="item-name"><a class="attr" href="attr.parser.html" title="attr binrw::parser">parser</a></div><div class="desc docblock-short">Attribute macro used to generate
+<a href="docs/attribute/index.html#custom-parserswriters" title="mod binrw::docs::attribute"><code>parse_with</code></a> functions.</div></li><li><div class="item-name"><a class="attr" href="attr.writer.html" title="attr binrw::writer">writer</a></div><div class="desc docblock-short">Attribute macro used to generate
+<a href="docs/attribute/index.html#custom-parserswriters" title="mod binrw::docs::attribute"><code>write_with</code></a> functions.</div></li></ul><h2 id="derives" class="section-header">Derive Macros<a href="#derives" class="anchor">§</a></h2><ul class="item-table"><li><div class="item-name"><a class="derive" href="derive.BinRead.html" title="derive binrw::BinRead">BinRead</a></div><div class="desc docblock-short">Derive macro generating an impl of the trait <a href="trait.BinRead.html" title="trait binrw::BinRead"><code>BinRead</code></a>.</div></li><li><div class="item-name"><a class="derive" href="derive.BinWrite.html" title="derive binrw::BinWrite">BinWrite</a></div><div class="desc docblock-short">Derive macro generating an impl of the trait <a href="trait.BinWrite.html" title="trait binrw::BinWrite"><code>BinWrite</code></a>.</div></li><li><div class="item-name"><a class="derive" href="derive.NamedArgs.html" title="derive binrw::NamedArgs">Named<wbr>Args</a></div><div class="desc docblock-short">Derive macro generating an impl of the trait <a href="trait.NamedArgs.html" title="trait binrw::NamedArgs"><code>NamedArgs</code></a>.</div></li></ul></section></div></main></body></html>

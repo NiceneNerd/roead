@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"fn":["parse_from_iter","parse_from_iter_with"],"struct":["FilePtr","FilePtrArgs","FilePtrArgsBuilder"],"trait":["IntoSeekFrom"],"type":["FilePtr128","FilePtr16","FilePtr32","FilePtr64","FilePtr8","NonZeroFilePtr128","NonZeroFilePtr16","NonZeroFilePtr32","NonZeroFilePtr64","NonZeroFilePtr8"]};

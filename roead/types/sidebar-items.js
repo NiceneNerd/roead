@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"struct":["Color","Curve","FixedSafeString","Quat","Vector2f","Vector3f","Vector4f"]};

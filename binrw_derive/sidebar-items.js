@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"attr":["binread","binrw","binwrite","parser","writer"],"derive":["BinRead","BinWrite","NamedArgs"]};

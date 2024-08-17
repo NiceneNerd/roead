@@ -1,0 +1,1 @@
+window.SIDEBAR_ITEMS = {"enum":["EndianKind"],"trait":["ReadEndian","ReadMagic","WriteEndian","WriteMagic"]};

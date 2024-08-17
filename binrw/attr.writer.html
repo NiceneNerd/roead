@@ -1,0 +1,59 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Attribute macro used to generate `write_with` functions."><title>writer in binrw - Rust</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-46f98efaafac5295.ttf.woff2,FiraSans-Regular-018c141bf0843ffd.woff2,FiraSans-Medium-8f9a781e4970d388.woff2,SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2,SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2" crossorigin href="../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../static.files/rustdoc-b25d77b18a16a9a4.css"><meta name="rustdoc-vars" data-root-path="../" data-static-root-path="../static.files/" data-current-crate="binrw" data-themes="" data-resource-suffix="" data-rustdoc-version="1.82.0-nightly (506052d49 2024-08-16)" data-channel="nightly" data-search-js="search-ef54e092fea9c776.js" data-settings-js="settings-4313503d2e1961c2.js" ><script src="../static.files/storage-118b08c4c78b968e.js"></script><script defer src="sidebar-items.js"></script><script defer src="../static.files/main-cb0df477c2d67d00.js"></script><noscript><link rel="stylesheet" href="../static.files/noscript-3b12f09e550e0385.css"></noscript><link rel="alternate icon" type="image/png" href="../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc attr"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle" title="show sidebar"></button></nav><nav class="sidebar"><div class="sidebar-crate"><h2><a href="../binrw/index.html">binrw</a><span class="version">0.14.0</span></h2></div><div class="sidebar-elems"></div></nav><div class="sidebar-resizer"></div><main><div class="width-limiter"><rustdoc-search></rustdoc-search><section id="main-content" class="content"><div class="main-heading"><h1>Attribute Macro <a href="index.html">binrw</a>::<wbr><a class="attr" href="#">writer</a><button id="copy-path" title="Copy item path to clipboard">Copy item path</button></h1><span class="out-of-band"><a class="src" href="../src/binrw_derive/lib.rs.html#80">source</a> · <button id="toggle-all-docs" title="collapse all docs">[<span>&#x2212;</span>]</button></span></div><pre class="rust item-decl"><code>#[writer]</code></pre><details class="toggle top-doc" open><summary class="hideme"><span>Expand description</span></summary><div class="docblock"><p>Attribute macro used to generate
+<a href="docs/attribute/index.html#custom-parserswriters" title="mod binrw::docs::attribute"><code>write_with</code></a> functions.</p>
+<p>Rust functions are transformed by this macro to match the binrw API.</p>
+<h2 id="attribute-options"><a class="doc-anchor" href="#attribute-options">§</a>Attribute options</h2>
+<ul>
+<li><code>#[writer(writer)]</code> or <code>#[writer(writer: $ident)]</code>: Exposes the write
+stream to the function. If no variable name is given, <code>writer</code> is used.</li>
+<li><code>#[writer(endian)]</code> or <code>#[writer(endian: $ident)]</code>: Exposes the endianness
+to the function. If no variable name is given, <code>endian</code> is used.</li>
+</ul>
+<p>Options are comma-separated.</p>
+<h2 id="function-parameters"><a class="doc-anchor" href="#function-parameters">§</a>Function parameters</h2>
+<p>The first parameter is required and receives a reference to the object being
+written.</p>
+<p>Subsequent parameters are transformed into either
+<a href="docs/attribute/index.html#tuple-style-arguments" title="mod binrw::docs::attribute">tuple-style arguments</a> or
+<a href="docs/attribute/index.html#raw-arguments" title="mod binrw::docs::attribute">raw arguments</a> depending upon the function
+signature.</p>
+<h3 id="tuple-style-arguments"><a class="doc-anchor" href="#tuple-style-arguments">§</a>Tuple-style arguments</h3>
+<p>Use a normal function signature. The remaining parameters in the signature
+will be converted to a tuple. For example:</p>
+
+<div class="example-wrap"><pre class="rust rust-example-rendered"><code><span class="attr">#[binrw::writer(writer: w, endian)]
+</span><span class="kw">fn </span>custom_writer(obj: <span class="kw-2">&amp;</span>Object, v0: u8, v1: i16) -&gt; binrw::BinResult&lt;()&gt; {
+    <span class="prelude-val">Ok</span>(())
+}</code></pre></div>
+<p>The transformed output for this function is:</p>
+
+<div class="example-wrap"><pre class="rust rust-example-rendered"><code><span class="kw">use </span>binrw::{BinResult, Endian, io::{Seek, Write}};
+<span class="kw">fn </span>custom_writer&lt;W: Write + Seek&gt;(
+    obj: <span class="kw-2">&amp;</span>Object,
+    w: <span class="kw-2">&amp;mut </span>W,
+    endian: Endian,
+    (v0, v1): (u8, i16)
+) -&gt; BinResult&lt;()&gt; {
+    <span class="prelude-val">Ok</span>(())
+}</code></pre></div>
+<h3 id="raw-arguments"><a class="doc-anchor" href="#raw-arguments">§</a>Raw arguments</h3>
+<p>Use a <em>variadic</em> function signature with a second parameter. The name and
+type of the second parameter will be used as the raw argument. For example:</p>
+
+<div class="example-wrap"><pre class="rust rust-example-rendered"><code><span class="attr">#[binrw::writer]
+</span><span class="kw">fn </span>custom_writer(obj: <span class="kw-2">&amp;</span>Object, args: ArgsType, ...) -&gt; binrw::BinResult&lt;()&gt; {
+    <span class="prelude-val">Ok</span>(())
+}</code></pre></div>
+<p>The transformed output for this function is:</p>
+
+<div class="example-wrap"><pre class="rust rust-example-rendered"><code><span class="kw">use </span>binrw::{BinResult, Endian, io::{Seek, Write}};
+<span class="kw">fn </span>custom_writer&lt;W: Write + Seek&gt;(
+    obj: <span class="kw-2">&amp;</span>Object,
+    <span class="kw">_</span>: <span class="kw-2">&amp;mut </span>W,
+    <span class="kw">_</span>: Endian,
+    args: ArgsType
+) -&gt; BinResult&lt;()&gt; {
+    <span class="prelude-val">Ok</span>(())
+}</code></pre></div>
+<h2 id="return-value"><a class="doc-anchor" href="#return-value">§</a>Return value</h2>
+<p>The return value of a writer function must be <a href="type.BinResult.html" title="type binrw::BinResult"><code>BinResult&lt;()&gt;</code></a>.</p>
+</div></details></section></div></main></body></html>

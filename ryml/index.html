@@ -1,0 +1,75 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="ryml: Rapid YAML Bindings for Rust"><title>ryml - Rust</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-46f98efaafac5295.ttf.woff2,FiraSans-Regular-018c141bf0843ffd.woff2,FiraSans-Medium-8f9a781e4970d388.woff2,SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2,SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2" crossorigin href="../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../static.files/rustdoc-b25d77b18a16a9a4.css"><meta name="rustdoc-vars" data-root-path="../" data-static-root-path="../static.files/" data-current-crate="ryml" data-themes="" data-resource-suffix="" data-rustdoc-version="1.82.0-nightly (506052d49 2024-08-16)" data-channel="nightly" data-search-js="search-ef54e092fea9c776.js" data-settings-js="settings-4313503d2e1961c2.js" ><script src="../static.files/storage-118b08c4c78b968e.js"></script><script defer src="../crates.js"></script><script defer src="../static.files/main-cb0df477c2d67d00.js"></script><noscript><link rel="stylesheet" href="../static.files/noscript-3b12f09e550e0385.css"></noscript><link rel="alternate icon" type="image/png" href="../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc mod crate"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="mobile-topbar"><button class="sidebar-menu-toggle" title="show sidebar"></button></nav><nav class="sidebar"><div class="sidebar-crate"><h2><a href="../ryml/index.html">ryml</a><span class="version">0.3.2</span></h2></div><div class="sidebar-elems"><ul class="block"><li><a id="all-types" href="all.html">All Items</a></li></ul><section><ul class="block"><li><a href="#structs">Structs</a></li><li><a href="#enums">Enums</a></li><li><a href="#constants">Constants</a></li></ul></section></div></nav><div class="sidebar-resizer"></div><main><div class="width-limiter"><rustdoc-search></rustdoc-search><section id="main-content" class="content"><div class="main-heading"><h1>Crate <a class="mod" href="#">ryml</a><button id="copy-path" title="Copy item path to clipboard">Copy item path</button></h1><span class="out-of-band"><a class="src" href="../src/ryml/lib.rs.html#1-1372">source</a> · <button id="toggle-all-docs" title="collapse all docs">[<span>&#x2212;</span>]</button></span></div><details class="toggle top-doc" open><summary class="hideme"><span>Expand description</span></summary><div class="docblock"><h2 id="ryml-rapid-yaml-bindings-for-rust"><a class="doc-anchor" href="#ryml-rapid-yaml-bindings-for-rust">§</a>ryml: Rapid YAML Bindings for Rust</h2>
+<p><img src="https://img.shields.io/crates/l/ryml" alt="GPL 3" />
+<img src="https://img.shields.io/crates/v/ryml" alt="Crates.io version" />
+<img src="https://img.shields.io/github/issues/NiceneNerd/ryml" alt="GitHub issues" /></p>
+<p><a href="https://github.com/biojppm/rapidyaml">Rapid YAML/ryml</a> is a C++ library to
+parse and emit YAML, and do it fast. The <code>ryml</code> crate provides fairly thin
+but safe (I think) FFI bindings to bring this power to Rust.</p>
+<p>This crate is currently is early, early alpha. Not all of the C++ API is
+covered, and some of it probably will not be, but the core functionality is
+all in place (indeed, much more than the official Python bindings).</p>
+<p>A basic example of how to use this crate:</p>
+
+<div class="example-wrap"><pre class="rust rust-example-rendered"><code><span class="kw">use </span>ryml::Tree;
+
+<span class="kw">static </span>SRC: <span class="kw-2">&amp;</span>str = <span class="string">r#"
+Hello: World
+Names: [Caleb, Voronwe, 'Nicene Nerd']
+Credo: !!apostolicus
+  - in Deum, Patrem omnipotentem
+  - et in Iesum Christum, Filium eius unicum
+  - in Spiritum Sanctum
+"#</span>;
+
+<span class="kw">let </span><span class="kw-2">mut </span>tree = Tree::parse(SRC)<span class="question-mark">?</span>;
+<span class="macro">assert_eq!</span>(<span class="number">10</span>, tree.len());
+
+<span class="comment">// First, the low-level, index-based API
+</span><span class="kw">let </span>root_id = tree.root_id()<span class="question-mark">?</span>;
+<span class="macro">assert_eq!</span>(root_id, <span class="number">0</span>);
+<span class="macro">assert_eq!</span>(tree.num_children(root_id)<span class="question-mark">?</span>, <span class="number">3</span>);
+<span class="kw">for </span>i <span class="kw">in </span><span class="number">0</span>..tree.num_children(root_id)<span class="question-mark">? </span>{
+   <span class="kw">let </span>child_id = tree.child_at(root_id, i)<span class="question-mark">?</span>;
+   <span class="macro">println!</span>(<span class="string">"{}"</span>, tree.key_scalar(child_id)<span class="question-mark">?</span>.scalar); <span class="comment">// "Hello", "Names", "Credo"
+</span>}
+
+<span class="comment">// Next, the high-level, NodeRef API
+</span><span class="kw">let </span>world = tree.root_ref()<span class="question-mark">?</span>.get(<span class="string">"Hello"</span>)<span class="question-mark">?</span>;
+<span class="macro">assert_eq!</span>(world.val()<span class="question-mark">?</span>, <span class="string">"World"</span>);
+<span class="kw">let </span>credo = tree.root_ref()<span class="question-mark">?</span>.get(<span class="string">"Credo"</span>)<span class="question-mark">?</span>;
+<span class="macro">assert!</span>(credo.is_seq()<span class="question-mark">?</span>);
+<span class="macro">assert_eq!</span>(credo.val_tag()<span class="question-mark">?</span>, <span class="string">"!!apostolicus"</span>);    
+<span class="kw">for </span>node <span class="kw">in </span>credo.iter()<span class="question-mark">? </span>{
+   <span class="macro">println!</span>(<span class="string">"{}"</span>, node.val()<span class="question-mark">?</span>);
+}
+
+<span class="comment">// Mutate the tree
+</span>{
+    <span class="kw">let </span><span class="kw-2">mut </span>root_ref_mut = tree.root_ref_mut()<span class="question-mark">?</span>;
+    <span class="kw">let </span><span class="kw-2">mut </span>credo = root_ref_mut.get_mut(<span class="string">"Credo"</span>)<span class="question-mark">?</span>;
+    <span class="kw">let </span><span class="kw-2">mut </span>amen = credo.get_mut(<span class="number">3</span>)<span class="question-mark">?</span>; <span class="comment">// A new index
+    </span>amen.set_val(<span class="string">"Amen"</span>)<span class="question-mark">?</span>;
+}
+
+<span class="comment">// Serialize the tree back to a string
+</span><span class="kw">let </span>new_text = tree.emit()<span class="question-mark">?</span>;
+
+<span class="kw">static </span>END: <span class="kw-2">&amp;</span>str = <span class="string">r#"Hello: World
+Names:
+  - Caleb
+  - Voronwe
+  - 'Nicene Nerd'
+Credo: !!apostolicus
+  - 'in Deum, Patrem omnipotentem'
+  - 'et in Iesum Christum, Filium eius unicum'
+  - in Spiritum Sanctum
+  - Amen
+"#</span>;
+
+<span class="macro">assert_eq!</span>(new_text, END);
+
+<span class="prelude-val">Ok</span>(())</code></pre></div>
+<p>For more usage information, see the full documentation.</p>
+</div></details><h2 id="structs" class="section-header">Structs<a href="#structs" class="anchor">§</a></h2><ul class="item-table"><li><div class="item-name"><a class="struct" href="struct.NodeData.html" title="struct ryml::NodeData">Node<wbr>Data</a></div><div class="desc docblock-short">An entry in the <a href="struct.Tree.html" title="struct ryml::Tree"><code>Tree</code></a> representing all the data for a YAML
+node.</div></li><li><div class="item-name"><a class="struct" href="struct.NodeRef.html" title="struct ryml::NodeRef">NodeRef</a></div><div class="desc docblock-short">A reference to a node in the tree.</div></li><li><div class="item-name"><a class="struct" href="struct.NodeScalar.html" title="struct ryml::NodeScalar">Node<wbr>Scalar</a></div><div class="desc docblock-short">A view of scalar data for a node, containing the tag, anchor, and scalar
+value.</div></li><li><div class="item-name"><a class="struct" href="struct.NodeType.html" title="struct ryml::NodeType">Node<wbr>Type</a></div><div class="desc docblock-short">A bitmask for marking node types.</div></li><li><div class="item-name"><a class="struct" href="struct.Tree.html" title="struct ryml::Tree">Tree</a></div><div class="desc docblock-short">Represents a parsed YAML tree</div></li></ul><h2 id="enums" class="section-header">Enums<a href="#enums" class="anchor">§</a></h2><ul class="item-table"><li><div class="item-name"><a class="enum" href="enum.Error.html" title="enum ryml::Error">Error</a></div><div class="desc docblock-short">Error type for this crate</div></li></ul><h2 id="constants" class="section-header">Constants<a href="#constants" class="anchor">§</a></h2><ul class="item-table"><li><div class="item-name"><a class="constant" href="constant.NONE.html" title="constant ryml::NONE">NONE</a></div><div class="desc docblock-short">Represents the pseudo-index of a node that does not exist.</div></li></ul></section></div></main></body></html>

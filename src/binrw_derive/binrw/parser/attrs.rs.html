@@ -1,0 +1,93 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><meta name="generator" content="rustdoc"><meta name="description" content="Source of the Rust file `/home/runner/.cargo/registry/src/index.crates.io-6f17d22bba15001f/binrw_derive-0.14.0/src/binrw/parser/attrs.rs`."><title>attrs.rs - source</title><script>if(window.location.protocol!=="file:")document.head.insertAdjacentHTML("beforeend","SourceSerif4-Regular-46f98efaafac5295.ttf.woff2,FiraSans-Regular-018c141bf0843ffd.woff2,FiraSans-Medium-8f9a781e4970d388.woff2,SourceCodePro-Regular-562dcc5011b6de7d.ttf.woff2,SourceCodePro-Semibold-d899c5a5c4aeb14a.ttf.woff2".split(",").map(f=>`<link rel="preload" as="font" type="font/woff2" crossorigin href="../../../../static.files/${f}">`).join(""))</script><link rel="stylesheet" href="../../../../static.files/normalize-76eba96aa4d2e634.css"><link rel="stylesheet" href="../../../../static.files/rustdoc-b25d77b18a16a9a4.css"><meta name="rustdoc-vars" data-root-path="../../../../" data-static-root-path="../../../../static.files/" data-current-crate="binrw_derive" data-themes="" data-resource-suffix="" data-rustdoc-version="1.82.0-nightly (506052d49 2024-08-16)" data-channel="nightly" data-search-js="search-ef54e092fea9c776.js" data-settings-js="settings-4313503d2e1961c2.js" ><script src="../../../../static.files/storage-118b08c4c78b968e.js"></script><script defer src="../../../../static.files/src-script-e66d777a5a92e9b2.js"></script><script defer src="../../../../src-files.js"></script><script defer src="../../../../static.files/main-cb0df477c2d67d00.js"></script><noscript><link rel="stylesheet" href="../../../../static.files/noscript-3b12f09e550e0385.css"></noscript><link rel="alternate icon" type="image/png" href="../../../../static.files/favicon-32x32-422f7d1d52889060.png"><link rel="icon" type="image/svg+xml" href="../../../../static.files/favicon-2c020d218678b618.svg"></head><body class="rustdoc src"><!--[if lte IE 11]><div class="warning">This old browser is unsupported and will most likely display funky things.</div><![endif]--><nav class="sidebar"><div class="src-sidebar-title"><h2>Files</h2></div></nav><div class="sidebar-resizer"></div><main><rustdoc-search></rustdoc-search><section id="main-content" class="content"><div class="example-wrap"><div data-nosnippet><pre class="src-line-numbers"><a href="#1" id="1">1</a>
+<a href="#2" id="2">2</a>
+<a href="#3" id="3">3</a>
+<a href="#4" id="4">4</a>
+<a href="#5" id="5">5</a>
+<a href="#6" id="6">6</a>
+<a href="#7" id="7">7</a>
+<a href="#8" id="8">8</a>
+<a href="#9" id="9">9</a>
+<a href="#10" id="10">10</a>
+<a href="#11" id="11">11</a>
+<a href="#12" id="12">12</a>
+<a href="#13" id="13">13</a>
+<a href="#14" id="14">14</a>
+<a href="#15" id="15">15</a>
+<a href="#16" id="16">16</a>
+<a href="#17" id="17">17</a>
+<a href="#18" id="18">18</a>
+<a href="#19" id="19">19</a>
+<a href="#20" id="20">20</a>
+<a href="#21" id="21">21</a>
+<a href="#22" id="22">22</a>
+<a href="#23" id="23">23</a>
+<a href="#24" id="24">24</a>
+<a href="#25" id="25">25</a>
+<a href="#26" id="26">26</a>
+<a href="#27" id="27">27</a>
+<a href="#28" id="28">28</a>
+<a href="#29" id="29">29</a>
+<a href="#30" id="30">30</a>
+<a href="#31" id="31">31</a>
+<a href="#32" id="32">32</a>
+<a href="#33" id="33">33</a>
+<a href="#34" id="34">34</a>
+<a href="#35" id="35">35</a>
+<a href="#36" id="36">36</a>
+<a href="#37" id="37">37</a>
+<a href="#38" id="38">38</a>
+<a href="#39" id="39">39</a>
+<a href="#40" id="40">40</a>
+<a href="#41" id="41">41</a>
+<a href="#42" id="42">42</a>
+<a href="#43" id="43">43</a>
+<a href="#44" id="44">44</a>
+<a href="#45" id="45">45</a>
+<a href="#46" id="46">46</a>
+</pre></div><pre class="rust"><code><span class="kw">use </span><span class="kw">super</span>::keywords <span class="kw">as </span>kw;
+<span class="kw">use </span><span class="kw">crate</span>::meta_types::{
+    IdentPatType, IdentTypeMaybeDefault, MetaEnclosedList, MetaExpr, MetaIdent, MetaList, MetaLit,
+    MetaType, MetaValue, MetaVoid,
+};
+<span class="kw">use </span>syn::{Expr, FieldValue, Token};
+
+<span class="kw">pub</span>(<span class="kw">super</span>) <span class="kw">type </span>AlignAfter = MetaExpr&lt;kw::align_after&gt;;
+<span class="kw">pub</span>(<span class="kw">super</span>) <span class="kw">type </span>AlignBefore = MetaExpr&lt;kw::align_before&gt;;
+<span class="kw">pub</span>(<span class="kw">super</span>) <span class="kw">type </span>Args = MetaEnclosedList&lt;kw::args, Expr, FieldValue&gt;;
+<span class="kw">pub</span>(<span class="kw">super</span>) <span class="kw">type </span>ArgsRaw = MetaExpr&lt;kw::args_raw&gt;;
+<span class="kw">pub</span>(<span class="kw">super</span>) <span class="kw">type </span>AssertLike&lt;Keyword&gt; = MetaList&lt;Keyword, Expr&gt;;
+<span class="kw">pub</span>(<span class="kw">super</span>) <span class="kw">type </span>Assert = AssertLike&lt;kw::assert&gt;;
+<span class="kw">pub</span>(<span class="kw">super</span>) <span class="kw">type </span>Big = MetaVoid&lt;kw::big&gt;;
+<span class="kw">pub</span>(<span class="kw">super</span>) <span class="kw">type </span>Calc = MetaExpr&lt;kw::calc&gt;;
+<span class="kw">pub</span>(<span class="kw">super</span>) <span class="kw">type </span>Count = MetaExpr&lt;kw::count&gt;;
+<span class="kw">pub</span>(<span class="kw">super</span>) <span class="kw">type </span>Debug = MetaVoid&lt;kw::dbg&gt;;
+<span class="kw">pub</span>(<span class="kw">super</span>) <span class="kw">type </span>Default = MetaVoid&lt;kw::default&gt;;
+<span class="kw">pub</span>(<span class="kw">super</span>) <span class="kw">type </span>ErrContext = MetaList&lt;kw::err_context, Expr&gt;;
+<span class="kw">pub</span>(<span class="kw">super</span>) <span class="kw">type </span>If = MetaList&lt;<span class="macro">Token!</span>[<span class="kw">if</span>], Expr&gt;;
+<span class="kw">pub</span>(<span class="kw">super</span>) <span class="kw">type </span>Ignore = MetaVoid&lt;kw::ignore&gt;;
+<span class="kw">pub</span>(<span class="kw">super</span>) <span class="kw">type </span>Import = MetaEnclosedList&lt;kw::import, IdentPatType, IdentTypeMaybeDefault&gt;;
+<span class="kw">pub</span>(<span class="kw">super</span>) <span class="kw">type </span>ImportRaw = MetaValue&lt;kw::import_raw, IdentPatType&gt;;
+<span class="kw">pub</span>(<span class="kw">super</span>) <span class="kw">type </span>IsBig = MetaExpr&lt;kw::is_big&gt;;
+<span class="kw">pub</span>(<span class="kw">super</span>) <span class="kw">type </span>IsLittle = MetaExpr&lt;kw::is_little&gt;;
+<span class="kw">pub</span>(<span class="kw">super</span>) <span class="kw">type </span>Little = MetaVoid&lt;kw::little&gt;;
+<span class="kw">pub</span>(<span class="kw">super</span>) <span class="kw">type </span>Magic = MetaLit&lt;kw::magic&gt;;
+<span class="kw">pub</span>(<span class="kw">super</span>) <span class="kw">type </span>Map = MetaExpr&lt;kw::map&gt;;
+<span class="kw">pub</span>(<span class="kw">super</span>) <span class="kw">type </span>MapStream = MetaExpr&lt;kw::map_stream&gt;;
+<span class="kw">pub</span>(<span class="kw">super</span>) <span class="kw">type </span>Offset = MetaExpr&lt;kw::offset&gt;;
+<span class="kw">pub</span>(<span class="kw">super</span>) <span class="kw">type </span>PadAfter = MetaExpr&lt;kw::pad_after&gt;;
+<span class="kw">pub</span>(<span class="kw">super</span>) <span class="kw">type </span>PadBefore = MetaExpr&lt;kw::pad_before&gt;;
+<span class="kw">pub</span>(<span class="kw">super</span>) <span class="kw">type </span>PadSizeTo = MetaExpr&lt;kw::pad_size_to&gt;;
+<span class="kw">pub</span>(<span class="kw">super</span>) <span class="kw">type </span>ParseWith = MetaExpr&lt;kw::parse_with&gt;;
+<span class="kw">pub</span>(<span class="kw">super</span>) <span class="kw">type </span>PreAssert = AssertLike&lt;kw::pre_assert&gt;;
+<span class="kw">pub</span>(<span class="kw">super</span>) <span class="kw">type </span>Repr = MetaType&lt;kw::repr&gt;;
+<span class="kw">pub</span>(<span class="kw">super</span>) <span class="kw">type </span>RestorePosition = MetaVoid&lt;kw::restore_position&gt;;
+<span class="kw">pub</span>(<span class="kw">super</span>) <span class="kw">type </span>ReturnAllErrors = MetaVoid&lt;kw::return_all_errors&gt;;
+<span class="kw">pub</span>(<span class="kw">super</span>) <span class="kw">type </span>ReturnUnexpectedError = MetaVoid&lt;kw::return_unexpected_error&gt;;
+<span class="kw">pub</span>(<span class="kw">super</span>) <span class="kw">type </span>SeekBefore = MetaExpr&lt;kw::seek_before&gt;;
+<span class="kw">pub</span>(<span class="kw">super</span>) <span class="kw">type </span>Stream = MetaIdent&lt;kw::stream&gt;;
+<span class="kw">pub</span>(<span class="kw">super</span>) <span class="kw">type </span>Temp = MetaVoid&lt;kw::temp&gt;;
+<span class="kw">pub</span>(<span class="kw">super</span>) <span class="kw">type </span>Try = MetaVoid&lt;<span class="macro">Token!</span>[<span class="kw">try</span>]&gt;;
+<span class="kw">pub</span>(<span class="kw">super</span>) <span class="kw">type </span>TryCalc = MetaExpr&lt;kw::try_calc&gt;;
+<span class="kw">pub</span>(<span class="kw">super</span>) <span class="kw">type </span>TryMap = MetaExpr&lt;kw::try_map&gt;;
+<span class="kw">pub</span>(<span class="kw">super</span>) <span class="kw">type </span>WriteWith = MetaExpr&lt;kw::write_with&gt;;
+</code></pre></div></section></main></body></html>
