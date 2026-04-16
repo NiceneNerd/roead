@@ -7,25 +7,40 @@ fn build_zlib() {
     let target = env::var("TARGET").unwrap();
     let mut cmake = std::process::Command::new("cmake");
     cmake.current_dir("lib/zlib-ng");
+    
+    // Add Mac-specific settings
     if target.contains("aarch64-apple-darwin") {
         cmake
 			.arg("-DCMAKE_OSX_ARCHITECTURES=arm64")
         	.arg("-DWITH_NEON=OFF");
     } else if target.contains("x86_64-apple-darwin") {
         cmake.arg("-DCMAKE_OSX_ARCHITECTURES=x86_64");
-    } else {
-        //Not OSX
     }
-    cmake
+    
+    // Force static build and disable shared libraries
+    cmake.arg("-DBUILD_SHARED_LIBS=OFF");
+    
+    let cmake_output = cmake
         .arg(".")
         .output()
         .expect("Failed to build zlib. Is CMake installed?");
-    std::process::Command::new("cmake")
+    
+    if !cmake_output.status.success() {
+        panic!("CMake configure failed: {}", String::from_utf8_lossy(&cmake_output.stderr));
+    }
+    
+    let build_output = std::process::Command::new("cmake")
         .current_dir("lib/zlib-ng")
         .arg("--build")
         .arg(".")
+        .arg("--target")
+        .arg("zlib")
         .output()
         .expect("Failed to build zlib");
+    
+    if !build_output.status.success() {
+        panic!("CMake build failed: {}", String::from_utf8_lossy(&build_output.stderr));
+    }
 }
 
 #[cfg(feature = "yaz0")]
@@ -56,7 +71,37 @@ fn build_yaz0() {
             .flag_if_supported("-Wall")
             .flag_if_supported("-Wextra")
             .flag_if_supported("-fno-plt");
-        println!("cargo:rustc-link-lib=static=zlib");
+        
+        // Determine which zlib library was actually built
+        let dir = env::var("CARGO_MANIFEST_DIR").unwrap();
+        let zlib_path = Path::new(&dir).join("lib/zlib-ng");
+        
+        // Check for different possible library names
+        let possible_libs = ["libz.a", "libzlib.a", "libz-ng.a"];
+        let mut found_lib = None;
+        
+        for lib_name in &possible_libs {
+            if zlib_path.join(lib_name).exists() {
+                found_lib = Some(lib_name);
+                break;
+            }
+        }
+        
+        match found_lib {
+            Some(lib_name) if *lib_name == "libz.a" => {
+                println!("cargo:rustc-link-lib=static=z");
+            },
+            Some(lib_name) if *lib_name == "libzlib.a" => {
+                println!("cargo:rustc-link-lib=static=zlib");
+            },
+            Some(lib_name) if *lib_name == "libz-ng.a" => {
+                println!("cargo:rustc-link-lib=static=z-ng");
+            },
+            _ => {
+                // Fallback to the original behavior
+                println!("cargo:rustc-link-lib=static=zlib");
+            }
+        }
     }
     builder.compile("roead");
     println!("cargo:rerun-if-changed=src/include/oead");
