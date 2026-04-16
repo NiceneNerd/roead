@@ -8,7 +8,9 @@ fn build_zlib() {
     let mut cmake = std::process::Command::new("cmake");
     cmake.current_dir("lib/zlib-ng");
     if target.contains("aarch64-apple-darwin") {
-        cmake.arg("-DCMAKE_OSX_ARCHITECTURES=arm64");
+        cmake
+			.arg("-DCMAKE_OSX_ARCHITECTURES=arm64")
+        	.arg("-DWITH_NEON=OFF");
     } else if target.contains("x86_64-apple-darwin") {
         cmake.arg("-DCMAKE_OSX_ARCHITECTURES=x86_64");
     } else {
