@@ -1,3 +1,0 @@
-[submodule "lib/zlib-ng"]
-	path = lib/zlib-ng
-	url = https://github.com/zeldamods/zlib-ng

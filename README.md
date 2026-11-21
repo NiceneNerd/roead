@@ -18,8 +18,7 @@ in recent games such as *Breath of the Wild* and *Super Mario Odyssey*.
 * [SARC](https://zeldamods.org/wiki/SARC) (archive)
 * [Yaz0](https://zeldamods.org/wiki/Yaz0) (compression algorithm)
 
-The roead project brings oead's core functionality, by directly porting or
-(for the yaz0 module) providing safe and idiomatic bindings to oead's features.
+The roead project brings oead's core functionality by directly porting it.
 (The Grezzo datasheets are not supported.) For more info on oead itself, visit
 [its GitHub repo](https://github.com/zeldamods/oead/).
 
@@ -33,16 +32,9 @@ For API documentation, see the docs for each module.
 
 ## Building from Source
 
-Most of roead is pure Rust and can compiled with any relatively recent release.
-The stable MSRV is 1.80. However, the yaz0 module provides FFI bindings to oead
-code, so to use it the following additional requirements are necessary:
-
-- CMake 3.12+
-- A compiler that supports C++17
-- Everything necessary to build zlib
-
-First, clone the repository, then enter the roead directory and run
-`git submodule update --init --recursive`. 
+roead is pure Rust and builds with any relatively recent stable release (MSRV
+1.80), with no C++ toolchain, CMake, or submodules. The optional `yaml` feature
+is the exception, as it depends on the `ryml` crate.
 
 ## Contributing
 
