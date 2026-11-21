@@ -1,13 +1,18 @@
 use crate::Entry;
 use crate::FxHashMap;
 use alloc::rc::Rc;
+use alloc::vec::Vec;
 use binrw::io::{Cursor, Seek, SeekFrom, Write};
 use binrw::prelude::*;
 use core::cell::RefCell;
 use core::hash::Hasher;
 
+use super::parser::{ResHeader, ResParameter, ResParameterList, ResParameterObj};
 use super::*;
-use crate::{Result, util::align};
+use crate::{
+    Result,
+    util::{align, u24},
+};
 
 impl ParameterIO {
     /// Serialize the parameter IO to binary using the given writer.
@@ -34,7 +39,6 @@ impl ParameterIO {
         ctx.write_objects(root)?;
         ctx.collect_parameters(self);
         ctx.write_parameters(root)?;
-
         let data_section_begin = ctx.writer.stream_position()?;
         ctx.write_data_section()?;
 

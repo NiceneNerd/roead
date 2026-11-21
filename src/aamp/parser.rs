@@ -1,8 +1,61 @@
 use binrw::io::{Cursor, Read, Seek, SeekFrom};
 use binrw::prelude::*;
 
+#[cfg(feature = "alloc")]
+use alloc::vec::Vec;
+
+#[cfg(all(feature = "alloc", not(feature = "std")))]
+use alloc::string::String;
+
 use super::*;
-use crate::{Error, Result, util::SeekShim};
+use crate::{
+    Error, Result,
+    util::{SeekShim, u24},
+};
+
+#[derive(Debug)]
+#[cfg_attr(feature = "binrw", binrw::binrw, brw(little, magic = b"AAMP"))]
+pub(crate) struct ResHeader {
+    pub version: u32,     // 0x4
+    pub flags: u32,       // 0x8
+    pub file_size: u32,   // 0xC
+    pub pio_version: u32, // 0x10
+    /// Offset to parameter IO (relative to 0x30)
+    pub pio_offset: u32, // 0x14
+    /// Number of lists (including root)
+    pub list_count: u32, // 0x18
+    pub object_count: u32, // 0x1C
+    pub param_count: u32, // 0x20
+    pub data_section_size: u32, // 0x24
+    pub string_section_size: u32, // 0x28
+    pub unknown_section_size: u32, // 0x2C
+}
+
+#[derive(Debug)]
+#[cfg_attr(feature = "binrw", binrw::binrw, brw(little))]
+pub(crate) struct ResParameter {
+    pub name: Name,
+    pub data_rel_offset: u24,
+    pub type_: Type,
+}
+
+#[derive(Debug)]
+#[cfg_attr(feature = "binrw", binrw::binrw, brw(little))]
+pub(crate) struct ResParameterObj {
+    pub name: Name,
+    pub params_rel_offset: u16,
+    pub param_count: u16,
+}
+
+#[derive(Debug)]
+#[cfg_attr(feature = "binrw", binrw::binrw, brw(little))]
+pub(crate) struct ResParameterList {
+    pub name: Name,
+    pub lists_rel_offset: u16,
+    pub list_count: u16,
+    pub objects_rel_offset: u16,
+    pub object_count: u16,
+}
 
 impl ParameterIO {
     /// Read a parameter archive from a binary reader.
@@ -70,7 +123,7 @@ impl<R: Read + Seek> Parser<R> {
                 version: self.header.pio_version,
                 data_type: {
                     self.seek(0x30)?;
-                    self.read_null_string()?
+                    self.read_null_string()?.into()
                 },
                 param_root,
             })
@@ -88,17 +141,25 @@ impl<R: Read + Seek> Parser<R> {
         Ok(binrw::BinReaderExt::read_le(&mut self.reader)?)
     }
 
+    /// Reads a NUL-terminated string with checked UTF-8 validation.
+    ///
+    /// Corpus files are valid UTF-8, so this only changes behavior for
+    /// invalid input, which previously constructed a `&str` from unchecked
+    /// bytes (undefined behavior).
     #[inline]
     fn read_null_string(&mut self) -> Result<String> {
         let mut string_ = [0u8; 0x256];
         let mut c: u8 = self.read()?;
         let mut len = 0;
         while c != 0 {
+            if len >= string_.len() {
+                return Err(Error::InvalidData("String exceeds the 0x256 byte limit"));
+            }
             string_[len] = c;
             len += 1;
             c = self.read()?;
         }
-        Ok(unsafe { core::str::from_utf8_unchecked(&string_[..len]) }.into())
+        Ok(core::str::from_utf8(&string_[..len])?.into())
     }
 
     #[inline]
@@ -155,10 +216,12 @@ impl<R: Read + Seek> Parser<R> {
             Type::String32 => Parameter::String32(self.read()?),
             Type::String64 => Parameter::String64(self.read()?),
             Type::String256 => Parameter::String256(self.read()?),
-            Type::StringRef => Parameter::StringRef(self.read_null_string()?),
+            Type::StringRef => Parameter::StringRef(self.read_null_string()?.into()),
+            // The element count is stored at `data_offset - 4`, with the
+            // floats at `data_offset` — pass `data_offset`, not `offset`.
             Type::BufferInt => Parameter::BufferInt(self.read_buffer::<i32>(data_offset)?),
             Type::BufferU32 => Parameter::BufferU32(self.read_buffer::<u32>(data_offset)?),
-            Type::BufferF32 => Parameter::BufferF32(self.read_float_buffer(offset)?),
+            Type::BufferF32 => Parameter::BufferF32(self.read_float_buffer(data_offset)?),
             Type::BufferBinary => Parameter::BufferBinary(self.read_buffer::<u8>(data_offset)?),
         };
         Ok((info.name, value))

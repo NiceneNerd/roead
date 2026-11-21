@@ -340,8 +340,12 @@ impl core::hash::Hash for Color {
 }
 
 /// Curve (`sead::hostio::curve*`)
+///
+/// Laid out as `a: u32, b: u32, floats: [f32; 30]` (128 bytes) so it can be
+/// reinterpreted as a sequence of 128-byte curve blocks.
 #[cfg_attr(feature = "with-serde", derive(Serialize, Deserialize))]
 #[derive(Debug, Default, Clone, Copy)]
+#[repr(C)]
 #[cfg_attr(feature = "binrw", binrw::binrw)]
 pub struct Curve {
     pub a: u32,

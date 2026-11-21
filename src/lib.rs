@@ -61,14 +61,22 @@ extern crate alloc;
 #[cfg(feature = "alloc")]
 use alloc::string::String;
 
-#[cfg(feature = "alloc")]
-pub mod aamp; // TODO(step 4): arena readers for pure no_std
+/// The AAMP module root is compiled whenever the `aamp` feature is on: the
+/// owned model (`owned`) and the binrw-based parser/writer require `alloc`,
+/// but the shared format walk (`reader`) and the flat arena (`arena`) are
+/// core-only so `ParameterIOArena` works with zero features. Inner items
+/// self-gate on `alloc`, `binrw`, `yaml` or `aamp-names` as needed.
+#[cfg(feature = "aamp")]
+pub mod aamp;
 /// The BYML module root is compiled whenever the `byml` feature is on: the
 /// owned model (`owned`) and the binrw-based parser/writer require `alloc`,
 /// but the shared format walk (`reader`) and the flat arena (`arena`) are
 /// core-only so `BymlArena` works with zero features.
 #[cfg(feature = "byml")]
 pub mod byml;
+/// Generic node stores shared by the flat arenas (`byml::arena`,
+/// `aamp::arena`). Core-only: compiles with zero features.
+pub mod storage;
 // TODO(step 5): split reader (alloc-free) from writer (std)
 #[cfg(all(feature = "sarc", feature = "std"))]
 pub mod sarc;
@@ -176,7 +184,10 @@ impl TinyString {
         for i in 0..len {
             data[i] = if bytes[i] < 0x80 { bytes[i] } else { b'?' };
         }
-        Self { data, len: len as u8 }
+        Self {
+            data,
+            len: len as u8,
+        }
     }
 
     /// Creates a `TinyString` by lossily converting `bytes`, replacing
