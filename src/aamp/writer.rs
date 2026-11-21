@@ -86,9 +86,49 @@ where
     Ok(())
 }
 
+/// Data-shape groups for parameter-data deduplication. Two parameters may
+/// share a data-section entry only if they have the same on-disk shape AND
+/// read back identically from those bytes:
+/// - Scalars (Bool/I32/U32/F32): 4 bytes at `data_offset`.
+/// - Vec2: 8 bytes. Vec3: 12 bytes.
+/// - Wide4 (Vec4/Color/Quat): 16 bytes of four f32s — mutually interchangeable.
+/// - Curve (Curve1-4): N × 128 bytes.
+/// - Buffer (BufferInt/BufferF32/BufferU32/BufferBinary): count u32 at
+///   `data_offset - 4`, elements at `data_offset`. Buffer parameters must
+///   NEVER share data with non-buffer parameters (the count prefix), which is
+///   exactly what the old bare-value hash allowed.
+/// - Strings (group 6): never reach `write_parameter_data` (they go to the
+///   string section); assigned their own group defensively.
+///
+/// Returns a value in `0..=6`.
+#[inline]
+fn shape_group(param: &Parameter) -> u8 {
+    match param {
+        Parameter::Bool(_) | Parameter::I32(_) | Parameter::U32(_) | Parameter::F32(_) => 0,
+        Parameter::Vec2(_) => 1,
+        Parameter::Vec3(_) => 2,
+        Parameter::Vec4(_) | Parameter::Color(_) | Parameter::Quat(_) => 3,
+        Parameter::Curve1(_) | Parameter::Curve2(_) | Parameter::Curve3(_) | Parameter::Curve4(_) => 4,
+        Parameter::BufferInt(_)
+        | Parameter::BufferF32(_)
+        | Parameter::BufferU32(_)
+        | Parameter::BufferBinary(_) => 5,
+        Parameter::String32(_) | Parameter::String64(_) | Parameter::String256(_) | Parameter::StringRef(_) => 6,
+    }
+}
+
 #[inline]
 fn hash_param_data(param: &Parameter) -> u64 {
     let mut hasher = rustc_hash::FxHasher::default();
+    // Key the dedup on the parameter's data shape *before* its value: two
+    // parameters with byte-identical value streams must not share a
+    // data-section entry unless they also share an on-disk shape. A buffer
+    // parameter deduped onto inline struct data loses its element-count prefix
+    // (read at `data_offset - 4`), and an inline parameter deduped onto buffer
+    // data reads 4 bytes off — both corrupt the archive. Parameters within a
+    // shape group (e.g. Vec4/Color/Quat) have byte-identical on-disk
+    // representations and read back identically, so they deduplicate safely.
+    core::hash::Hash::hash(&shape_group(param), &mut hasher);
     core::hash::Hash::hash(param, &mut hasher);
     hasher.finish()
 }

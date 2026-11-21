@@ -44,6 +44,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `sarc/parse.rs` now reports `IndexOutOfRange` and `TooManyFiles` instead of
   `InvalidDataD`.
 
+### Fixed
+
+- AAMP writer data-section deduplication keyed the entry on the parameter
+  value hash alone, so a buffer parameter (which carries an element-count
+  prefix at `data_offset - 4`) could be deduplicated onto inline struct data,
+  or an inline parameter onto buffer data (read 4 bytes off), producing
+  corrupt archives. Dedup now also keys on the parameter's data shape, so
+  buffer/non-buffer pairs are always split while byte-identical wide4 structs
+  (`Vec4`/`Color`/`Quat`) still deduplicate safely. Found via the new
+  zero-copy reader's synthetic coverage.
+
 ## [1.0.0] - 2024-08-17
 
 ** Changed

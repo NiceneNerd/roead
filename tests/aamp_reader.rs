@@ -651,6 +651,128 @@ mod alloc_tests {
     }
 
     #[test]
+    fn parameter_data_dedup_respects_data_shape() {
+        // Two pairs of parameters with byte-identical value streams but
+        // different data shapes must not be deduplicated onto each other. A
+        // buffer parameter deduped onto inline struct data loses its
+        // element-count prefix (read at `data_offset - 4`), and an inline
+        // parameter deduped onto buffer data reads 4 bytes off — both
+        // corrupt the archive.
+        let pio = ParameterIO::new().with_object(
+            "Obj",
+            params!(
+                "Buf3" => Parameter::BufferF32(vec![1.0, 2.0, 3.0]),
+                "Vec3" => Parameter::Vec3(Vector3f { x: 1.0, y: 2.0, z: 3.0 }),
+                "F32" => Parameter::F32(1.0),
+                "Buf1" => Parameter::BufferF32(vec![1.0]),
+            ),
+        );
+
+        let bytes = pio.to_binary();
+
+        // Round-trip: every parameter must decode to its exact value.
+        let ref_tree = ParameterIORef::from_binary(&bytes).unwrap();
+        let obj = ref_tree
+            .param_root
+            .object("Obj")
+            .unwrap_or_else(|| panic!("object missing"));
+        assert_eq!(
+            obj.get("Buf3")
+                .unwrap()
+                .as_buffer_f32()
+                .unwrap()
+                .iter_f32()
+                .collect::<Vec<_>>(),
+            vec![1.0, 2.0, 3.0],
+            "BufferF32([1.0, 2.0, 3.0]) deduped onto another type's data"
+        );
+        assert_eq!(
+            *obj.get("Vec3").unwrap().as_vec3().unwrap(),
+            Vector3f {
+                x: 1.0,
+                y: 2.0,
+                z: 3.0
+            },
+            "Vec3 deduped onto BufferF32's data"
+        );
+        assert_eq!(obj.get("F32").unwrap().as_f32().unwrap(), 1.0);
+        assert_eq!(
+            obj.get("Buf1")
+                .unwrap()
+                .as_buffer_f32()
+                .unwrap()
+                .iter_f32()
+                .collect::<Vec<_>>(),
+            vec![1.0],
+            "BufferF32([1.0]) deduped onto F32's data"
+        );
+
+        // Benign dedup: Vec4/Color/Quat share the same on-disk shape (16 bytes
+        // of four f32s) and read back identically, so they may safely share a
+        // data-section entry.
+        let wide = ParameterIO::new().with_object(
+            "Wide",
+            params!(
+                "Vec4" => Parameter::Vec4(Vector4f {
+                    x: 1.0,
+                    y: 2.0,
+                    z: 3.0,
+                    t: 4.0
+                }),
+                "Quat" => Parameter::Quat(Quat { a: 1.0, b: 2.0, c: 3.0, d: 4.0 }),
+                "Color" => Parameter::Color(Color {
+                    r: 1.0,
+                    g: 2.0,
+                    b: 3.0,
+                    a: 4.0
+                }),
+            ),
+        );
+        let wide_bytes = wide.to_binary();
+        let wide_ref = ParameterIORef::from_binary(&wide_bytes).unwrap();
+        let wide_obj = wide_ref
+            .param_root
+            .object("Wide")
+            .unwrap_or_else(|| panic!("object missing"));
+        assert_eq!(
+            [
+                wide_obj.get("Vec4").unwrap().as_vec4().unwrap().x,
+                wide_obj.get("Vec4").unwrap().as_vec4().unwrap().y,
+                wide_obj.get("Vec4").unwrap().as_vec4().unwrap().z,
+                wide_obj.get("Vec4").unwrap().as_vec4().unwrap().t,
+            ],
+            [1.0, 2.0, 3.0, 4.0],
+            "Vec4 deduped onto another wide4 type's data"
+        );
+        assert_eq!(
+            [
+                wide_obj.get("Quat").unwrap().as_quat().unwrap().a,
+                wide_obj.get("Quat").unwrap().as_quat().unwrap().b,
+                wide_obj.get("Quat").unwrap().as_quat().unwrap().c,
+                wide_obj.get("Quat").unwrap().as_quat().unwrap().d,
+            ],
+            [1.0, 2.0, 3.0, 4.0],
+            "Quat deduped onto another wide4 type's data"
+        );
+        assert_eq!(
+            [
+                wide_obj.get("Color").unwrap().as_color().unwrap().r,
+                wide_obj.get("Color").unwrap().as_color().unwrap().g,
+                wide_obj.get("Color").unwrap().as_color().unwrap().b,
+                wide_obj.get("Color").unwrap().as_color().unwrap().a,
+            ],
+            [1.0, 2.0, 3.0, 4.0],
+            "Color deduped onto another wide4 type's data"
+        );
+
+        // Re-serializing must produce byte-identical output.
+        let rt = ParameterIO::from_binary(&bytes).unwrap();
+        assert_eq!(rt.to_binary(), bytes, "binary round-trip is not stable");
+        let wide_rt = ParameterIO::from_binary(&wide_bytes).unwrap();
+        assert_eq!(wide_rt.to_binary(), wide_bytes, "wide4 binary round-trip is not stable");
+    }
+
+    #[test]
     fn accessor_parity() {
         let pio = synthetic_pio();
         let bytes = pio.to_binary();
