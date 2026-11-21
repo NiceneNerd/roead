@@ -34,15 +34,39 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     `#[error(transparent)]` + `#[from]` so `?` still works on binrw errors,
     otherwise it is a plain variant with a descriptive display message.
 - `Result` is now `core::result::Result<T, Error>`.
-- `Endian`'s binrw derive is now gated on `binrw` instead of `sarc`.
+- `Endian`'s binrw derive was removed entirely; use [`Endian::from_bom`]
+  to interpret a SARC BOM.
 
-### Breaking (transitional until steps 3–5)
+### Changed
 
-- The `sarc` module requires `std`; `yaz0` requires `alloc`.
-- BYML and AAMP binary APIs (`from_binary`, `to_binary`, `read`, `write`)
-  require `alloc`; `sarc` remains `std`-gated until step 5.
-- `sarc/parse.rs` now reports `IndexOutOfRange` and `TooManyFiles` instead of
-  `InvalidDataD`.
+- Bumped edition to 2024 and MSRV to 1.100; crate version is now 2.0.0.
+- New feature split: `std` implies `alloc`, both are on by default, and
+  `--no-default-features` builds a pure `no_std` library. The `std` feature
+  gathers the std-only dependencies (yaml machinery, name table,
+  `SarcWriter`'s serde_json, ...), while `alloc` gathers the allocator and
+  everything that needs it.
+- **SARC reader is now alloc-free** and no longer requires `std`:
+  - `Sarc::new(data: &'a [u8]) -> Result<Sarc<'a>>` borrows the data and
+    never allocates or owns it. The old `new<T: Into<Cow<'a, [u8]>>>`
+    signature and automatic Yaz0 decompression are gone: decompress
+    Yaz0-compressed archives with [`crate::yaz0::decompress_if`] first,
+    then `Sarc::new(decompressed.as_ref())`:
+    ```rust
+    let decompressed = roead::yaz0::decompress_if(raw);
+    let sarc = roead::sarc::Sarc::new(decompressed.as_ref())?;
+    ```
+  - `get`/`try_get`/`get_data`/`try_get_data`/`file_at`/`files()`/`len`/
+    `is_empty`/`endian`/`data_offset`/`guess_min_alignment()`/
+    `are_files_equal`/`Index<S: Borrow<str>>`/`Hash`/`PartialEq` keep their
+    signatures and semantics.
+  - The `sarc` module is gated on `feature = "sarc"` only; the writer
+    (`SarcWriter`) remains `std`-only.
+- **Yaz0 has zero dependencies** (`yaz0 = []`) and `decompress_into`,
+  `decompress_unchecked`, and header parsing (`get_header`/`checked_header`)
+  are core-only and available without `alloc`. Compression, `decompress`, and
+  `decompress_if` require `alloc`; `compress_if` requires `std`.
+- `File` equality now compares `name`, `data`, and `index` only (O(file))
+  instead of the whole backing archive (O(files × size)).
 
 ### Fixed
 

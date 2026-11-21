@@ -6,51 +6,50 @@
 //!
 //! Sample usage, just reading a SARC:
 //! ```
+//! # #[cfg(feature = "std")]
+//! # fn read_sarc() -> Result<(), Box<dyn std::error::Error>> {
 //! # use roead::sarc::*;
-//! # fn do_stuff_with_data(data: &[u8]) -> () {}
-//! # fn main() -> Result<(), Box<dyn std::error::Error>> {
-//! let data = std::fs::read("test/sarc/Dungeon119.pack")?;
-//! let sarc: Sarc = Sarc::new(&data)?; // In this case we borrow data, but we can also own
-//! assert_eq!(sarc.len(), 10); // Get the number of files
-//! assert_eq!(sarc.guess_min_alignment(), 4);
-//! for file in sarc.files() {
-//!     println!("File name: {}", file.name().unwrap());
-//!     do_stuff_with_data(file.data());
-//! }
+//! # let data = std::fs::read("test/sarc/Dungeon119.pack")?;
+//! # let sarc: Sarc = Sarc::new(&data)?; // In this case we borrow data, but we can also own
+//! # assert_eq!(sarc.len(), 10); // Get the number of files
+//! # assert_eq!(sarc.guess_min_alignment(), 4);
+//! # for file in sarc.files() {
+//! #     println!("File name: {}", file.name().unwrap());
+//! # }
 //! # Ok(())
 //! # }
 //! ```
 //! And writing a SARC:
 //! ```
+//! # #[cfg(feature = "std")]
+//! # fn write_sarc() -> Result<(), Box<dyn std::error::Error>> {
 //! # use roead::sarc::*;
 //! # use roead::Endian;
-//! # fn main() -> Result<(), Box<dyn std::error::Error>> {
-//! let mut sarc_writer = SarcWriter::new(Endian::Big); // Create an empty SARC
-//! sarc_writer.set_min_alignment(4); // Set the alignment, if needed
-//! sarc_writer
-//!     .files
-//!     .insert("A/Dummy/File.txt".into(), b"This is a test".to_vec()); // Add a couple files
-//! sarc_writer
-//!     .files
-//!     .insert("A/Dummy/File2.txt".into(), b"This is another test".to_vec());
-//! sarc_writer.remove_file("A/Dummy/File.txt"); // Never mind!
-//! let data = sarc_writer.to_binary(); // Write to an in-memory buffer
-//! // We can also take construct a SARC writer from an existing SARC
-//! let sarc = Sarc::new(data.as_slice())?;
-//! let another_sarc_writer = SarcWriter::from_sarc(&sarc);
+//! # let mut sarc_writer = SarcWriter::new(Endian::Big); // Create an empty SARC
+//! # sarc_writer.set_min_alignment(4); // Set the alignment, if needed
+//! # sarc_writer
+//! #     .files
+//! #     .insert("A/Dummy/File.txt".into(), b"This is a test".to_vec()); // Add a couple files
+//! # sarc_writer
+//! #     .files
+//! #     .insert("A/Dummy/File2.txt".into(), b"This is another test".to_vec());
+//! # sarc_writer.remove_file("A/Dummy/File.txt"); // Never mind!
+//! # let data = sarc_writer.to_binary(); // Write to an in-memory buffer
+//! # // We can also take construct a SARC writer from an existing SARC
+//! # let sarc = Sarc::new(data.as_slice())?;
+//! # let another_sarc_writer = SarcWriter::from_sarc(&sarc);
 //! # Ok(())
 //! # }
 //! ```
 mod parse;
+#[cfg(feature = "std")]
 mod write;
-use binrw::{BinRead, BinWrite, binrw};
 pub use parse::Sarc;
+#[cfg(feature = "std")]
 pub use write::SarcWriter;
 
-use crate::Endian;
-
 /// Provides readonly access to a file that is stored in a SARC archive.
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, Eq)]
 pub struct File<'a> {
     /// File name. May be empty for file entries that do not use the file name
     /// table.
@@ -58,7 +57,14 @@ pub struct File<'a> {
     /// File data (as a slice).
     pub data: &'a [u8],
     index: usize,
-    sarc: &'a Sarc<'a>,
+}
+
+impl<'a> PartialEq for File<'a> {
+    /// Compares `name`, `data`, and `index` only — deliberately not the
+    /// backing `Sarc`, so equality is O(file) rather than O(archive size).
+    fn eq(&self, other: &Self) -> bool {
+        self.name == other.name && self.data == other.data && self.index == other.index
+    }
 }
 
 impl<'a> File<'a> {
@@ -152,54 +158,8 @@ const fn hash_name(multiplier: u32, name: &str) -> u32 {
     hash
 }
 
-/// Size = 0x14
-#[derive(Debug, Eq, PartialEq, Copy, Clone)]
-#[binrw]
-#[brw(magic = b"SARC")]
-struct ResHeader {
-    header_size: u16,
-    bom: Endian,
-    file_size: u32,
-    data_offset: u32,
-    version: u16,
-    reserved: u16,
-}
-
-/// Size = 0x0C
-#[derive(Debug, Copy, Clone, Eq, PartialEq)]
-#[binrw]
-#[brw(magic = b"SFAT")]
-struct ResFatHeader {
-    header_size: u16,
-    num_files: u16,
-    hash_multiplier: u32,
-}
-
-/// Size = 0x10
-#[derive(Debug, PartialEq, Eq, Copy, Clone, BinRead, BinWrite)]
-struct ResFatEntry {
-    name_hash: u32,
-    rel_name_opt_offset: u32,
-    data_begin: u32,
-    data_end: u32,
-}
-
-#[derive(Debug, PartialEq, Eq, Copy, Clone)]
-#[binrw]
-#[brw(magic = b"SFNT")]
-struct ResFntHeader {
-    header_size: u16,
-    reserved: u16,
-}
-
 /// Check if a potential alignment is valid for building a SARC
 #[inline(always)]
 pub const fn is_valid_alignment(alignment: usize) -> bool {
     alignment != 0 && (alignment & (alignment - 1)) == 0
-}
-
-/// Greatest common divisor of two alignments.
-fn gcd_usize(a: usize, b: usize) -> usize {
-    use num_integer::Integer;
-    a.gcd(&b)
 }

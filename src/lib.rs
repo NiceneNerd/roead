@@ -74,18 +74,22 @@ pub mod aamp;
 /// core-only so `BymlArena` works with zero features.
 #[cfg(feature = "byml")]
 pub mod byml;
+/// The SARC module root is compiled whenever the `sarc` feature is on: the
+/// reader (`parse`) is core-only and the writer (`write`) requires `std`.
+#[cfg(feature = "sarc")]
+pub mod sarc;
 /// Generic node stores shared by the flat arenas (`byml::arena`,
 /// `aamp::arena`). Core-only: compiles with zero features.
 pub mod storage;
-// TODO(step 5): split reader (alloc-free) from writer (std)
-#[cfg(all(feature = "sarc", feature = "std"))]
-pub mod sarc;
 pub mod types;
 mod util;
 #[cfg(feature = "yaml")]
 mod yaml;
-#[cfg(feature = "alloc")]
-pub mod yaz0; // TODO(step 5): `decompress_into` becomes core-only, module gating narrows
+/// The Yaz0 module root is compiled whenever the `yaz0` feature is on.
+/// `decompress_into`, `decompress_unchecked`, and header parsing are
+/// core-only; compression and the std-only helpers are gated internally.
+#[cfg(feature = "yaz0")]
+pub mod yaz0;
 
 /// Error type for this crate.
 ///
@@ -107,7 +111,7 @@ pub enum Error {
     #[error("Index {index} out of range (len {len})")]
     IndexOutOfRange { index: usize, len: usize },
     #[error("Too many files in SARC ({0})")]
-    TooManyFiles(u32),
+    TooManyFiles(u16),
     #[error("Document does not fit in the fixed-capacity arena (capacity {0})")]
     CapacityExceeded(usize),
     #[cfg(feature = "alloc")]
@@ -238,7 +242,6 @@ pub(crate) use hashbrown::hash_map::Entry;
 #[cfg(feature = "std")]
 pub(crate) use std::collections::hash_map::Entry;
 
-#[cfg_attr(feature = "binrw", binrw::binread, brw(repr = u16))]
 #[derive(Debug, Eq, PartialEq, Copy, Clone)]
 #[repr(u16)]
 /// Represents endianness where applicable.
@@ -250,6 +253,22 @@ pub enum Endian {
     Big = 0xFFFE,
     /// Little Endian (Switch)
     Little = 0xFEFF,
+}
+
+impl Endian {
+    /// Interprets a SARC BOM (byte order mark) as an [`Endian`].
+    ///
+    /// Returns `None` for any value other than `0xFFFE` (Big) or `0xFEFF`
+    /// (Little), which callers should translate into
+    /// [`Error::InvalidData`] ("Invalid SARC BOM").
+    #[inline]
+    pub const fn from_bom(bom: u16) -> Option<Self> {
+        match bom {
+            0xFFFE => Some(Self::Big),
+            0xFEFF => Some(Self::Little),
+            _ => None,
+        }
+    }
 }
 
 pub type Result<T> = core::result::Result<T, Error>;

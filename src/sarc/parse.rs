@@ -1,14 +1,8 @@
+use core::hash::{Hash, Hasher};
 use core::mem::size_of;
-use std::{
-    borrow::Cow,
-    hash::{Hash, Hasher},
-    io::Cursor,
-};
-
-use binrw::{BinRead, BinReaderExt};
 
 use super::*;
-use crate::{Error, Result};
+use crate::{Endian, Error, Result, TinyString};
 
 fn find_null(data: &[u8]) -> Result<usize> {
     data.iter()
@@ -18,14 +12,25 @@ fn find_null(data: &[u8]) -> Result<usize> {
         ))
 }
 
-#[inline(always)]
-fn read<'a, T: BinRead>(endian: Endian, reader: &mut Cursor<&[u8]>) -> Result<T>
-where
-    <T as binrw::BinRead>::Args<'a>: std::default::Default + std::clone::Clone,
-{
+/// Read a u16 at `offset` in `data` according to `endian`, bounds-checked.
+fn read_u16(data: &[u8], offset: usize, endian: Endian) -> Result<u16> {
+    let bytes = data
+        .get(offset..offset + 2)
+        .ok_or(Error::InsufficientData(data.len(), offset + 2))?;
     Ok(match endian {
-        Endian::Big => reader.read_be()?,
-        Endian::Little => reader.read_le()?,
+        Endian::Big => u16::from_be_bytes([bytes[0], bytes[1]]),
+        Endian::Little => u16::from_le_bytes([bytes[0], bytes[1]]),
+    })
+}
+
+/// Read a u32 at `offset` in `data` according to `endian`, bounds-checked.
+fn read_u32(data: &[u8], offset: usize, endian: Endian) -> Result<u32> {
+    let bytes = data
+        .get(offset..offset + 4)
+        .ok_or(Error::InsufficientData(data.len(), offset + 4))?;
+    Ok(match endian {
+        Endian::Big => u32::from_be_bytes([bytes[0], bytes[1], bytes[2], bytes[3]]),
+        Endian::Little => u32::from_le_bytes([bytes[0], bytes[1], bytes[2], bytes[3]]),
     })
 }
 
@@ -34,7 +39,6 @@ where
 pub struct FileIterator<'a> {
     sarc: &'a Sarc<'a>,
     index: usize,
-    entry_offset: usize,
     entry: ResFatEntry,
 }
 
@@ -45,13 +49,9 @@ impl<'a> Iterator for FileIterator<'a> {
         if self.index >= self.sarc.num_files as usize {
             None
         } else {
-            self.entry_offset =
+            let entry_offset =
                 self.sarc.entries_offset as usize + size_of::<ResFatEntry>() * self.index;
-            self.entry = read(
-                self.sarc.endian,
-                &mut Cursor::new(&self.sarc.data[self.entry_offset..]),
-            )
-            .ok()?;
+            self.entry = self.sarc.read_entry(entry_offset).ok()?;
             self.index += 1;
             Some(File {
                 name: if self.entry.rel_name_opt_offset != 0 {
@@ -59,7 +59,7 @@ impl<'a> Iterator for FileIterator<'a> {
                         + (self.entry.rel_name_opt_offset & 0xFFFFFF) as usize * 4;
                     let term_pos = find_null(&self.sarc.data[name_offset..]).ok()?;
                     Some(
-                        std::str::from_utf8(&self.sarc.data[name_offset..name_offset + term_pos])
+                        core::str::from_utf8(&self.sarc.data[name_offset..name_offset + term_pos])
                             .ok()?,
                     )
                 } else {
@@ -70,7 +70,6 @@ impl<'a> Iterator for FileIterator<'a> {
                         ..(self.sarc.data_offset + self.entry.data_end) as usize,
                 )?,
                 index: self.index,
-                sarc: self.sarc,
             })
         }
     }
@@ -85,11 +84,11 @@ pub struct Sarc<'a> {
     data_offset: u32,
     names_offset: u32,
     endian: Endian,
-    data: Cow<'a, [u8]>,
+    data: &'a [u8],
 }
 
-impl std::fmt::Debug for Sarc<'_> {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+impl core::fmt::Debug for Sarc<'_> {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         f.debug_struct("Sarc")
             .field("num_files", &self.num_files)
             .field("entries_offset", &self.entries_offset)
@@ -116,7 +115,7 @@ impl Hash for Sarc<'_> {
     }
 }
 
-impl<'a, S: std::borrow::Borrow<str>> std::ops::Index<S> for Sarc<'a> {
+impl<'a, S: core::borrow::Borrow<str>> core::ops::Index<S> for Sarc<'a> {
     type Output = [u8];
 
     fn index(&self, index: S) -> &Self::Output {
@@ -128,60 +127,115 @@ impl<'a, S: std::borrow::Borrow<str>> std::ops::Index<S> for Sarc<'a> {
 impl<'a> Sarc<'_> {
     /// Parses a SARC archive from binary data.
     ///
-    /// **Note**: If and only if the `yaz0` feature is enabled, this function
-    /// automatically decompresses the SARC when necessary.
-    pub fn new<T: Into<Cow<'a, [u8]>>>(data: T) -> crate::Result<Sarc<'a>> {
-        let mut data = data.into();
-
-        #[cfg(feature = "yaz0")]
-        {
-            if data.starts_with(b"Yaz0") {
-                data = crate::yaz0::decompress(&data)?.into();
-            }
+    /// The data is borrowed, not owned: `Sarc` holds a `&'a [u8]` and never
+    /// allocates.
+    ///
+    /// ```rust
+    /// let raw: &[u8] = b"SARC\x00\x14\xfe\xff\x00\x00\x00\x28\x00\x00\x00\x28\x01\x00\x00\x00SFAT\x00\x0c\x00\x00\x00\x00\x00\x65SFNT\x00\x08\x00\x00";
+    /// let sarc = roead::sarc::Sarc::new(raw).unwrap();
+    /// assert_eq!(sarc.len(), 0);
+    /// ```
+    ///
+    /// Yaz0-compressed archives are **not** decompressed here; decompress them
+    /// with [`crate::yaz0::decompress_if`] first and pass the resulting slice:
+    ///
+    /// ```rust
+    /// # #[cfg(feature = "yaz0")]
+    /// # {
+    /// # use roead::yaz0;
+    /// # let raw: &[u8] = b"";
+    /// let decompressed = yaz0::decompress_if(raw);
+    /// assert!(decompressed.is_empty());
+    /// # }
+    /// ```
+    pub fn new(data: &'a [u8]) -> crate::Result<Sarc<'a>> {
+        if data.len() < 0x14 {
+            return Err(Error::InsufficientData(data.len(), 0x14));
+        }
+        if &data[0..4] != b"SARC" {
+            return Err(Error::BadMagic(TinyString::from_bytes(&data[0..4]), "SARC"));
         }
 
-        let mut reader = Cursor::new(data.as_ref());
-        reader.set_position(6);
-        let endian: Endian = Endian::read_ne(&mut reader).map_err(Error::from)?;
-        reader.set_position(0);
+        // The BOM at offset 6 is self-describing. Read it as a little-endian
+        // u16 (matching the original `Endian::read_ne` behavior on little-endian
+        // hosts) and map the discriminant via `Endian::from_bom`.
+        let bom_bytes = data
+            .get(6..8)
+            .ok_or(Error::InsufficientData(data.len(), 8))?;
+        let endian = Endian::from_bom(u16::from_le_bytes([bom_bytes[0], bom_bytes[1]]))
+            .ok_or(Error::InvalidData("Invalid SARC BOM"))?;
 
-        let header: ResHeader = read(endian, &mut reader)?;
+        let header = ResHeader {
+            header_size: read_u16(data, 4, endian)?,
+            bom: endian,
+            file_size: read_u32(data, 8, endian)?,
+            data_offset: read_u32(data, 12, endian)?,
+            version: read_u16(data, 16, endian)?,
+            reserved: read_u16(data, 18, endian)?,
+        };
+        if header.header_size != 0x14 {
+            return Err(Error::InvalidData("SARC header wrong size (expected 0x14)"));
+        }
+        let data_offset = header.data_offset;
         if header.version != 0x0100 {
             return Err(Error::InvalidData("Invalid SARC version (expected 0x100)"));
         }
-        if header.header_size as usize != 0x14 {
-            return Err(Error::InvalidData("SARC header wrong size (expected 0x14)"));
-        }
 
-        let fat_header: ResFatHeader = read(endian, &mut reader)?;
-        if fat_header.header_size as usize != 0x0C {
+        let fat_header_offset = header.header_size as usize;
+        if &data[fat_header_offset..fat_header_offset + 4] != b"SFAT" {
+            return Err(Error::BadMagic(
+                TinyString::from_bytes(&data[fat_header_offset..fat_header_offset + 4]),
+                "SFAT",
+            ));
+        }
+        let fat_header = ResFatHeader {
+            header_size: read_u16(data, fat_header_offset + 4, endian)?,
+            num_files: read_u16(data, fat_header_offset + 6, endian)?,
+            hash_multiplier: read_u32(data, fat_header_offset + 8, endian)?,
+        };
+        if fat_header.header_size != 0x0C {
             return Err(Error::InvalidData("SFAT header wrong size (expected 0x0C)"));
         }
-        if (fat_header.num_files >> 0xE) != 0 {
-            return Err(Error::TooManyFiles(fat_header.num_files.into()));
+        let num_files = fat_header.num_files;
+        if (num_files >> 0xE) != 0 {
+            return Err(Error::TooManyFiles(num_files));
+        }
+        let hash_multiplier = fat_header.hash_multiplier;
+
+        let entries_offset = fat_header_offset + 0x0C;
+        let fat_end = entries_offset + 0x10 * num_files as usize;
+        if data.len() < fat_end {
+            return Err(Error::InsufficientData(data.len(), fat_end));
         }
 
-        let num_files = fat_header.num_files;
-        let entries_offset = reader.position() as u16;
-        let hash_multiplier = fat_header.hash_multiplier;
-        let data_offset = header.data_offset;
-
-        let fnt_header_offset = entries_offset as usize + 0x10 * num_files as usize;
-        reader.set_position(fnt_header_offset as u64);
-        let fnt_header: ResFntHeader = read(endian, &mut reader)?;
-        if fnt_header.header_size as usize != 0x08 {
+        let fnt_header_offset = fat_end;
+        if fnt_header_offset + 4 > data.len() {
+            return Err(Error::InsufficientData(data.len(), fnt_header_offset + 4));
+        }
+        if &data[fnt_header_offset..fnt_header_offset + 4] != b"SFNT" {
+            return Err(Error::BadMagic(
+                TinyString::from_bytes(&data[fnt_header_offset..fnt_header_offset + 4]),
+                "SFNT",
+            ));
+        }
+        let fnt_header = ResFntHeader {
+            header_size: read_u16(data, fnt_header_offset + 4, endian)?,
+            reserved: read_u16(data, fnt_header_offset + 6, endian)?,
+        };
+        if fnt_header.header_size != 0x08 {
             return Err(Error::InvalidData("SFNT header wrong size (expected 0x8)"));
         }
 
-        let names_offset = reader.position() as u32;
+        let names_offset = (fnt_header_offset + 0x08) as u32;
         if data_offset < names_offset {
             return Err(Error::InvalidData("Invalid name table offset in SARC"));
         }
+
         Ok(Sarc {
             data,
             data_offset,
             endian,
-            entries_offset,
+            entries_offset: entries_offset as u16,
             num_files,
             hash_multiplier,
             names_offset,
@@ -216,18 +270,17 @@ impl<'a> Sarc<'_> {
         let needle_hash = hash_name(self.hash_multiplier, file);
         let mut a: u32 = 0;
         let mut b: u32 = self.num_files as u32 - 1;
-        let mut reader = Cursor::new(self.data.as_ref());
         while a <= b {
             let m: u32 = (a + b) / 2;
-            reader.set_position(self.entries_offset as u64 + 0x10 * m as u64);
-            let hash: u32 = read(self.endian, &mut reader)?;
+            let entry_offset = self.entries_offset as usize + 0x10 * m as usize;
+            let hash = read_u32(self.data, entry_offset, self.endian)?;
             match needle_hash.cmp(&hash) {
-                std::cmp::Ordering::Less => match m.checked_sub(1) {
+                core::cmp::Ordering::Less => match m.checked_sub(1) {
                     Some(v) => b = v,
                     None => return Ok(None),
                 },
-                std::cmp::Ordering::Greater => a = m + 1,
-                std::cmp::Ordering::Equal => return Ok(Some(m as usize)),
+                core::cmp::Ordering::Greater => a = m + 1,
+                core::cmp::Ordering::Equal => return Ok(Some(m as usize)),
             }
         }
         Ok(None)
@@ -258,10 +311,12 @@ impl<'a> Sarc<'_> {
         file_index
             .map(|i| -> Result<&[u8]> {
                 let entry_offset = self.entries_offset as usize + size_of::<ResFatEntry>() * i;
-                let entry: ResFatEntry =
-                    read(self.endian, &mut Cursor::new(&self.data[entry_offset..]))?;
-                Ok(&self.data[(self.data_offset + entry.data_begin) as usize
-                    ..(self.data_offset + entry.data_end) as usize])
+                let entry = self.read_entry(entry_offset)?;
+                let data_begin = self.data_offset as usize + entry.data_begin as usize;
+                let data_end = self.data_offset as usize + entry.data_end as usize;
+                self.data
+                    .get(data_begin..data_end)
+                    .ok_or(Error::InsufficientData(self.data.len(), data_end))
             })
             .transpose()
     }
@@ -282,23 +337,37 @@ impl<'a> Sarc<'_> {
         }
 
         let entry_offset = self.entries_offset as usize + size_of::<ResFatEntry>() * index;
-        let entry: ResFatEntry = read(self.endian, &mut Cursor::new(&self.data[entry_offset..]))?;
+        let entry = self.read_entry(entry_offset)?;
+
+        let data_begin = self.data_offset as usize + entry.data_begin as usize;
+        let data_end = self.data_offset as usize + entry.data_end as usize;
+        let data = self
+            .data
+            .get(data_begin..data_end)
+            .ok_or(Error::InsufficientData(self.data.len(), data_end))?;
 
         Ok(File {
             name: if entry.rel_name_opt_offset != 0 {
                 let name_offset = self.names_offset as usize
                     + (entry.rel_name_opt_offset & 0xFFFFFF) as usize * 4;
                 let term_pos = find_null(&self.data[name_offset..])?;
-                Some(std::str::from_utf8(
+                Some(core::str::from_utf8(
                     &self.data[name_offset..name_offset + term_pos],
                 )?)
             } else {
                 None
             },
-            data: &self.data[(self.data_offset + entry.data_begin) as usize
-                ..(self.data_offset + entry.data_end) as usize],
+            data,
             index,
-            sarc: self,
+        })
+    }
+
+    fn read_entry(&self, offset: usize) -> Result<ResFatEntry> {
+        Ok(ResFatEntry {
+            name_hash: read_u32(self.data, offset, self.endian)?,
+            rel_name_opt_offset: read_u32(self.data, offset + 4, self.endian)?,
+            data_begin: read_u32(self.data, offset + 8, self.endian)?,
+            data_end: read_u32(self.data, offset + 12, self.endian)?,
         })
     }
 
@@ -312,7 +381,6 @@ impl<'a> Sarc<'_> {
                 data_end: 0,
             },
             index: 0,
-            entry_offset: self.entries_offset as usize,
             sarc: self,
         }
     }
@@ -322,10 +390,12 @@ impl<'a> Sarc<'_> {
     pub fn guess_min_alignment(&self) -> usize {
         const MIN_ALIGNMENT: u32 = 4;
         let mut gcd = MIN_ALIGNMENT;
-        let mut reader = Cursor::new(&self.data[self.entries_offset as usize..]);
+        let mut offset = self.entries_offset as usize;
         for _ in 0..self.num_files {
-            let entry: ResFatEntry =
-                read(self.endian, &mut reader).expect("Data should have valid ResFatEntry");
+            let entry = self
+                .read_entry(offset)
+                .expect("Data should have valid ResFatEntry");
+            offset += size_of::<ResFatEntry>();
             gcd = gcd_usize(gcd as usize, (self.data_offset + entry.data_begin) as usize) as u32;
         }
 
@@ -348,6 +418,53 @@ impl<'a> Sarc<'_> {
         }
         true
     }
+}
+
+/// Size = 0x14
+#[derive(Debug, Eq, PartialEq, Copy, Clone)]
+pub(crate) struct ResHeader {
+    pub header_size: u16,
+    pub bom: Endian,
+    pub file_size: u32,
+    pub data_offset: u32,
+    pub version: u16,
+    pub reserved: u16,
+}
+
+/// Size = 0x0C
+#[derive(Debug, Copy, Clone, Eq, PartialEq)]
+pub(crate) struct ResFatHeader {
+    pub header_size: u16,
+    pub num_files: u16,
+    pub hash_multiplier: u32,
+}
+
+/// Size = 0x10
+#[derive(Debug, PartialEq, Eq, Copy, Clone)]
+pub(crate) struct ResFatEntry {
+    pub name_hash: u32,
+    pub rel_name_opt_offset: u32,
+    pub data_begin: u32,
+    pub data_end: u32,
+}
+
+/// Size = 0x08
+#[derive(Debug, PartialEq, Eq, Copy, Clone)]
+pub(crate) struct ResFntHeader {
+    pub header_size: u16,
+    pub reserved: u16,
+}
+
+/// Check if a potential alignment is valid for building a SARC
+#[inline(always)]
+pub const fn is_valid_alignment(alignment: usize) -> bool {
+    alignment != 0 && (alignment & (alignment - 1)) == 0
+}
+
+/// Greatest common divisor of two alignments.
+fn gcd_usize(a: usize, b: usize) -> usize {
+    use num_integer::Integer;
+    a.gcd(&b)
 }
 
 #[cfg(test)]

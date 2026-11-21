@@ -6,13 +6,14 @@ use std::{
     sync::LazyLock,
 };
 
-use binrw::{io::Write, BinReaderExt, BinWrite};
+use binrw::{BinReaderExt, BinWrite, io::Write};
 use indexmap::IndexMap;
 use num_integer::Integer;
 use rustc_hash::{FxHashMap, FxHashSet};
 use serde::Deserialize;
 
 use super::*;
+use crate::sarc::parse::{ResFatEntry, ResFatHeader, ResFntHeader, ResHeader};
 use crate::{Endian, Result};
 
 static FACTORY_INFO: &str = include_str!("../../data/botw_resource_factory_info.tsv");
@@ -33,6 +34,109 @@ impl BinWrite for Endian {
             Self::Big => [0xFEu8, 0xFFu8].write(writer),
             Self::Little => [0xFFu8, 0xFEu8].write(writer),
         }
+    }
+}
+
+fn write_u16<W: std::io::Write + std::io::Seek>(
+    writer: &mut W,
+    endian: binrw::Endian,
+    v: u16,
+) -> binrw::BinResult<()> {
+    match endian {
+        binrw::Endian::Big => writer
+            .write_all(&v.to_be_bytes())
+            .map_err(binrw::Error::from)?,
+        binrw::Endian::Little => writer
+            .write_all(&v.to_le_bytes())
+            .map_err(binrw::Error::from)?,
+    }
+    Ok(())
+}
+
+fn write_u32<W: std::io::Write + std::io::Seek>(
+    writer: &mut W,
+    endian: binrw::Endian,
+    v: u32,
+) -> binrw::BinResult<()> {
+    match endian {
+        binrw::Endian::Big => writer
+            .write_all(&v.to_be_bytes())
+            .map_err(binrw::Error::from)?,
+        binrw::Endian::Little => writer
+            .write_all(&v.to_le_bytes())
+            .map_err(binrw::Error::from)?,
+    }
+    Ok(())
+}
+
+impl BinWrite for ResHeader {
+    type Args<'b> = ();
+
+    #[inline(always)]
+    fn write_options<W: std::io::Write + std::io::Seek>(
+        &self,
+        writer: &mut W,
+        endian: binrw::Endian,
+        _: Self::Args<'_>,
+    ) -> binrw::BinResult<()> {
+        write_u16(writer, endian, self.header_size)?;
+        self.bom.write_options(writer, endian, ())?;
+        write_u32(writer, endian, self.file_size)?;
+        write_u32(writer, endian, self.data_offset)?;
+        write_u16(writer, endian, self.version)?;
+        write_u16(writer, endian, self.reserved)?;
+        Ok(())
+    }
+}
+
+impl BinWrite for ResFatHeader {
+    type Args<'b> = ();
+
+    #[inline(always)]
+    fn write_options<W: std::io::Write + std::io::Seek>(
+        &self,
+        writer: &mut W,
+        endian: binrw::Endian,
+        _: Self::Args<'_>,
+    ) -> binrw::BinResult<()> {
+        write_u16(writer, endian, self.header_size)?;
+        write_u16(writer, endian, self.num_files)?;
+        write_u32(writer, endian, self.hash_multiplier)?;
+        Ok(())
+    }
+}
+
+impl BinWrite for ResFatEntry {
+    type Args<'b> = ();
+
+    #[inline(always)]
+    fn write_options<W: std::io::Write + std::io::Seek>(
+        &self,
+        writer: &mut W,
+        endian: binrw::Endian,
+        _: Self::Args<'_>,
+    ) -> binrw::BinResult<()> {
+        write_u32(writer, endian, self.name_hash)?;
+        write_u32(writer, endian, self.rel_name_opt_offset)?;
+        write_u32(writer, endian, self.data_begin)?;
+        write_u32(writer, endian, self.data_end)?;
+        Ok(())
+    }
+}
+
+impl BinWrite for ResFntHeader {
+    type Args<'b> = ();
+
+    #[inline(always)]
+    fn write_options<W: std::io::Write + std::io::Seek>(
+        &self,
+        writer: &mut W,
+        endian: binrw::Endian,
+        _: Self::Args<'_>,
+    ) -> binrw::BinResult<()> {
+        write_u16(writer, endian, self.header_size)?;
+        write_u16(writer, endian, self.reserved)?;
+        Ok(())
     }
 }
 
@@ -177,6 +281,7 @@ impl SarcWriter {
     /// added.
     pub fn write<W: Write + Seek>(&mut self, writer: &mut W) -> Result<()> {
         writer.seek(SeekFrom::Start(0x14))?;
+        writer.write_all(b"SFAT")?;
         ResFatHeader {
             header_size: 0x0C,
             num_files: self.files.len() as u16,
@@ -211,6 +316,7 @@ impl SarcWriter {
             }
         }
 
+        writer.write_all(b"SFNT")?;
         ResFntHeader {
             header_size: 0x8,
             reserved: 0,
@@ -237,6 +343,7 @@ impl SarcWriter {
 
         let file_size = writer.stream_position()? as u32;
         writer.seek(SeekFrom::Start(0))?;
+        writer.write_all(b"SARC")?;
         ResHeader {
             header_size: 0x14,
             bom: self.endian,
@@ -292,10 +399,13 @@ impl SarcWriter {
         self.add_alignment_requirement("sharcb".to_owned(), 0x1000);
         self.add_alignment_requirement("sharc".to_owned(), 0x1000);
         self.add_alignment_requirement("baglmf".to_owned(), 0x80);
-        self.add_alignment_requirement("bffnt".to_owned(), match self.endian {
-            Endian::Big => 0x2000,
-            Endian::Little => 0x1000,
-        });
+        self.add_alignment_requirement(
+            "bffnt".to_owned(),
+            match self.endian {
+                Endian::Big => 0x2000,
+                Endian::Little => 0x1000,
+            },
+        );
     }
 
     /// Set the minimum data alignment.

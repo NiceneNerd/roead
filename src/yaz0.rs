@@ -1,10 +1,10 @@
 //! Support for Yaz0 decompression and fast compression, based on the
 //! `oead::yaz0` module.
-use alloc::borrow::Cow;
-use alloc::vec::Vec;
-
-use binrw::binrw;
-
+//!
+//! `decompress_into`, `decompress_unchecked`, and header parsing
+//! (`get_header`, `checked_header`) are core-only and work without `alloc`.
+//! Decompression to a `Vec` (`decompress`), all compression, and `decompress_if`
+//! require `alloc`. `compress_if` (which inspects a file path) requires `std`.
 use crate::{Error, Result, TinyString};
 
 const HEADER_LEN: usize = 0x10;
@@ -16,8 +16,6 @@ const MAX_EXPANSION: usize = MAX_MATCH / 3;
 
 /// The header of Yaz0 compressed data.
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
-#[binrw]
-#[brw(big)]
 pub struct Header {
     /// Should be "Yaz0".
     pub magic: [u8; 4],
@@ -26,12 +24,25 @@ pub struct Header {
     /// [Newer files only] Required buffer alignment
     pub data_alignment: u32,
     #[doc(hidden)]
-    reserved: [u8; 4],
+    pub reserved: [u8; 4],
 }
 
 /// Get the header of Yaz0 compressed data, if it exists.
-pub fn get_header(data: impl AsRef<[u8]>) -> Option<Header> {
-    binrw::BinRead::read(&mut binrw::io::Cursor::new(data.as_ref())).ok()
+///
+/// Returns `None` when `data` is shorter than a header (0x10 bytes). The
+/// magic is not validated here; [`checked_header`] performs magic validation
+/// and reports [`Error::BadMagic`] for corrupt streams. All reads are
+/// bounds-checked.
+pub fn get_header(data: &[u8]) -> Option<Header> {
+    if data.len() < HEADER_LEN {
+        return None;
+    }
+    Some(Header {
+        magic: [data[0], data[1], data[2], data[3]],
+        uncompressed_size: u32::from_be_bytes([data[4], data[5], data[6], data[7]]),
+        data_alignment: u32::from_be_bytes([data[8], data[9], data[10], data[11]]),
+        reserved: [data[12], data[13], data[14], data[15]],
+    })
 }
 
 fn checked_header(data: &[u8]) -> Result<Header> {
@@ -41,7 +52,7 @@ fn checked_header(data: &[u8]) -> Result<Header> {
     let header = get_header(data).ok_or(Error::InvalidData("Missing or corrupt Yaz0 header"))?;
     if &header.magic != b"Yaz0" {
         return Err(Error::BadMagic(
-            TinyString::from_lossy(&header.magic),
+            TinyString::from_bytes(&header.magic),
             "Yaz0",
         ));
     }
@@ -97,17 +108,10 @@ fn decode(src: &[u8], dst: &mut [u8]) -> Result<()> {
     Ok(())
 }
 
-/// Decompress Yaz0 data to vector.
-pub fn decompress(data: impl AsRef<[u8]>) -> Result<Vec<u8>> {
-    let data = data.as_ref();
-    let header = checked_header(data)?;
-    let mut out = alloc::vec![0; header.uncompressed_size as usize];
-    decode(data, &mut out)?;
-    Ok(out)
-}
-
 /// Decompress Yaz0 data into an existing buffer, returning the number of
 /// bytes written.
+///
+/// Core-only: works without `alloc`.
 pub fn decompress_into(data: impl AsRef<[u8]>, mut buffer: impl AsMut<[u8]>) -> Result<usize> {
     let data = data.as_ref();
     let header = checked_header(data)?;
@@ -177,9 +181,25 @@ pub unsafe fn decompress_unchecked(data: impl AsRef<[u8]>, mut buffer: impl AsMu
     size
 }
 
+#[cfg(feature = "alloc")]
+use alloc::borrow::Cow;
+#[cfg(feature = "alloc")]
+use alloc::vec::Vec;
+
+/// Decompress Yaz0 data to vector.
+#[cfg(feature = "alloc")]
+pub fn decompress(data: impl AsRef<[u8]>) -> Result<Vec<u8>> {
+    let data = data.as_ref();
+    let header = checked_header(data)?;
+    let mut out = alloc::vec![0; header.uncompressed_size as usize];
+    decode(data, &mut out)?;
+    Ok(out)
+}
+
 /// Conditionally decompress Yaz0 data to a vector. Returns a [`Cow`] which
 /// contains the original data if the data is not Yaz0 compressed or
 /// decompression fails, or containing the decompressed data otherwise.
+#[cfg(feature = "alloc")]
 #[inline]
 pub fn decompress_if(data: &[u8]) -> Cow<'_, [u8]> {
     if !data.starts_with(b"Yaz0") {
@@ -188,13 +208,8 @@ pub fn decompress_if(data: &[u8]) -> Cow<'_, [u8]> {
     decompress(data).map_or(Cow::Borrowed(data), Cow::Owned)
 }
 
-/// Compress data with default compression settings (no alignment, compression
-/// level 7).
-pub fn compress(data: impl AsRef<[u8]>) -> Vec<u8> {
-    compress_with_options(data, CompressOptions::default())
-}
-
 /// Yaz0 compression options.
+#[cfg(feature = "alloc")]
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub struct CompressOptions {
     /// Buffer alignment hint for decompression
@@ -203,6 +218,7 @@ pub struct CompressOptions {
     pub compression_level: u8,
 }
 
+#[cfg(feature = "alloc")]
 impl Default for CompressOptions {
     fn default() -> Self {
         Self {
@@ -212,6 +228,14 @@ impl Default for CompressOptions {
     }
 }
 
+/// Compress data with default compression settings (no alignment, compression
+/// level 7).
+#[cfg(feature = "alloc")]
+pub fn compress(data: impl AsRef<[u8]>) -> Vec<u8> {
+    compress_with_options(data, CompressOptions::default())
+}
+
+#[cfg(feature = "alloc")]
 #[derive(Debug, Copy, Clone)]
 struct Effort {
     max_chain: u32,
@@ -219,6 +243,7 @@ struct Effort {
     good: usize,
 }
 
+#[cfg(feature = "alloc")]
 impl From<u8> for Effort {
     fn from(level: u8) -> Self {
         let (max_chain, lazy_below, good) = match level.clamp(6, 9) {
@@ -241,6 +266,7 @@ impl From<u8> for Effort {
 ///
 /// # Panics
 /// If `data` is 4 GiB or larger.
+#[cfg(feature = "alloc")]
 pub fn compress_with_options(data: impl AsRef<[u8]>, options: CompressOptions) -> Vec<u8> {
     let data = data.as_ref();
     let size = u32::try_from(data.len()).expect("Yaz0 cannot hold 4 GiB or more");
@@ -282,12 +308,14 @@ pub fn compress_with_options(data: impl AsRef<[u8]>, options: CompressOptions) -
     out.finish()
 }
 
+#[cfg(feature = "alloc")]
 #[derive(Debug, Copy, Clone)]
 struct Match {
     len: usize,
     dist: usize,
 }
 
+#[cfg(feature = "alloc")]
 struct Matcher<'a> {
     data: &'a [u8],
     effort: Effort,
@@ -296,6 +324,7 @@ struct Matcher<'a> {
     prev: Vec<u32>,
 }
 
+#[cfg(feature = "alloc")]
 impl<'a> Matcher<'a> {
     const HASH_BITS: u32 = 15;
 
@@ -384,6 +413,7 @@ impl<'a> Matcher<'a> {
     }
 }
 
+#[cfg(feature = "alloc")]
 struct ChunkWriter {
     buf: Vec<u8>,
     flag_at: usize,
@@ -391,6 +421,7 @@ struct ChunkWriter {
     free: u8,
 }
 
+#[cfg(feature = "alloc")]
 impl ChunkWriter {
     fn with_capacity(cap: usize) -> Self {
         Self {
@@ -466,6 +497,11 @@ pub fn compress_if(data: &[u8], path: impl AsRef<std::path::Path>) -> Cow<'_, [u
 mod tests {
     use super::*;
 
+    #[cfg(feature = "alloc")]
+    use alloc::borrow::Cow;
+    #[cfg(feature = "alloc")]
+    use alloc::vec::Vec;
+
     static FILES: &[(&str, [u8; 4], usize)] = &[
         ("ActorInfo.product.sbyml", [b'Y', b'B', 0x02, 0x0], 1963604),
         ("Demo344_1.sbeventpack", [b'S', b'A', b'R', b'C'], 2847908),
@@ -487,6 +523,63 @@ mod tests {
         }
     }
 
+    // Core-only: runs without `alloc`.
+    #[test]
+    fn decompress_into_core() {
+        // "Hello world" emitted as a single literal group (no back-references).
+        let packed: &[u8] = &[
+            b'Y',
+            b'a',
+            b'z',
+            b'0',
+            0,
+            0,
+            0,
+            11, // uncompressed size
+            0,
+            0,
+            0,
+            0, // data alignment
+            0,
+            0,
+            0,
+            0,           // reserved
+            0b1111_1111, // control group: 8 literals follow
+            b'H',
+            b'e',
+            b'l',
+            b'l',
+            b'o',
+            b' ',
+            b'w',
+            b'o',
+            0b1110_0000, // control group: 3 literals follow
+            b'r',
+            b'l',
+            b'd',
+        ];
+        let mut buffer = [0u8; 11];
+        let n = decompress_into(packed, &mut buffer).unwrap();
+        assert_eq!(&buffer[..n], b"Hello world");
+        assert!(decompress_into(packed, &mut [0u8; 10]).is_err());
+    }
+
+    #[test]
+    fn get_header_rejects_short_input() {
+        assert_eq!(get_header(b"Yaz0"), None);
+        assert_eq!(get_header(&[0u8; 8]), None);
+        assert_eq!(get_header(b"Yaz0\x00\x00\x00\x00\x00\x00\x00\x00"), None);
+    }
+
+    #[test]
+    fn decompress_into_rejects_oversized_claim() {
+        let mut packed = [0u8; 0x10];
+        packed[0..4].copy_from_slice(b"Yaz0");
+        packed[4..8].copy_from_slice(&1_000_000u32.to_be_bytes());
+        assert!(decompress_into(packed, [0u8; 64]).is_err());
+    }
+
+    #[cfg(feature = "alloc")]
     #[test]
     fn test_decompress() {
         for (file, magic, len) in FILES {
@@ -499,6 +592,7 @@ mod tests {
         }
     }
 
+    #[cfg(feature = "alloc")]
     #[test]
     fn test_roundtrip() {
         for (file, ..) in FILES {
@@ -511,6 +605,7 @@ mod tests {
         }
     }
 
+    #[cfg(feature = "alloc")]
     #[test]
     fn test_unchecked() {
         let data = b"Nothing you have not given away will ever really be yours.";
@@ -520,6 +615,7 @@ mod tests {
         assert_eq!(data.as_slice(), &buffer[..size]);
     }
 
+    #[cfg(feature = "alloc")]
     #[test]
     fn unchecked_matches_checked() {
         for (file, ..) in FILES {
@@ -533,6 +629,7 @@ mod tests {
         }
     }
 
+    #[cfg(feature = "alloc")]
     fn xorshift(state: &mut u64) -> u64 {
         *state ^= *state << 13;
         *state ^= *state >> 7;
@@ -540,6 +637,7 @@ mod tests {
         *state
     }
 
+    #[cfg(feature = "alloc")]
     #[test]
     fn roundtrip_every_level_and_edge_case() {
         let mut cases: Vec<Vec<u8>> = vec![
@@ -582,6 +680,7 @@ mod tests {
         }
     }
 
+    #[cfg(feature = "alloc")]
     #[test]
     fn out_of_range_levels_are_clamped() {
         let data = b"abcabcabcabcabcabcabc".repeat(50);
@@ -597,6 +696,7 @@ mod tests {
         }
     }
 
+    #[cfg(feature = "alloc")]
     #[test]
     fn alignment_is_written_to_the_header() {
         let packed = compress_with_options(
@@ -609,6 +709,7 @@ mod tests {
         assert_eq!(get_header(&packed).unwrap().data_alignment, 32);
     }
 
+    #[cfg(feature = "alloc")]
     #[test]
     fn decompress_into_accepts_oversized_buffers() {
         let data = b"Nothing you have not given away will ever really be yours.";
@@ -619,6 +720,7 @@ mod tests {
         assert!(decompress_into(compress(data), vec![0; data.len() - 1]).is_err());
     }
 
+    #[cfg(feature = "alloc")]
     #[test]
     fn rejects_corrupt_streams() {
         let header = |size: u32| {
@@ -644,6 +746,7 @@ mod tests {
         assert!(decompress(&packed).is_err());
     }
 
+    #[cfg(feature = "alloc")]
     #[test]
     fn overlapping_copy_repeats_the_source() {
         let mut v = b"Yaz0".to_vec();
