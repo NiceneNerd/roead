@@ -63,8 +63,9 @@ use alloc::string::String;
 pub mod aamp; // TODO(step 3): parser/writer move to alloc; TODO(step 4): arena readers for pure no_std
 #[cfg(feature = "alloc")]
 pub mod byml; // TODO(step 3): parser/writer move to alloc; TODO(step 4): arena readers for pure no_std
-#[cfg(feature = "std")]
-pub mod sarc; // TODO(step 5): split reader (alloc-free) from writer (std)
+// TODO(step 5): split reader (alloc-free) from writer (std)
+#[cfg(all(feature = "sarc", feature = "std"))]
+pub mod sarc;
 pub mod types;
 mod util;
 #[cfg(feature = "yaml")]

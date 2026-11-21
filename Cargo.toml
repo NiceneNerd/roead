@@ -43,8 +43,12 @@ rayon = "1.10"
 
 [features]
 default = ["std", "alloc", "aamp", "byml", "sarc", "yaz0"]
-# std-only facilities (yaml machinery, name table, SarcWriter's serde_json until step 6)
-std = ["alloc", "ryml", "lexical", "lexical-core", "base64", "parking_lot", "scc", "serde_json", "join_str", "serde", "binrw?/std", "indexmap?/std", "smartstring?/std", "rustc-hash?/std", "base64?/std"]
+# std-only facilities. The YAML machinery (ryml/lexical/base64/parking_lot/
+# join_str/scc) is deliberately NOT here: those deps are only referenced by
+# `yaml`-gated code, and enabling them with `std` would make them unused
+# dependencies whenever `yaml` is off. SarcWriter's serde/serde_json are
+# temporary (see step 6).
+std = ["alloc", "serde", "serde_json", "binrw?/std", "indexmap?/std", "smartstring?/std", "rustc-hash?/std", "base64?/std"]
 # TODO(step 6): drop serde/serde_json from `std` once SarcWriter no longer needs them
 # allocator + everything that needs it
 alloc = ["smartstring", "indexmap", "rustc-hash", "binrw", "hashbrown"]
@@ -53,7 +57,7 @@ aamp-names = ["std", "scc"]
 byml = ["almost", "num-traits"]
 sarc = ["num-integer"]
 yaz0 = ["binrw"]          # TODO(step 5): narrow to [] by hand-rolling Header parsing
-yaml = ["std", "ryml", "lexical", "lexical-core", "base64", "parking_lot", "aamp-names"]
+yaml = ["std", "ryml", "lexical", "lexical-core", "base64", "parking_lot", "join_str", "aamp-names"]
 with-serde = ["serde", "smartstring/serde", "indexmap/serde"]
 binrw = ["dep:binrw"]     # dep alias, kept public because cfgs reference it
 

@@ -824,16 +824,14 @@ impl From<&String> for Byml {
     }
 }
 
-#[cfg(feature = "std")]
-impl From<std::string::String> for Byml {
-    fn from(value: std::string::String) -> Self {
+impl From<alloc::string::String> for Byml {
+    fn from(value: alloc::string::String) -> Self {
         Self::String(value.into())
     }
 }
 
-#[cfg(feature = "std")]
-impl From<&std::string::String> for Byml {
-    fn from(value: &std::string::String) -> Self {
+impl From<&alloc::string::String> for Byml {
+    fn from(value: &alloc::string::String) -> Self {
         Self::String(value.into())
     }
 }

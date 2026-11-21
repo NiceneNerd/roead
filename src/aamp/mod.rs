@@ -1283,16 +1283,14 @@ impl From<&String> for Name {
     }
 }
 
-#[cfg(feature = "std")]
-impl From<std::string::String> for Name {
-    fn from(s: std::string::String) -> Self {
+impl From<alloc::string::String> for Name {
+    fn from(s: alloc::string::String) -> Self {
         Name(hash_name(&s))
     }
 }
 
-#[cfg(feature = "std")]
-impl From<&std::string::String> for Name {
-    fn from(s: &std::string::String) -> Self {
+impl From<&alloc::string::String> for Name {
+    fn from(s: &alloc::string::String) -> Self {
         Name(hash_name(s))
     }
 }
