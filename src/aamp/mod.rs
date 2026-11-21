@@ -1387,7 +1387,7 @@ macro_rules! impl_map_wrapper {
 
             /// Get a full entry by name or hash.
             #[inline(always)]
-            pub fn entry<N: Into<Name>>(&mut self, key: N) -> indexmap::map::Entry<Name, $valtype> {
+            pub fn entry<N: Into<Name>>(&mut self, key: N) -> indexmap::map::Entry<'_, Name, $valtype> {
                 self.0.entry(key.into())
             }
 

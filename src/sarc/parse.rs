@@ -241,7 +241,7 @@ impl<'a> Sarc<'_> {
 
     /// Get a file by name, returning `None` on its absence or any error.
     /// If you need to know the error, use [`Sarc::try_get`].
-    pub fn get(&self, file: &str) -> Option<File> {
+    pub fn get(&self, file: &str) -> Option<File<'_>> {
         let file_index = self.find_file(file).ok()?;
         file_index.and_then(|i| self.file_at(i).ok())
     }
@@ -250,7 +250,7 @@ impl<'a> Sarc<'_> {
     /// distinguishes between failed parsing (e.g. due to a corrupted SARC)
     /// and the absence of the file. If you don't care about any potential
     /// errors, just whether you can get the file data, use [`Sarc::get`].
-    pub fn try_get(&self, file: &str) -> Result<Option<File>> {
+    pub fn try_get(&self, file: &str) -> Result<Option<File<'_>>> {
         let file_index = self.find_file(file)?;
         file_index.map(|i| self.file_at(i)).transpose()
     }
@@ -279,7 +279,7 @@ impl<'a> Sarc<'_> {
     }
 
     /// Get a file by index. Returns error if index > file count.
-    pub fn file_at(&self, index: usize) -> Result<File> {
+    pub fn file_at(&self, index: usize) -> Result<File<'_>> {
         if index >= self.num_files as usize {
             return Err(Error::InvalidDataD(jstr!(
                 "No file in SARC at index {&index.to_string()}"

@@ -89,7 +89,7 @@ impl<R: Read + Seek> Parser<R> {
 
     #[inline]
     fn read<'a, T: BinRead<Args<'a> = ()>>(&mut self) -> Result<T> {
-        Ok(self.reader.read_le()?)
+        Ok(binrw::BinReaderExt::read_le(&mut self.reader)?)
     }
 
     #[inline]

@@ -166,6 +166,7 @@ impl<'a> From<u32> for BymlIndex<'a> {
 /// Represents a Nintendo binary YAML (BYML) document or node.
 #[cfg_attr(feature = "with-serde", derive(serde::Serialize, serde::Deserialize))]
 #[derive(Debug, Clone)]
+#[derive(Default)]
 pub enum Byml {
     /// String value.
     String(String),
@@ -196,6 +197,7 @@ pub enum Byml {
     /// 64-bit float.
     Double(f64),
     /// Null value.
+    #[default]
     Null,
 }
 
@@ -866,11 +868,6 @@ impl FromIterator<Byml> for Byml {
     }
 }
 
-impl Default for Byml {
-    fn default() -> Self {
-        Self::Null
-    }
-}
 
 impl PartialEq for Byml {
     fn eq(&self, other: &Self) -> bool {

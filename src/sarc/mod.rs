@@ -113,7 +113,7 @@ impl<'a> File<'a> {
     }
 
     /// Attempt to parse file as SARC.
-    pub fn parse_sarc(&self) -> crate::Result<Sarc> {
+    pub fn parse_sarc(&self) -> crate::Result<Sarc<'_>> {
         Sarc::new(self.data)
     }
 
