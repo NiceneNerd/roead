@@ -617,8 +617,16 @@ mod harness {
         fs::write("test/fixtures/manifest.json", &out).unwrap();
     }
 
+}
+
+#[cfg(all(feature = "byml", feature = "alloc"))]
+mod byml_tests {
+    use std::collections::BTreeMap;
+
+    use super::harness::*;
+
     /// Structural summary of a parsed BYML document (human-reviewable manifest).
-    pub fn byml_summary(doc: &roead::byml::Byml) -> JValue {
+    fn byml_summary(doc: &roead::byml::Byml) -> JValue {
         let (root_kind, entry_count) = match doc {
             roead::byml::Byml::Array(v) => ("Array", v.len()),
             roead::byml::Byml::Map(v) => ("Map", v.len()),
@@ -631,66 +639,6 @@ mod harness {
             ("entry_count".into(), JValue::U64(entry_count as u64)),
         ]))
     }
-
-    /// Structural summary of parameter types in an AAMP tree.
-    pub fn aamp_summary(version: u32, pio: &roead::aamp::ParameterIO) -> JValue {
-        let mut counts: BTreeMap<&'static str, u64> = BTreeMap::new();
-        fn walk(list: &roead::aamp::ParameterList, counts: &mut BTreeMap<&'static str, u64>) {
-            for (_name, obj) in &list.objects.0 {
-                for (_name, param) in &obj.0 {
-                    *counts.entry(type_name(param)).or_insert(0) += 1;
-                }
-            }
-            for (_name, sub) in &list.lists.0 {
-                walk(sub, counts);
-            }
-        }
-        fn type_name(param: &roead::aamp::Parameter) -> &'static str {
-            match param {
-                roead::aamp::Parameter::Bool(_) => "Bool",
-                roead::aamp::Parameter::F32(_) => "F32",
-                roead::aamp::Parameter::I32(_) => "Int",
-                roead::aamp::Parameter::Vec2(_) => "Vec2",
-                roead::aamp::Parameter::Vec3(_) => "Vec3",
-                roead::aamp::Parameter::Vec4(_) => "Vec4",
-                roead::aamp::Parameter::Color(_) => "Color",
-                roead::aamp::Parameter::String32(_) => "String32",
-                roead::aamp::Parameter::String64(_) => "String64",
-                roead::aamp::Parameter::String256(_) => "String256",
-                roead::aamp::Parameter::StringRef(_) => "StringRef",
-                roead::aamp::Parameter::Curve1(_) => "Curve1",
-                roead::aamp::Parameter::Curve2(_) => "Curve2",
-                roead::aamp::Parameter::Curve3(_) => "Curve3",
-                roead::aamp::Parameter::Curve4(_) => "Curve4",
-                roead::aamp::Parameter::BufferInt(_) => "BufferInt",
-                roead::aamp::Parameter::BufferF32(_) => "BufferF32",
-                roead::aamp::Parameter::Quat(_) => "Quat",
-                roead::aamp::Parameter::U32(_) => "U32",
-                roead::aamp::Parameter::BufferU32(_) => "BufferU32",
-                roead::aamp::Parameter::BufferBinary(_) => "BufferBinary",
-            }
-        }
-        walk(&pio.param_root, &mut counts);
-        let mut map = BTreeMap::new();
-        map.insert("pio_version".into(), JValue::U64(version as u64));
-        map.insert(
-            "param_types".into(),
-            JValue::Map(
-                counts
-                    .into_iter()
-                    .map(|(k, v)| (k.into(), JValue::U64(v)))
-                    .collect(),
-            ),
-        );
-        JValue::Map(map)
-    }
-}
-
-#[cfg(feature = "byml")]
-mod byml_tests {
-    use std::collections::BTreeMap;
-
-    use super::harness::*;
 
     #[test]
     fn byml_fixtures() {
@@ -810,9 +758,64 @@ mod byml_tests {
     }
 }
 
-#[cfg(feature = "aamp")]
+#[cfg(all(feature = "aamp", feature = "alloc"))]
 mod aamp_tests {
+    use std::collections::BTreeMap;
+
     use super::harness::*;
+
+    /// Structural summary of parameter types in an AAMP tree.
+    fn aamp_summary(version: u32, pio: &roead::aamp::ParameterIO) -> JValue {
+        let mut counts: BTreeMap<&'static str, u64> = BTreeMap::new();
+        fn walk(list: &roead::aamp::ParameterList, counts: &mut BTreeMap<&'static str, u64>) {
+            for (_name, obj) in &list.objects.0 {
+                for (_name, param) in &obj.0 {
+                    *counts.entry(type_name(param)).or_insert(0) += 1;
+                }
+            }
+            for (_name, sub) in &list.lists.0 {
+                walk(sub, counts);
+            }
+        }
+        fn type_name(param: &roead::aamp::Parameter) -> &'static str {
+            match param {
+                roead::aamp::Parameter::Bool(_) => "Bool",
+                roead::aamp::Parameter::F32(_) => "F32",
+                roead::aamp::Parameter::I32(_) => "Int",
+                roead::aamp::Parameter::Vec2(_) => "Vec2",
+                roead::aamp::Parameter::Vec3(_) => "Vec3",
+                roead::aamp::Parameter::Vec4(_) => "Vec4",
+                roead::aamp::Parameter::Color(_) => "Color",
+                roead::aamp::Parameter::String32(_) => "String32",
+                roead::aamp::Parameter::String64(_) => "String64",
+                roead::aamp::Parameter::String256(_) => "String256",
+                roead::aamp::Parameter::StringRef(_) => "StringRef",
+                roead::aamp::Parameter::Curve1(_) => "Curve1",
+                roead::aamp::Parameter::Curve2(_) => "Curve2",
+                roead::aamp::Parameter::Curve3(_) => "Curve3",
+                roead::aamp::Parameter::Curve4(_) => "Curve4",
+                roead::aamp::Parameter::BufferInt(_) => "BufferInt",
+                roead::aamp::Parameter::BufferF32(_) => "BufferF32",
+                roead::aamp::Parameter::Quat(_) => "Quat",
+                roead::aamp::Parameter::U32(_) => "U32",
+                roead::aamp::Parameter::BufferU32(_) => "BufferU32",
+                roead::aamp::Parameter::BufferBinary(_) => "BufferBinary",
+            }
+        }
+        walk(&pio.param_root, &mut counts);
+        let mut map = BTreeMap::new();
+        map.insert("pio_version".into(), JValue::U64(version as u64));
+        map.insert(
+            "param_types".into(),
+            JValue::Map(
+                counts
+                    .into_iter()
+                    .map(|(k, v)| (k.into(), JValue::U64(v)))
+                    .collect(),
+            ),
+        );
+        JValue::Map(map)
+    }
 
     #[test]
     fn aamp_fixtures() {

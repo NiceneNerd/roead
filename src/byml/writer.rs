@@ -1,5 +1,6 @@
 use crate::FxHashMap;
-use alloc::{boxed::Box, collections::BTreeMap, format, rc::Rc};
+use alloc::{boxed::Box, collections::BTreeMap, format, rc::Rc, vec::Vec};
+use smartstring::alias::String;
 use binrw::io::{Cursor, Seek, SeekFrom, Write};
 use binrw::prelude::*;
 

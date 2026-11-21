@@ -63,8 +63,12 @@ use alloc::string::String;
 
 #[cfg(feature = "alloc")]
 pub mod aamp; // TODO(step 4): arena readers for pure no_std
-#[cfg(feature = "alloc")]
-pub mod byml; // TODO(step 4): arena readers for pure no_std
+/// The BYML module root is compiled whenever the `byml` feature is on: the
+/// owned model (`owned`) and the binrw-based parser/writer require `alloc`,
+/// but the shared format walk (`reader`) and the flat arena (`arena`) are
+/// core-only so `BymlArena` works with zero features.
+#[cfg(feature = "byml")]
+pub mod byml;
 // TODO(step 5): split reader (alloc-free) from writer (std)
 #[cfg(all(feature = "sarc", feature = "std"))]
 pub mod sarc;
@@ -155,6 +159,24 @@ impl TinyString {
     pub fn as_str(&self) -> &str {
         // SAFETY: the contents are validated to be UTF-8 when constructed.
         unsafe { core::str::from_utf8_unchecked(&self.data[..usize::from(self.len)]) }
+    }
+
+    /// Creates a `TinyString` by lossily converting `bytes`, replacing
+    /// non-ASCII bytes with `'?'`.
+    ///
+    /// The result is always valid UTF-8 (ASCII only), so [`TinyString::as_str`]
+    /// is safe. Never allocates.
+    pub fn from_bytes(bytes: &[u8]) -> Self {
+        let len = bytes.len().min(16);
+        debug_assert!(
+            len == bytes.len(),
+            "TinyString can hold at most 16 bytes; input was truncated"
+        );
+        let mut data = [0; 16];
+        for i in 0..len {
+            data[i] = if bytes[i] < 0x80 { bytes[i] } else { b'?' };
+        }
+        Self { data, len: len as u8 }
     }
 
     /// Creates a `TinyString` by lossily converting `bytes`, replacing

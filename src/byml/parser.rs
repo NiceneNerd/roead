@@ -1,4 +1,4 @@
-use alloc::format;
+use alloc::{format, vec::Vec};
 use binrw::io::{Cursor, Read, Seek, SeekFrom};
 use binrw::{BinRead, VecArgs, binrw};
 
@@ -7,6 +7,7 @@ use crate::{
     Endian, Error, Result,
     util::{SeekShim, align, u24},
 };
+use smartstring::alias::String;
 
 impl Byml {
     /// Read a document from a binary reader.
