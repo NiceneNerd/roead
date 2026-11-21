@@ -1,0 +1,266 @@
+{
+  "roead_compatibility_fixtures": "step 1 golden fixtures for parse/serialize behavior",
+  "note": "Regenerate with UPDATE_FIXTURES=1. Byte-for-byte authority is the committed .expected files.",
+  "entries": [
+    {
+      "source": "test/aamp/d_frequentuse.baglblm",
+      "format": "aamp",
+      "source_size": 496,
+      "source_sha256": "995163316298104f9bd38f73c200edc261f871192ae60d62d6f1de94cd613267",
+      "snapshot": true,
+      "parse_requires": null,
+      "summary": {"param_types":{"Bool":7,"Color":7,"F32":23,"Int":4},"pio_version":1},
+      "artifacts": [
+        {"path": "test/fixtures/aamp/d_frequentuse.baglblm.yml.expected", "kind": "yml", "size": 1330, "sha256": "76464f5cf331821ecc0664a123888c6378b80f0ca35448c434caf3175519c3bd"},
+        {"path": "test/fixtures/aamp/d_frequentuse.baglblm.bin.expected", "kind": "bin", "size": 500, "sha256": "fe31951c746a23cec4e1b14f28cb4b86fb2489156a2c8ed8cafdf30371a41658"}
+      ]
+    }
+
+,
+    {
+      "source": "test/aamp/actor_auto_capture.baglfila",
+      "format": "aamp",
+      "source_size": 236,
+      "source_sha256": "5963988d535658f8d743276e3fad5679dec9efa6dd58b4f78e8118a19e568ced",
+      "snapshot": true,
+      "parse_requires": null,
+      "summary": {"param_types":{"Bool":2,"Color":1,"F32":6,"Int":3,"U32":1},"pio_version":0},
+      "artifacts": [
+        {"path": "test/fixtures/aamp/actor_auto_capture.baglfila.yml.expected", "kind": "yml", "size": 534, "sha256": "6c2ea32cbe57aa5ec424b5397fe95f1cc6ae3ab65bd1b50416b7a79d815d2b3a"},
+        {"path": "test/fixtures/aamp/actor_auto_capture.baglfila.bin.expected", "kind": "bin", "size": 236, "sha256": "5963988d535658f8d743276e3fad5679dec9efa6dd58b4f78e8118a19e568ced"}
+      ]
+    }
+
+,
+    {
+      "source": "test/aamp/Enemy_Lizalfos_Electric.bchemical",
+      "format": "aamp",
+      "source_size": 244,
+      "source_sha256": "111176601a54e4ee8f7f2f0d0ce30c8490c14540ba8205eab49f7ee018ac2a02",
+      "snapshot": true,
+      "parse_requires": null,
+      "summary": {"param_types":{"F32":3,"String32":2,"String64":1,"U32":3},"pio_version":0},
+      "artifacts": [
+        {"path": "test/fixtures/aamp/Enemy_Lizalfos_Electric.bchemical.yml.expected", "kind": "yml", "size": 610, "sha256": "d6654223da102cee0406b8d15198ff55074dc15572c96930bf2d06c5bb4e1957"},
+        {"path": "test/fixtures/aamp/Enemy_Lizalfos_Electric.bchemical.bin.expected", "kind": "bin", "size": 247, "sha256": "0ade18ef50998e857ead91cdc8d6acd4b25ff5218461b9a22d3fb70ddf505d78"}
+      ]
+    }
+
+,
+    {
+      "source": "test/aamp/common.bagllmap",
+      "format": "aamp",
+      "source_size": 8004,
+      "source_sha256": "c664b8b421b7f6036ca544e93da55986379680c97bb7fe0c3790180f834e9e92",
+      "snapshot": true,
+      "parse_requires": null,
+      "summary": {"param_types":{"Bool":112,"Curve1":32,"F32":176,"Int":72,"String32":257},"pio_version":2},
+      "artifacts": [
+        {"path": "test/fixtures/aamp/common.bagllmap.yml.expected", "kind": "yml", "size": 28216, "sha256": "4f7fe51d7df5111c141d33acca1dcb54e0758ca266ac8c18831c81804c99c986"},
+        {"path": "test/fixtures/aamp/common.bagllmap.bin.expected", "kind": "bin", "size": 8038, "sha256": "1267864ec7831bcd2a91c5f7754ac84bd01fad216b193c79da0795a48c8727a2"}
+      ]
+    }
+
+,
+    {
+      "source": "test/aamp/EngineRom_Horse_Link.bphysics",
+      "format": "aamp",
+      "source_size": 2640,
+      "source_sha256": "5a0104e89222d4f4bf27eba65bfc7d6c1da8fc3b7018366d687fbef7a2b7902a",
+      "snapshot": true,
+      "parse_requires": null,
+      "summary": {"param_types":{"Bool":24,"F32":49,"Int":18,"String256":4,"String32":61,"String64":6,"StringRef":8,"Vec3":18},"pio_version":0},
+      "artifacts": [
+        {"path": "test/fixtures/aamp/EngineRom_Horse_Link.bphysics.yml.expected", "kind": "yml", "size": 10634, "sha256": "c7b8fd12c867a65f82f1fe724d4d94d99195da0848b8ceab1a92ed8b6fb60667"},
+        {"path": "test/fixtures/aamp/EngineRom_Horse_Link.bphysics.bin.expected", "kind": "bin", "size": 2654, "sha256": "cfc42400aeb92f828a4b4b8aa1adc643b4916322dddee6308e2a64b42d8c9a56"}
+      ]
+    }
+
+,
+    {
+      "source": "test/aamp/AIProgram/ShelterFromRainTag.baiprog",
+      "format": "aamp",
+      "source_size": 272,
+      "source_sha256": "5c5a677b9e779406f2d2d4d67c55820d31b4800ee62008129d38578fd864968e",
+      "snapshot": true,
+      "parse_requires": null,
+      "summary": {"param_types":{"Int":1,"String32":2,"StringRef":4},"pio_version":0},
+      "artifacts": [
+        {"path": "test/fixtures/aamp/ShelterFromRainTag.baiprog.yml.expected", "kind": "yml", "size": 686, "sha256": "b8bbc629e8580fbe3c3038cbdc9d70b0fb3f8fd43b340554907a927073664ccd"},
+        {"path": "test/fixtures/aamp/ShelterFromRainTag.baiprog.bin.expected", "kind": "bin", "size": 271, "sha256": "b4c9573a176c80fcc1f836a6dfeb135b3304ce0a1ae7e408a3f4aea870f46ffb"}
+      ]
+    }
+
+,
+    {
+      "source": "test/aamp/Demo000_2.bdemo",
+      "format": "aamp",
+      "source_size": 904,
+      "source_sha256": "711350418d79402b3f32e15d13282761e2c5d7448b6f3279ec6b8a7a4fe3b2e0",
+      "snapshot": true,
+      "parse_requires": null,
+      "summary": {"param_types":{"Bool":20,"F32":11,"Int":4,"String256":9,"String32":15,"String64":6,"Vec3":7},"pio_version":0},
+      "artifacts": [
+        {"path": "test/fixtures/aamp/Demo000_2.bdemo.yml.expected", "kind": "yml", "size": 2376, "sha256": "0d60b56906e41233a441e148be9f3e90ef1bdbf5c53cc621d06cd8bfb76205a0"},
+        {"path": "test/fixtures/aamp/Demo000_2.bdemo.bin.expected", "kind": "bin", "size": 912, "sha256": "0326d904464cb6add01271a43985e21ab2bd0777bfef52a897130ab9df3778c4"}
+      ]
+    }
+
+,
+    {
+      "source": "test/byml/A-1_Dynamic.byml",
+      "format": "byml",
+      "source_size": 48484,
+      "source_sha256": "1eac1071c4883dedc7fe994e7cdb93b7904d6a1ae15818124fc94fbf38a7f478",
+      "snapshot": true,
+      "parse_requires": null,
+      "summary": {"endian":"little","summary":{"entry_count":2,"root_kind":"Map"},"version":2},
+      "artifacts": [
+        {"path": "test/fixtures/byml/A-1_Dynamic.byml.yml.expected", "kind": "yml", "size": 144450, "sha256": "8ac9817ee44bbfb97476d6ca7c1a9b884b21ef075bbff4afc07c5bfc49611f13"},
+        {"path": "test/fixtures/byml/A-1_Dynamic.byml.le.bin.expected", "kind": "le.bin", "size": 48484, "sha256": "5c3b3851058a19eb23fd3bee91aa68d9913a88a7093e08cad34cfbdd592ba81f"},
+        {"path": "test/fixtures/byml/A-1_Dynamic.byml.be.bin.expected", "kind": "be.bin", "size": 48484, "sha256": "64d7f917a82c1ae3a31dbff9901e23b2e0272a662e1b596b40b8b377e1104c97"}
+      ]
+    }
+,
+    {
+      "source": "test/byml/LevelSensor.byml",
+      "format": "byml",
+      "source_size": 28848,
+      "source_sha256": "be0757311272d575f31ddb8d26c57b4285d617f16b013107c3f01ca41fe5ee5d",
+      "snapshot": true,
+      "parse_requires": null,
+      "summary": {"endian":"little","summary":{"entry_count":4,"root_kind":"Map"},"version":2},
+      "artifacts": [
+        {"path": "test/fixtures/byml/LevelSensor.byml.yml.expected", "kind": "yml", "size": 38392, "sha256": "4a1fddf17e29c3cf2b76669c6064b41ae5ef4cca15613ba330874cd0af703948"},
+        {"path": "test/fixtures/byml/LevelSensor.byml.le.bin.expected", "kind": "le.bin", "size": 28848, "sha256": "678abcc42959a6f7bfa370498a8c6f7de28a8596ece15991a1a06052fa8a4b66"},
+        {"path": "test/fixtures/byml/LevelSensor.byml.be.bin.expected", "kind": "be.bin", "size": 28848, "sha256": "f27299f1fdd24831c4b5bd191ce0c7866333bcfbf28d58914a7aff3bb8d909a8"}
+      ]
+    }
+,
+    {
+      "source": "test/byml/MainFieldLocation.byml",
+      "format": "byml",
+      "source_size": 40656,
+      "source_sha256": "129178e244cc3aea4b684a32494df99307a7b8110295470daf540e03f272d4b5",
+      "snapshot": true,
+      "parse_requires": null,
+      "summary": {"endian":"little","summary":{"entry_count":491,"root_kind":"Array"},"version":2},
+      "artifacts": [
+        {"path": "test/fixtures/byml/MainFieldLocation.byml.yml.expected", "kind": "yml", "size": 56157, "sha256": "195c3b66886435c8d4b02cc16af4bb4ba08e999cb6f3608fe73c380502e5016e"},
+        {"path": "test/fixtures/byml/MainFieldLocation.byml.le.bin.expected", "kind": "le.bin", "size": 40656, "sha256": "129178e244cc3aea4b684a32494df99307a7b8110295470daf540e03f272d4b5"},
+        {"path": "test/fixtures/byml/MainFieldLocation.byml.be.bin.expected", "kind": "be.bin", "size": 40656, "sha256": "5d81b560d75b0dedd39cf4c83a41ec7b7c4a4ed38bea98a6407569d65adf51a3"}
+      ]
+    }
+,
+    {
+      "source": "test/byml/ElectricGenerator.Nin_NX_NVN.esetb.byml",
+      "format": "byml",
+      "source_size": 9484,
+      "source_sha256": "116d85b6a851a9a45189a2f3d34b5e0de5819efc30bd7e3f42ecc92812641170",
+      "snapshot": true,
+      "parse_requires": null,
+      "summary": {"endian":"little","summary":{"entry_count":2,"root_kind":"Map"},"version":4},
+      "artifacts": [
+        {"path": "test/fixtures/byml/ElectricGenerator.Nin_NX_NVN.esetb.byml.yml.expected", "kind": "yml", "size": 7198, "sha256": "cacad99f06acd433f6ee61b56f771a1c43e7fff15e5d218e6d12bc0cd20c3aa2"},
+        {"path": "test/fixtures/byml/ElectricGenerator.Nin_NX_NVN.esetb.byml.le.bin.expected", "kind": "le.bin", "size": 5484, "sha256": "244a6b3ef9e9dba97cfa2e87c3bc532b5c8b1d0480fdd836d3ba3b1f8c52d373"},
+        {"path": "test/fixtures/byml/ElectricGenerator.Nin_NX_NVN.esetb.byml.be.bin.expected", "kind": "be.bin", "size": 5484, "sha256": "6660236919ac69fe465bdc71c0656451d65f9fa2c9febba7edb37e0076baa29a"}
+      ]
+    }
+,
+    {
+      "source": "test/byml/Preset0_Field.byml",
+      "format": "byml",
+      "source_size": 32336,
+      "source_sha256": "524699a0c056f572fb2e5fd7cb912547e21c5204ab5bef7472c7d93b3b9a4902",
+      "snapshot": true,
+      "parse_requires": null,
+      "summary": {"endian":"little","summary":{"entry_count":1,"root_kind":"Map"},"version":4},
+      "artifacts": [
+        {"path": "test/fixtures/byml/Preset0_Field.byml.yml.expected", "kind": "yml", "size": 43040, "sha256": "a8d66b0352339466e8d9211833a65a9bdb4b81dccc93a69fca21fc060ca80028"},
+        {"path": "test/fixtures/byml/Preset0_Field.byml.le.bin.expected", "kind": "le.bin", "size": 32336, "sha256": "123ed10769f86419f67cff9beb31a6a5d5e3b950bae51a5d0c5813ede82b3e31"},
+        {"path": "test/fixtures/byml/Preset0_Field.byml.be.bin.expected", "kind": "be.bin", "size": 32336, "sha256": "3861f47abce3e9e24ece3c86fa077abc4d76abdf2df99aca55e13208bbdfcdae"}
+      ]
+    }
+,
+    {
+      "source": "test/byml/Mrg_01e57204_MrgD100_B4-B3-B2-1A90E17A.bcett.byml",
+      "format": "byml",
+      "source_size": 716,
+      "source_sha256": "1823daebb364c8c38d9d20ce65cc19ddace2fa402524f52941be6771255af03e",
+      "snapshot": true,
+      "parse_requires": null,
+      "summary": {"endian":"little","summary":{"entry_count":1,"root_kind":"Map"},"version":4},
+      "artifacts": [
+        {"path": "test/fixtures/byml/Mrg_01e57204_MrgD100_B4-B3-B2-1A90E17A.bcett.byml.yml.expected", "kind": "yml", "size": 1283, "sha256": "3c3bc9cb9c2ea1d2ec37ea0a3a009a3043cca96a3236993fe39769d7045a7acc"},
+        {"path": "test/fixtures/byml/Mrg_01e57204_MrgD100_B4-B3-B2-1A90E17A.bcett.byml.le.bin.expected", "kind": "le.bin", "size": 716, "sha256": "227198ce6a78ae5a4e988b3d3160ab3b863feddd3c1410904f991e24fe22c04c"},
+        {"path": "test/fixtures/byml/Mrg_01e57204_MrgD100_B4-B3-B2-1A90E17A.bcett.byml.be.bin.expected", "kind": "be.bin", "size": 716, "sha256": "5e942fc58dc02d1e45b7b2d2b4c57d633759e40fc6aca35837c89dda4cbf495f"}
+      ]
+    }
+,
+    {
+      "source": "test/byml/USen.byml",
+      "format": "byml",
+      "source_size": 130252,
+      "source_sha256": "ffa97e9853a27146445482238904531ce8bd3d32aa71dbcc067bb5c15b31ec3c",
+      "snapshot": false,
+      "parse_requires": null,
+      "summary": {"endian":"little","summary":{"entry_count":1594,"root_kind":"HashMap"},"version":2},
+      "artifacts": []
+    }
+,
+    {
+      "source": "test/byml/J-8_Dynamic.bcett.byml",
+      "format": "byml",
+      "source_size": 138976,
+      "source_sha256": "cffebf5711fdf65bf5386f0053ee573311859eb0e1a13661260e65e3482fa048",
+      "snapshot": false,
+      "parse_requires": null,
+      "summary": {"endian":"little","summary":{"entry_count":2,"root_kind":"Map"},"version":7},
+      "artifacts": []
+    }
+,
+    {
+      "source": "test/byml/EventInfo.product.byml",
+      "format": "byml",
+      "source_size": 619808,
+      "source_sha256": "a4611399c83267c059177eb74be9024297d3f545a0126c8275aebca9c964c7ed",
+      "snapshot": false,
+      "parse_requires": null,
+      "summary": {"endian":"little","summary":{"entry_count":5784,"root_kind":"Map"},"version":2},
+      "artifacts": []
+    }
+,
+    {
+      "source": "test/byml/GameROMPlayer.byml",
+      "format": "byml",
+      "source_size": 1234724,
+      "source_sha256": "f3b4152ffac97380e04eab5ead827730b493526c6a14c443579e5a19526f302c",
+      "snapshot": false,
+      "parse_requires": null,
+      "summary": {"endian":"little","summary":{"entry_count":1,"root_kind":"Map"},"version":2},
+      "artifacts": []
+    }
+,
+    {
+      "source": "test/byml/ActorInfo.product.byml",
+      "format": "byml",
+      "source_size": 1963604,
+      "source_sha256": "aac15f2cd2e5b7e80e708248bdd6b0ee154c4463774d874675c0c2127965f520",
+      "snapshot": false,
+      "parse_requires": null,
+      "summary": {"endian":"little","summary":{"entry_count":2,"root_kind":"Map"},"version":2},
+      "artifacts": []
+    }
+,
+    {
+      "source": "test/byml/D-3_Dynamic.byml",
+      "format": "byml",
+      "source_size": 84744,
+      "source_sha256": "d011fd6e6b672e4c43a9f49d95fc869ac6451b63ebaf6b2aa964f51426a78e25",
+      "snapshot": false,
+      "parse_requires": "yaz0",
+      "summary": {"endian":"unknown","summary":{"entry_count":2,"root_kind":"Map"},"version":12410},
+      "artifacts": []
+    }
+  ]
+}
