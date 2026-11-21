@@ -34,8 +34,15 @@
 //! ## Building from Source
 //!
 //! roead is pure Rust and builds with any relatively recent stable release
-//! (MSRV 1.80), with no C++ toolchain, CMake, or submodules. The optional
+//! (MSRV 1.100), with no C++ toolchain, CMake, or submodules. The optional
 //! `yaml` feature is the exception, as it depends on the `ryml` crate.
+//!
+//! ## Feature model
+//!
+//! roead is `no_std` by default: `--no-default-features` builds a pure
+//! `core` library. The `alloc` feature adds `alloc`-only allocations, and the
+//! `std` feature (implying `alloc`) enables the standard library. All modules
+//! and APIs are gated behind Cargo features; see `Cargo.toml` for the matrix.
 //!
 //! ## Contributing
 //!
@@ -45,41 +52,62 @@
 //! This project is licensed under the GPLv3+ license. oead is licensed under
 //! the GPLv2+ license.
 #![cfg_attr(all(doc, CHANNEL_NIGHTLY), feature(doc_auto_cfg))]
+#![cfg_attr(not(feature = "std"), no_std)]
 #![cfg_attr(not(test), deny(clippy::unwrap_used))]
-#[cfg(feature = "aamp")]
-pub mod aamp;
-#[cfg(feature = "byml")]
-pub mod byml;
-#[cfg(feature = "sarc")]
-pub mod sarc;
+#[cfg(feature = "alloc")]
+extern crate alloc;
+#[cfg(feature = "alloc")]
+use alloc::string::String;
+
+#[cfg(feature = "alloc")]
+pub mod aamp; // TODO(step 3): parser/writer move to alloc; TODO(step 4): arena readers for pure no_std
+#[cfg(feature = "alloc")]
+pub mod byml; // TODO(step 3): parser/writer move to alloc; TODO(step 4): arena readers for pure no_std
+#[cfg(feature = "std")]
+pub mod sarc; // TODO(step 5): split reader (alloc-free) from writer (std)
 pub mod types;
 mod util;
 #[cfg(feature = "yaml")]
 mod yaml;
-#[cfg(feature = "yaz0")]
-pub mod yaz0;
+#[cfg(feature = "alloc")]
+pub mod yaz0; // TODO(step 5): `decompress_into` becomes core-only, module gating narrows
 
 /// Error type for this crate.
+///
+/// The core of `Error` is alloc-free; richer variants require `alloc` or
+/// `std`. `Error` is intentionally not `Clone`: wrapping errors are not
+/// generally cloneable (this removes the panicking `Clone` stub from v1).
 #[derive(Debug, thiserror::Error)]
-
 pub enum Error {
     #[error("Bad magic value: found `{0}`, expected `{1}`.")]
-    BadMagic(String, &'static str),
+    BadMagic(TinyString, &'static str),
     #[error("Data too short: found {0:#x} bytes, expected >= {1:#x}.")]
     InsufficientData(usize, usize),
     #[error("{0}")]
     InvalidData(&'static str),
+    #[error("Found {0}, expected {1}")]
+    TypeError(&'static str, &'static str),
+    #[error(transparent)]
+    InvalidUtf8(#[from] core::str::Utf8Error),
+    #[error("Index {index} out of range (len {len})")]
+    IndexOutOfRange { index: usize, len: usize },
+    #[error("Too many files in SARC ({0})")]
+    TooManyFiles(u32),
+    #[error("Document does not fit in the fixed-capacity arena (capacity {0})")]
+    CapacityExceeded(usize),
+    #[cfg(feature = "alloc")]
     #[error("{0}")]
     InvalidDataD(String),
-    #[error("Found {0}, expected {1}")]
-    TypeError(smartstring::alias::String, &'static str),
+    #[cfg(feature = "alloc")]
+    #[error("{0}")]
+    Any(String),
+    #[cfg(feature = "std")]
     #[error(transparent)]
     Io(#[from] std::io::Error),
     #[cfg(feature = "binrw")]
-    #[error(transparent)]
-    BinarySerde(#[from] binrw::Error),
-    #[error(transparent)]
-    InvalidUtf8(#[from] std::str::Utf8Error),
+    #[cfg_attr(feature = "std", error(transparent))]
+    #[cfg_attr(not(feature = "std"), error("binary format error: {0}"))]
+    BinarySerde(#[cfg_attr(feature = "std", from)] binrw::Error),
     #[cfg(feature = "yaml")]
     #[error(transparent)]
     InvalidNumber(#[from] lexical::Error),
@@ -89,11 +117,70 @@ pub enum Error {
     #[cfg(feature = "yaml")]
     #[error("Parsing YAML binary data failed: {0}")]
     InvalidYamlBinary(#[from] base64::DecodeError),
-    #[error("{0}")]
-    Any(String),
 }
 
-#[cfg_attr(feature = "sarc", binrw::binread, brw(repr = u16))]
+/// A copyable, fixed-capacity inline string holding at most 16 bytes.
+///
+/// Used for error messages in alloc-free contexts. The contents are always
+/// valid UTF-8: [`From<&str>`] truncates input longer than 16 bytes (in
+/// release) and panics on overflow in debug builds via `debug_assert!`.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub struct TinyString {
+    data: [u8; 16],
+    len: u8,
+}
+
+impl TinyString {
+    /// Extracts a string slice from the tiny string.
+    pub fn as_str(&self) -> &str {
+        // SAFETY: the contents are validated to be UTF-8 when constructed.
+        unsafe { core::str::from_utf8_unchecked(&self.data[..usize::from(self.len)]) }
+    }
+
+    /// Creates a `TinyString` by lossily converting `bytes`, replacing
+    /// invalid UTF-8 with the replacement character.
+    #[cfg(feature = "alloc")]
+    pub fn from_lossy(bytes: &[u8]) -> Self {
+        let s: alloc::string::String = alloc::string::String::from_utf8_lossy(bytes).into_owned();
+        Self::from(s.as_str())
+    }
+}
+
+impl From<&str> for TinyString {
+    fn from(s: &str) -> Self {
+        let bytes = s.as_bytes();
+        let len = bytes.len().min(16);
+        debug_assert!(
+            len == bytes.len(),
+            "TinyString can hold at most 16 bytes; input was truncated"
+        );
+        let mut data = [0; 16];
+        data[..len].copy_from_slice(&bytes[..len]);
+        Self {
+            data,
+            len: len as u8,
+        }
+    }
+}
+
+impl core::fmt::Display for TinyString {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        f.write_str(self.as_str())
+    }
+}
+
+/// Hash map type used by the owned BYML/AAMP models.
+///
+/// With `std` this is `rustc_hash::FxHashMap`; in `alloc`-only builds
+/// (where `rustc_hash::FxHashMap` is unavailable) it is a
+/// `hashbrown::HashMap` with `rustc_hash::FxBuildHasher`, so the public
+/// `Map`/`HashMap`/`ValueHashMap` aliases behave identically in both modes.
+#[cfg(feature = "std")]
+pub(crate) type FxHashMap<K, V> = rustc_hash::FxHashMap<K, V>;
+#[cfg(all(feature = "alloc", not(feature = "std")))]
+pub(crate) type FxHashMap<K, V> = hashbrown::HashMap<K, V, rustc_hash::FxBuildHasher>;
+
+#[cfg_attr(feature = "binrw", binrw::binread, brw(repr = u16))]
 #[derive(Debug, Eq, PartialEq, Copy, Clone)]
 #[repr(u16)]
 /// Represents endianness where applicable.
@@ -107,10 +194,4 @@ pub enum Endian {
     Little = 0xFEFF,
 }
 
-pub type Result<T> = std::result::Result<T, Error>;
-
-impl Clone for Error {
-    fn clone(&self) -> Self {
-        todo!()
-    }
-}
+pub type Result<T> = core::result::Result<T, Error>;

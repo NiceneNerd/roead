@@ -30,10 +30,11 @@ impl Byml {
             self,
             Byml::Map(_) | Byml::HashMap(_) | Byml::ValueHashMap(_) | Byml::Array(_) | Byml::Null
         ) {
-            return Err(Error::TypeError(
-                format!("{:?}", self).into(),
-                "Map, HashMap, ValueHashMap, Array, or Null",
-            ));
+            // Writer is std-gated this step, so InvalidDataD is available.
+            return Err(Error::InvalidDataD(format!(
+                "Found `{:?}`, expected `Map, HashMap, ValueHashMap, Array, or Null`.",
+                self
+            )));
         }
 
         let mut ctx = WriteContext::new(self, writer, endian);

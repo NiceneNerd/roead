@@ -1,10 +1,11 @@
 //! Support for Yaz0 decompression and fast compression, based on the
 //! `oead::yaz0` module.
-use std::borrow::Cow;
+use alloc::borrow::Cow;
+use alloc::vec::Vec;
 
 use binrw::binrw;
 
-use crate::{Error, Result};
+use crate::{Error, Result, TinyString};
 
 const HEADER_LEN: usize = 0x10;
 const WINDOW: usize = 0x1000;
@@ -30,7 +31,7 @@ pub struct Header {
 
 /// Get the header of Yaz0 compressed data, if it exists.
 pub fn get_header(data: impl AsRef<[u8]>) -> Option<Header> {
-    binrw::BinRead::read(&mut std::io::Cursor::new(data.as_ref())).ok()
+    binrw::BinRead::read(&mut binrw::io::Cursor::new(data.as_ref())).ok()
 }
 
 fn checked_header(data: &[u8]) -> Result<Header> {
@@ -40,7 +41,7 @@ fn checked_header(data: &[u8]) -> Result<Header> {
     let header = get_header(data).ok_or(Error::InvalidData("Missing or corrupt Yaz0 header"))?;
     if &header.magic != b"Yaz0" {
         return Err(Error::BadMagic(
-            String::from_utf8_lossy(header.magic.as_slice()).to_string(),
+            TinyString::from_lossy(&header.magic),
             "Yaz0",
         ));
     }
@@ -100,7 +101,7 @@ fn decode(src: &[u8], dst: &mut [u8]) -> Result<()> {
 pub fn decompress(data: impl AsRef<[u8]>) -> Result<Vec<u8>> {
     let data = data.as_ref();
     let header = checked_header(data)?;
-    let mut out = vec![0; header.uncompressed_size as usize];
+    let mut out = alloc::vec![0; header.uncompressed_size as usize];
     decode(data, &mut out)?;
     Ok(out)
 }
@@ -130,44 +131,45 @@ pub fn decompress_into(data: impl AsRef<[u8]>, mut buffer: impl AsMut<[u8]>) -> 
 /// data. **Do not use this function on untrusted data.**
 pub unsafe fn decompress_unchecked(data: impl AsRef<[u8]>, mut buffer: impl AsMut<[u8]>) -> usize {
     let data = data.as_ref();
-    let size =
-        u32::from_be_bytes(data.get_unchecked(0x4..0x8).try_into().unwrap_unchecked()) as usize;
-    let mut src = data.as_ptr().add(HEADER_LEN);
+    let size = unsafe {
+        u32::from_be_bytes(data.get_unchecked(0x4..0x8).try_into().unwrap_unchecked()) as usize
+    };
+    let mut src = unsafe { data.as_ptr().add(HEADER_LEN) };
     let mut out = buffer.as_mut().as_mut_ptr();
-    let end = out.add(size);
+    let end = unsafe { out.add(size) };
     let mut group = 0u8;
     let mut remaining = 0;
     while out < end {
         if remaining == 0 {
-            group = *src;
-            src = src.add(1);
+            group = unsafe { *src };
+            src = unsafe { src.add(1) };
             remaining = 8;
         }
         if group & 0x80 != 0 {
-            *out = *src;
-            out = out.add(1);
-            src = src.add(1);
+            unsafe { *out = *src };
+            out = unsafe { out.add(1) };
+            src = unsafe { src.add(1) };
         } else {
-            let pair = u16::from_be_bytes([*src, *src.add(1)]) as usize;
-            src = src.add(2);
+            let pair = unsafe { u16::from_be_bytes([*src, *src.add(1)]) } as usize;
+            src = unsafe { src.add(2) };
             let distance = (pair & 0x0FFF) + 1;
             let length = match pair >> 12 {
                 0 => {
-                    let extra = *src as usize;
-                    src = src.add(1);
+                    let extra = unsafe { *src as usize };
+                    src = unsafe { src.add(1) };
                     extra + 0x12
                 }
                 n => n + 2,
             };
-            let base = out.sub(distance);
+            let base = unsafe { out.sub(distance) };
             if distance >= length {
-                std::ptr::copy_nonoverlapping(base, out, length);
+                unsafe { core::ptr::copy_nonoverlapping(base, out, length) };
             } else {
                 for i in 0..length {
-                    *out.add(i) = *base.add(i);
+                    unsafe { *out.add(i) = *base.add(i) };
                 }
             }
-            out = out.add(length);
+            out = unsafe { out.add(length) };
         }
         group <<= 1;
         remaining -= 1;
@@ -301,8 +303,8 @@ impl<'a> Matcher<'a> {
         Self {
             data,
             effort,
-            head: vec![0; 1 << Self::HASH_BITS],
-            prev: vec![0; WINDOW],
+            head: alloc::vec![0; 1 << Self::HASH_BITS],
+            prev: alloc::vec![0; WINDOW],
         }
     }
 
@@ -442,7 +444,10 @@ impl ChunkWriter {
 /// file extension (starts with `s`, but does not equal `sarc`). Returns a
 /// [`Cow`] which contains the original data if the data does not need to be
 /// compressed, or containing the compressed data otherwise.
+///
+/// Requires `std` because it inspects the file path.
 #[inline]
+#[cfg(feature = "std")]
 pub fn compress_if(data: &[u8], path: impl AsRef<std::path::Path>) -> Cow<'_, [u8]> {
     if path
         .as_ref()
@@ -510,7 +515,7 @@ mod tests {
     fn test_unchecked() {
         let data = b"Nothing you have not given away will ever really be yours.";
         let compressed = super::compress(data);
-        let mut buffer = vec![0; data.len()];
+        let mut buffer = alloc::vec![0; data.len()];
         let size = unsafe { super::decompress_unchecked(compressed, &mut buffer) };
         assert_eq!(data.as_slice(), &buffer[..size]);
     }
@@ -521,7 +526,7 @@ mod tests {
             let path = std::path::Path::new("test/yaz0").join(file);
             let data = std::fs::read(path).unwrap();
             let expected = decompress(&data).unwrap();
-            let mut buffer = vec![0; expected.len()];
+            let mut buffer = alloc::vec![0; expected.len()];
             let size = unsafe { decompress_unchecked(&data, &mut buffer) };
             assert_eq!(size, expected.len());
             assert_eq!(buffer, expected);
@@ -648,6 +653,7 @@ mod tests {
         assert_eq!(decompress(v).unwrap(), b"AAAAAA");
     }
 
+    #[cfg(feature = "std")]
     #[test]
     fn conditional_helpers() {
         let data = b"some bytes, some bytes, some bytes, some bytes".to_vec();

@@ -30,7 +30,7 @@
 //!     `BufferF32` parameters (none are present, which is why the existing
 //!     roundtrip tests never exercise this path).
 
-#![cfg(feature = "aamp")]
+#![cfg(all(feature = "aamp", feature = "std"))]
 
 use std::io::Read;
 

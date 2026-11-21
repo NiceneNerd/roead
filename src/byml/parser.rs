@@ -1,11 +1,11 @@
 use std::io::{Read, Seek, SeekFrom};
 
-use binrw::{binrw, BinRead, VecArgs};
+use binrw::{BinRead, VecArgs, binrw};
 
 use super::*;
 use crate::{
-    util::{align, u24, SeekShim},
     Endian, Error, Result,
+    util::{SeekShim, align, u24},
 };
 
 impl Byml {
@@ -98,7 +98,7 @@ struct ResHeader {
 #[derive(Debug, Default)]
 struct StringTableParser {
     offset: u32,
-    size:   u32,
+    size: u32,
 }
 
 impl StringTableParser {
@@ -109,10 +109,11 @@ impl StringTableParser {
             let type_: NodeType = reader.read_at(offset as u64)?;
             let num_entries: crate::util::u24 = reader.read()?;
             if type_ != NodeType::StringTable {
-                return Err(Error::TypeError(
-                    format!("{:?}", type_).into(),
-                    "string table",
-                ));
+                // Parser is std-gated this step, so the alloc-backed
+                // InvalidDataD is available here.
+                return Err(Error::InvalidDataD(format!(
+                    "Incorrect BYML node type: found `{type_:?}`, expected `string table`."
+                )));
             }
             Ok(Self {
                 offset,
@@ -226,6 +227,8 @@ impl<R: Read + Seek> Parser<R> {
             NodeType::Double => Byml::Double(f64::from_bits(read_long(raw)?)),
             NodeType::Null => Byml::Null,
             _ => {
+                // TODO(step 3/4): replace with typed alloc-free variant once
+                // the parser moves out of std.
                 return Err(Error::Any(format!(
                     "Invalid value node type: {node_type:?}"
                 )));

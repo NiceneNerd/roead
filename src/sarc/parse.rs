@@ -6,8 +6,6 @@ use std::{
 };
 
 use binrw::{BinRead, BinReaderExt};
-use join_str::jstr;
-use num_integer::Integer;
 
 use super::*;
 use crate::{Error, Result};
@@ -56,7 +54,7 @@ impl<'a> Iterator for FileIterator<'a> {
             .ok()?;
             self.index += 1;
             Some(File {
-                name:  if self.entry.rel_name_opt_offset != 0 {
+                name: if self.entry.rel_name_opt_offset != 0 {
                     let name_offset = self.sarc.names_offset as usize
                         + (self.entry.rel_name_opt_offset & 0xFFFFFF) as usize * 4;
                     let term_pos = find_null(&self.sarc.data[name_offset..]).ok()?;
@@ -67,12 +65,12 @@ impl<'a> Iterator for FileIterator<'a> {
                 } else {
                     None
                 },
-                data:  self.sarc.data.get(
+                data: self.sarc.data.get(
                     (self.sarc.data_offset + self.entry.data_begin) as usize
                         ..(self.sarc.data_offset + self.entry.data_end) as usize,
                 )?,
                 index: self.index,
-                sarc:  self.sarc,
+                sarc: self.sarc,
             })
         }
     }
@@ -160,9 +158,7 @@ impl<'a> Sarc<'_> {
             return Err(Error::InvalidData("SFAT header wrong size (expected 0x0C)"));
         }
         if (fat_header.num_files >> 0xE) != 0 {
-            return Err(Error::InvalidDataD(jstr!(
-                "Too many files in SARC ({&fat_header.num_files.to_string()})"
-            )));
+            return Err(Error::TooManyFiles(fat_header.num_files.into()));
         }
 
         let num_files = fat_header.num_files;
@@ -226,12 +222,10 @@ impl<'a> Sarc<'_> {
             reader.set_position(self.entries_offset as u64 + 0x10 * m as u64);
             let hash: u32 = read(self.endian, &mut reader)?;
             match needle_hash.cmp(&hash) {
-                std::cmp::Ordering::Less => {
-                    match m.checked_sub(1) {
-                        Some(v) => b = v,
-                        None => return Ok(None),
-                    }
-                }
+                std::cmp::Ordering::Less => match m.checked_sub(1) {
+                    Some(v) => b = v,
+                    None => return Ok(None),
+                },
                 std::cmp::Ordering::Greater => a = m + 1,
                 std::cmp::Ordering::Equal => return Ok(Some(m as usize)),
             }
@@ -281,9 +275,10 @@ impl<'a> Sarc<'_> {
     /// Get a file by index. Returns error if index > file count.
     pub fn file_at(&self, index: usize) -> Result<File<'_>> {
         if index >= self.num_files as usize {
-            return Err(Error::InvalidDataD(jstr!(
-                "No file in SARC at index {&index.to_string()}"
-            )));
+            return Err(Error::IndexOutOfRange {
+                index,
+                len: self.num_files as usize,
+            });
         }
 
         let entry_offset = self.entries_offset as usize + size_of::<ResFatEntry>() * index;
@@ -331,7 +326,7 @@ impl<'a> Sarc<'_> {
         for _ in 0..self.num_files {
             let entry: ResFatEntry =
                 read(self.endian, &mut reader).expect("Data should have valid ResFatEntry");
-            gcd = gcd.gcd(&(self.data_offset + entry.data_begin));
+            gcd = gcd_usize(gcd as usize, (self.data_offset + entry.data_begin) as usize) as u32;
         }
 
         if !is_valid_alignment(gcd as usize) {

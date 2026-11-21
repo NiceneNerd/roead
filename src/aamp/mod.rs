@@ -8,7 +8,7 @@
 //! from binary data of a YAML document. Some sample usage:
 //! ```
 //! # use roead::aamp::*;
-//! # fn doctest() -> std::result::Result<(), Box<dyn std::error::Error>> {
+//! # fn doctest() -> core::result::Result<(), Box<dyn std::error::Error>> {
 //! let data = std::fs::read("test/aamp/Lizalfos.bphysics")?;
 //! let pio = ParameterIO::from_binary(&data)?; // Parse AAMP from binary data
 //! // A parameter IO is to an extent interchangeable with its root list.
@@ -33,23 +33,26 @@
 //! a non-existent key will panic.
 #[cfg(feature = "aamp-names")]
 mod names;
-mod parser;
+#[cfg(feature = "std")]
+mod parser; // TODO(step 3): alloc
 #[cfg(feature = "yaml")]
 mod text;
-mod writer;
-use binrw::binrw;
+#[cfg(feature = "std")]
+mod writer; // TODO(step 3): alloc
+use alloc::boxed::Box;
+use alloc::vec::Vec;
 use indexmap::IndexMap;
 #[cfg(feature = "aamp-names")]
-pub use names::{get_default_name_table, NameTable};
+pub use names::{NameTable, get_default_name_table};
 use num_traits::AsPrimitive;
 #[cfg(feature = "with-serde")]
 use serde::{Deserialize, Serialize};
 use smartstring::alias::String;
 
-use crate::{types::*, util::u24, Error, Result};
+use crate::{Error, Result, types::*, util::u24};
 
 type ParameterStructureMap<V> =
-    IndexMap<Name, V, std::hash::BuildHasherDefault<rustc_hash::FxHasher>>;
+    IndexMap<Name, V, core::hash::BuildHasherDefault<rustc_hash::FxHasher>>;
 
 /// CRC hash function matching that used in BOTW.
 #[inline]
@@ -101,9 +104,8 @@ fn check_hasher() {
 }
 
 #[derive(Debug)]
-#[binrw::binrw]
+#[cfg_attr(feature = "binrw", binrw::binrw, brw(repr = u8))]
 #[repr(u8)]
-#[brw(repr = u8)]
 enum Type {
     Bool = 0,
     F32,
@@ -129,8 +131,7 @@ enum Type {
 }
 
 #[derive(Debug)]
-#[binrw]
-#[brw(little, magic = b"AAMP")]
+#[cfg_attr(feature = "binrw", binrw::binrw, brw(little, magic = b"AAMP"))]
 struct ResHeader {
     version: u32,     // 0x4
     flags: u32,       // 0x8
@@ -148,8 +149,7 @@ struct ResHeader {
 }
 
 #[derive(Debug)]
-#[binrw]
-#[brw(little)]
+#[cfg_attr(feature = "binrw", binrw::binrw, brw(little))]
 struct ResParameter {
     name: Name,
     data_rel_offset: u24,
@@ -157,8 +157,7 @@ struct ResParameter {
 }
 
 #[derive(Debug)]
-#[binrw]
-#[brw(little)]
+#[cfg_attr(feature = "binrw", binrw::binrw, brw(little))]
 struct ResParameterObj {
     name: Name,
     params_rel_offset: u16,
@@ -166,8 +165,7 @@ struct ResParameterObj {
 }
 
 #[derive(Debug)]
-#[binrw]
-#[brw(little)]
+#[cfg_attr(feature = "binrw", binrw::binrw, brw(little))]
 struct ResParameterList {
     name: Name,
     lists_rel_offset: u16,
@@ -230,29 +228,29 @@ pub enum Parameter {
 }
 
 impl Parameter {
-    fn type_name(&self) -> String {
+    fn type_name(&self) -> &'static str {
         match self {
-            Parameter::Bool(_) => "Bool".into(),
-            Parameter::F32(_) => "F32".into(),
-            Parameter::I32(_) => "I32".into(),
-            Parameter::Vec2(_) => "Vec2".into(),
-            Parameter::Vec3(_) => "Vec3".into(),
-            Parameter::Vec4(_) => "Vec4".into(),
-            Parameter::Color(_) => "Color".into(),
-            Parameter::String32(_) => "String32".into(),
-            Parameter::String64(_) => "String64".into(),
-            Parameter::Curve1(_) => "Curve1".into(),
-            Parameter::Curve2(_) => "Curve2".into(),
-            Parameter::Curve3(_) => "Curve3".into(),
-            Parameter::Curve4(_) => "Curve4".into(),
-            Parameter::BufferInt(_) => "BufferInt".into(),
-            Parameter::BufferF32(_) => "BufferF32".into(),
-            Parameter::String256(_) => "String256".into(),
-            Parameter::Quat(_) => "Quat".into(),
-            Parameter::U32(_) => "U32".into(),
-            Parameter::BufferU32(_) => "BufferU32".into(),
-            Parameter::BufferBinary(_) => "BufferBinary".into(),
-            Parameter::StringRef(_) => "StringRef".into(),
+            Parameter::Bool(_) => "Bool",
+            Parameter::F32(_) => "F32",
+            Parameter::I32(_) => "I32",
+            Parameter::Vec2(_) => "Vec2",
+            Parameter::Vec3(_) => "Vec3",
+            Parameter::Vec4(_) => "Vec4",
+            Parameter::Color(_) => "Color",
+            Parameter::String32(_) => "String32",
+            Parameter::String64(_) => "String64",
+            Parameter::Curve1(_) => "Curve1",
+            Parameter::Curve2(_) => "Curve2",
+            Parameter::Curve3(_) => "Curve3",
+            Parameter::Curve4(_) => "Curve4",
+            Parameter::BufferInt(_) => "BufferInt",
+            Parameter::BufferF32(_) => "BufferF32",
+            Parameter::String256(_) => "String256",
+            Parameter::Quat(_) => "Quat",
+            Parameter::U32(_) => "U32",
+            Parameter::BufferU32(_) => "BufferU32",
+            Parameter::BufferBinary(_) => "BufferBinary",
+            Parameter::StringRef(_) => "StringRef",
         }
     }
 
@@ -815,7 +813,7 @@ impl From<bool> for Parameter {
 impl TryFrom<Parameter> for bool {
     type Error = Parameter;
 
-    fn try_from(value: Parameter) -> std::result::Result<Self, Self::Error> {
+    fn try_from(value: Parameter) -> core::result::Result<Self, Self::Error> {
         match value {
             Parameter::Bool(v) => Ok(v),
             _ => Err(value),
@@ -832,7 +830,7 @@ impl From<f32> for Parameter {
 impl TryFrom<Parameter> for f32 {
     type Error = Parameter;
 
-    fn try_from(value: Parameter) -> std::result::Result<Self, Self::Error> {
+    fn try_from(value: Parameter) -> core::result::Result<Self, Self::Error> {
         value.as_num().map_err(|_| value)
     }
 }
@@ -846,7 +844,7 @@ impl From<i32> for Parameter {
 impl TryFrom<Parameter> for i32 {
     type Error = Parameter;
 
-    fn try_from(value: Parameter) -> std::result::Result<Self, Self::Error> {
+    fn try_from(value: Parameter) -> core::result::Result<Self, Self::Error> {
         value.as_num().map_err(|_| value)
     }
 }
@@ -860,7 +858,7 @@ impl From<Vector2f> for Parameter {
 impl TryFrom<Parameter> for Vector2f {
     type Error = Parameter;
 
-    fn try_from(value: Parameter) -> std::result::Result<Self, Self::Error> {
+    fn try_from(value: Parameter) -> core::result::Result<Self, Self::Error> {
         match value {
             Parameter::Vec2(v) => Ok(v),
             _ => Err(value),
@@ -877,7 +875,7 @@ impl From<Vector3f> for Parameter {
 impl TryFrom<Parameter> for Vector3f {
     type Error = Parameter;
 
-    fn try_from(value: Parameter) -> std::result::Result<Self, Self::Error> {
+    fn try_from(value: Parameter) -> core::result::Result<Self, Self::Error> {
         match value {
             Parameter::Vec3(v) => Ok(v),
             _ => Err(value),
@@ -894,7 +892,7 @@ impl From<Vector4f> for Parameter {
 impl TryFrom<Parameter> for Vector4f {
     type Error = Parameter;
 
-    fn try_from(value: Parameter) -> std::result::Result<Self, Self::Error> {
+    fn try_from(value: Parameter) -> core::result::Result<Self, Self::Error> {
         match value {
             Parameter::Vec4(v) => Ok(v),
             _ => Err(value),
@@ -911,7 +909,7 @@ impl From<Color> for Parameter {
 impl TryFrom<Parameter> for Color {
     type Error = Parameter;
 
-    fn try_from(value: Parameter) -> std::result::Result<Self, Self::Error> {
+    fn try_from(value: Parameter) -> core::result::Result<Self, Self::Error> {
         match value {
             Parameter::Color(v) => Ok(v),
             _ => Err(value),
@@ -940,7 +938,7 @@ impl From<[Curve; 1]> for Parameter {
 impl TryFrom<Parameter> for [Curve; 1] {
     type Error = Parameter;
 
-    fn try_from(value: Parameter) -> std::result::Result<Self, Self::Error> {
+    fn try_from(value: Parameter) -> core::result::Result<Self, Self::Error> {
         match value {
             Parameter::Curve1(v) => Ok(*v),
             _ => Err(value),
@@ -957,7 +955,7 @@ impl From<[Curve; 2]> for Parameter {
 impl TryFrom<Parameter> for [Curve; 2] {
     type Error = Parameter;
 
-    fn try_from(value: Parameter) -> std::result::Result<Self, Self::Error> {
+    fn try_from(value: Parameter) -> core::result::Result<Self, Self::Error> {
         match value {
             Parameter::Curve2(v) => Ok(*v),
             _ => Err(value),
@@ -974,7 +972,7 @@ impl From<[Curve; 3]> for Parameter {
 impl TryFrom<Parameter> for [Curve; 3] {
     type Error = Parameter;
 
-    fn try_from(value: Parameter) -> std::result::Result<Self, Self::Error> {
+    fn try_from(value: Parameter) -> core::result::Result<Self, Self::Error> {
         match value {
             Parameter::Curve3(v) => Ok(*v),
             _ => Err(value),
@@ -991,7 +989,7 @@ impl From<[Curve; 4]> for Parameter {
 impl TryFrom<Parameter> for [Curve; 4] {
     type Error = Parameter;
 
-    fn try_from(value: Parameter) -> std::result::Result<Self, Self::Error> {
+    fn try_from(value: Parameter) -> core::result::Result<Self, Self::Error> {
         match value {
             Parameter::Curve4(v) => Ok(*v),
             _ => Err(value),
@@ -1008,7 +1006,7 @@ impl From<Vec<i32>> for Parameter {
 impl TryFrom<Parameter> for Vec<i32> {
     type Error = Parameter;
 
-    fn try_from(value: Parameter) -> std::result::Result<Self, Self::Error> {
+    fn try_from(value: Parameter) -> core::result::Result<Self, Self::Error> {
         match value {
             Parameter::BufferInt(v) => Ok(v),
             _ => Err(value),
@@ -1025,7 +1023,7 @@ impl From<Vec<f32>> for Parameter {
 impl TryFrom<Parameter> for Vec<f32> {
     type Error = Parameter;
 
-    fn try_from(value: Parameter) -> std::result::Result<Self, Self::Error> {
+    fn try_from(value: Parameter) -> core::result::Result<Self, Self::Error> {
         match value {
             Parameter::BufferF32(v) => Ok(v),
             _ => Err(value),
@@ -1042,7 +1040,7 @@ impl From<FixedSafeString<256>> for Parameter {
 impl<const N: usize> TryFrom<Parameter> for FixedSafeString<N> {
     type Error = Parameter;
 
-    fn try_from(value: Parameter) -> std::result::Result<Self, Self::Error> {
+    fn try_from(value: Parameter) -> core::result::Result<Self, Self::Error> {
         value.as_safe_string().map_err(|_| value)
     }
 }
@@ -1056,7 +1054,7 @@ impl From<Quat> for Parameter {
 impl TryFrom<Parameter> for Quat {
     type Error = Parameter;
 
-    fn try_from(value: Parameter) -> std::result::Result<Self, Self::Error> {
+    fn try_from(value: Parameter) -> core::result::Result<Self, Self::Error> {
         match value {
             Parameter::Quat(v) => Ok(v),
             _ => Err(value),
@@ -1073,7 +1071,7 @@ impl From<u32> for Parameter {
 impl TryFrom<Parameter> for u32 {
     type Error = Parameter;
 
-    fn try_from(value: Parameter) -> std::result::Result<Self, Self::Error> {
+    fn try_from(value: Parameter) -> core::result::Result<Self, Self::Error> {
         value.as_num().map_err(|_| value)
     }
 }
@@ -1087,7 +1085,7 @@ impl From<Vec<u32>> for Parameter {
 impl TryFrom<Parameter> for Vec<u32> {
     type Error = Parameter;
 
-    fn try_from(value: Parameter) -> std::result::Result<Self, Self::Error> {
+    fn try_from(value: Parameter) -> core::result::Result<Self, Self::Error> {
         match value {
             Parameter::BufferU32(v) => Ok(v),
             _ => Err(value),
@@ -1104,7 +1102,7 @@ impl From<Vec<u8>> for Parameter {
 impl TryFrom<Parameter> for Vec<u8> {
     type Error = Parameter;
 
-    fn try_from(value: Parameter) -> std::result::Result<Self, Self::Error> {
+    fn try_from(value: Parameter) -> core::result::Result<Self, Self::Error> {
         match value {
             Parameter::BufferBinary(v) => Ok(v),
             _ => Err(value),
@@ -1121,7 +1119,7 @@ impl From<String> for Parameter {
 impl TryFrom<Parameter> for String {
     type Error = Parameter;
 
-    fn try_from(value: Parameter) -> std::result::Result<Self, Self::Error> {
+    fn try_from(value: Parameter) -> core::result::Result<Self, Self::Error> {
         match value {
             Parameter::StringRef(v) => Ok(v),
             Parameter::String32(v) => Ok(v.into()),
@@ -1132,8 +1130,8 @@ impl TryFrom<Parameter> for String {
     }
 }
 
-impl std::hash::Hash for Parameter {
-    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+impl core::hash::Hash for Parameter {
+    fn hash<H: core::hash::Hasher>(&self, state: &mut H) {
         match self {
             Parameter::Bool(b) => b.hash(state),
             Parameter::F32(f) => {
@@ -1264,8 +1262,7 @@ impl Parameter {
 /// Parameter structure name. This is a wrapper around a CRC32 hash.
 #[cfg_attr(feature = "with-serde", derive(Serialize, Deserialize))]
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-#[binrw::binrw]
-#[brw(little)]
+#[cfg_attr(feature = "binrw", binrw::binrw, brw(little))]
 pub struct Name(u32);
 
 impl From<&str> for Name {
@@ -1286,12 +1283,14 @@ impl From<&String> for Name {
     }
 }
 
+#[cfg(feature = "std")]
 impl From<std::string::String> for Name {
     fn from(s: std::string::String) -> Self {
         Name(hash_name(&s))
     }
 }
 
+#[cfg(feature = "std")]
 impl From<&std::string::String> for Name {
     fn from(s: &std::string::String) -> Self {
         Name(hash_name(s))
@@ -1310,7 +1309,7 @@ impl From<u32> for Name {
     }
 }
 
-impl std::borrow::Borrow<u32> for Name {
+impl core::borrow::Borrow<u32> for Name {
     fn borrow(&self) -> &u32 {
         &self.0
     }
@@ -1322,8 +1321,8 @@ impl AsRef<u32> for Name {
     }
 }
 
-impl std::fmt::Display for Name {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+impl core::fmt::Display for Name {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         #[cfg(feature = "aamp-names")]
         match names::get_default_name_table().get_name(self.0, 0, 0) {
             Some(name) => name.fmt(f),
@@ -1387,7 +1386,10 @@ macro_rules! impl_map_wrapper {
 
             /// Get a full entry by name or hash.
             #[inline(always)]
-            pub fn entry<N: Into<Name>>(&mut self, key: N) -> indexmap::map::Entry<'_, Name, $valtype> {
+            pub fn entry<N: Into<Name>>(
+                &mut self,
+                key: N,
+            ) -> indexmap::map::Entry<'_, Name, $valtype> {
                 self.0.entry(key.into())
             }
 
@@ -1406,7 +1408,7 @@ macro_rules! impl_map_wrapper {
             #[cfg(feature = "yaml")]
             /// Iterate entries by name (this is potentially rather expensive,
             /// as the name for each hash must be looked up from the default
-            /// name table). It returns a [`Result`](`std::result::Result`) for
+            /// name table). It returns a [`Result`](`core::result::Result`) for
             /// each name, with the found name as the success value or the hash
             /// as the error value.
             ///
@@ -1416,7 +1418,7 @@ macro_rules! impl_map_wrapper {
                 &self,
             ) -> impl Iterator<
                 Item = (
-                    std::result::Result<&'static std::borrow::Cow<'static, str>, u32>,
+                    core::result::Result<&'static std::borrow::Cow<'static, str>, u32>,
                     &$valtype,
                 ),
             > {
@@ -1439,7 +1441,7 @@ macro_rules! impl_map_wrapper {
             }
         }
 
-        impl<N: Into<Name>> std::ops::Index<N> for $type {
+        impl<N: Into<Name>> core::ops::Index<N> for $type {
             type Output = $valtype;
 
             fn index(&self, name: N) -> &$valtype {
@@ -1447,7 +1449,7 @@ macro_rules! impl_map_wrapper {
             }
         }
 
-        impl<N: Into<Name>> std::ops::IndexMut<N> for $type {
+        impl<N: Into<Name>> core::ops::IndexMut<N> for $type {
             fn index_mut(&mut self, name: N) -> &mut $valtype {
                 self.0.get_mut(&name.into()).expect("Index out of bounds")
             }
@@ -1544,7 +1546,7 @@ pub struct ParameterList {
     /// Map of child parameter objects.
     pub objects: ParameterObjectMap,
     /// Map of child parameter lists.
-    pub lists:   ParameterListMap,
+    pub lists: ParameterListMap,
 }
 
 impl ParameterListing for ParameterList {
@@ -1724,7 +1726,7 @@ macro_rules! params {
     ($($key:expr => $value:expr),*) => {
         {
             let _cap = params!(@count $($key),*);
-            let mut _map = ::indexmap::IndexMap::<$crate::aamp::Name, $crate::aamp::Parameter, ::std::hash::BuildHasherDefault<::rustc_hash::FxHasher>>::default();
+            let mut _map = ::indexmap::IndexMap::<$crate::aamp::Name, $crate::aamp::Parameter, ::core::hash::BuildHasherDefault<::rustc_hash::FxHasher>>::default();
             _map.reserve(_cap);
 
             $(
@@ -1761,7 +1763,7 @@ macro_rules! objs {
     ($($key:expr => $value:expr),*) => {
         {
             let _cap = objs!(@count $($key),*);
-            let mut _map = ::indexmap::IndexMap::<$crate::aamp::Name, $crate::aamp::ParameterObject, ::std::hash::BuildHasherDefault<::rustc_hash::FxHasher>>::default();
+            let mut _map = ::indexmap::IndexMap::<$crate::aamp::Name, $crate::aamp::ParameterObject, ::core::hash::BuildHasherDefault<::rustc_hash::FxHasher>>::default();
             _map.reserve(_cap);
 
             $(
@@ -1796,7 +1798,7 @@ macro_rules! lists {
     ($($key:expr => $value:expr),*) => {
         {
             let _cap = lists!(@count $($key),*);
-            let mut _map = ::indexmap::IndexMap::<$crate::aamp::Name, $crate::aamp::ParameterList, ::std::hash::BuildHasherDefault<::rustc_hash::FxHasher>>::default();
+            let mut _map = ::indexmap::IndexMap::<$crate::aamp::Name, $crate::aamp::ParameterList, ::core::hash::BuildHasherDefault<::rustc_hash::FxHasher>>::default();
             _map.reserve(_cap);
 
             $(
@@ -1814,7 +1816,7 @@ fn macros() {
         data_type: "xml".into(),
         version: 10,
         param_root: ParameterList {
-            lists:   lists!(
+            lists: lists!(
                 "test1" => ParameterList::new()
             ),
             objects: objs!(

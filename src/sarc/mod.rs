@@ -43,7 +43,7 @@
 //! ```
 mod parse;
 mod write;
-use binrw::{binrw, BinRead, BinWrite};
+use binrw::{BinRead, BinWrite, binrw};
 pub use parse::Sarc;
 pub use write::SarcWriter;
 
@@ -83,7 +83,7 @@ impl<'a> File<'a> {
     /// Calling this function on a file without a name is undefined behavior.
     #[inline(always)]
     pub unsafe fn unwrap_name_unchecked(&self) -> &str {
-        self.name.unwrap_unchecked()
+        unsafe { self.name.unwrap_unchecked() }
     }
 
     /// File data (as a slice).
@@ -196,4 +196,36 @@ struct ResFntHeader {
 #[inline(always)]
 pub const fn is_valid_alignment(alignment: usize) -> bool {
     alignment != 0 && (alignment & (alignment - 1)) == 0
+}
+
+/// Greatest common divisor of two alignments.
+///
+/// The `sarc` module is `std`-gated at the crate level, so it can be compiled
+/// without the `sarc` feature (and hence without its `num-integer`
+/// dependency). When `sarc` is enabled this delegates to
+/// `num_integer::Integer::gcd`; otherwise a small core-only Euclidean
+/// algorithm is used. The results are identical either way.
+#[cfg(feature = "sarc")]
+fn gcd_usize(a: usize, b: usize) -> usize {
+    use num_integer::Integer;
+    a.gcd(&b)
+}
+#[cfg(not(feature = "sarc"))]
+fn gcd_usize(a: usize, b: usize) -> usize {
+    let (mut a, mut b) = (a, b);
+    while b != 0 {
+        (a, b) = (b, a % b);
+    }
+    a
+}
+
+/// Least common multiple of two alignments. See [`gcd_usize`].
+#[cfg(feature = "sarc")]
+fn lcm_usize(a: usize, b: usize) -> usize {
+    use num_integer::Integer;
+    a.lcm(&b)
+}
+#[cfg(not(feature = "sarc"))]
+fn lcm_usize(a: usize, b: usize) -> usize {
+    a / gcd_usize(a, b) * b
 }

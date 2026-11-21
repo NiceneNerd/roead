@@ -60,16 +60,18 @@
 //! ```
 #[cfg(feature = "yaml")]
 mod text;
-mod writer;
+#[cfg(feature = "std")]
+mod writer; // TODO(step 3): alloc
+use alloc::vec::Vec;
 use num_traits::AsPrimitive;
 use smartstring::alias::String;
 
-use crate::{Error, Result};
-mod parser;
+use crate::{Error, FxHashMap, Result};
+#[cfg(feature = "std")]
+mod parser; // TODO(step 3): alloc
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-#[binrw::binrw]
-#[brw(repr = u8)]
+#[cfg_attr(feature = "binrw", binrw::binrw, brw(repr = u8))]
 #[repr(u8)]
 enum NodeType {
     HashMap = 0x20,
@@ -108,9 +110,11 @@ pub enum BymlError {
     #[error("Invalid version: {0}")]
     InvalidVersion(u16),
     #[error("Incorrect BYML node type: found `{0}`, expected `{1}`.")]
-    TypeError(std::string::String, std::string::String),
+    TypeError(alloc::string::String, alloc::string::String),
+    #[cfg(all(feature = "binrw", feature = "std"))]
     #[error(transparent)]
     BinaryRwError(#[from] binrw::Error),
+    #[cfg(feature = "std")]
     #[error(transparent)]
     IoError(#[from] std::io::Error),
     #[error("Error parsing BYML data: {0}")]
@@ -118,9 +122,9 @@ pub enum BymlError {
 }
 
 /// A BYML hash node.
-pub type Map = rustc_hash::FxHashMap<String, Byml>;
-pub type HashMap = rustc_hash::FxHashMap<u32, Byml>;
-pub type ValueHashMap = rustc_hash::FxHashMap<u32, (Byml, u32)>;
+pub type Map = FxHashMap<String, Byml>;
+pub type HashMap = FxHashMap<u32, Byml>;
+pub type ValueHashMap = FxHashMap<u32, (Byml, u32)>;
 
 /// Convenience type used for indexing into `Byml`s
 pub enum BymlIndex<'a> {
@@ -165,8 +169,7 @@ impl<'a> From<u32> for BymlIndex<'a> {
 
 /// Represents a Nintendo binary YAML (BYML) document or node.
 #[cfg_attr(feature = "with-serde", derive(serde::Serialize, serde::Deserialize))]
-#[derive(Debug, Clone)]
-#[derive(Default)]
+#[derive(Debug, Clone, Default)]
 pub enum Byml {
     /// String value.
     String(String),
@@ -202,23 +205,23 @@ pub enum Byml {
 }
 
 impl Byml {
-    fn type_name(&self) -> String {
+    fn type_name(&self) -> &'static str {
         match self {
-            Byml::String(_) => "String".into(),
-            Byml::BinaryData(_) => "Binary".into(),
-            Byml::FileData(_) => "File".into(),
-            Byml::Array(_) => "Array".into(),
-            Byml::Map(_) => "Map".into(),
-            Byml::HashMap(_) => "HashMap".into(),
-            Byml::ValueHashMap(_) => "ValueHashMap".into(),
-            Byml::Bool(_) => "Bool".into(),
-            Byml::I32(_) => "I32".into(),
-            Byml::Float(_) => "Float".into(),
-            Byml::U32(_) => "U32".into(),
-            Byml::I64(_) => "I64".into(),
-            Byml::U64(_) => "U64".into(),
-            Byml::Double(_) => "Double".into(),
-            Byml::Null => "Null".into(),
+            Byml::String(_) => "String",
+            Byml::BinaryData(_) => "Binary",
+            Byml::FileData(_) => "File",
+            Byml::Array(_) => "Array",
+            Byml::Map(_) => "Map",
+            Byml::HashMap(_) => "HashMap",
+            Byml::ValueHashMap(_) => "ValueHashMap",
+            Byml::Bool(_) => "Bool",
+            Byml::I32(_) => "I32",
+            Byml::Float(_) => "Float",
+            Byml::U32(_) => "U32",
+            Byml::I64(_) => "I64",
+            Byml::U64(_) => "U64",
+            Byml::Double(_) => "Double",
+            Byml::Null => "Null",
         }
     }
 
@@ -632,7 +635,7 @@ impl From<bool> for Byml {
 impl TryFrom<Byml> for bool {
     type Error = Byml;
 
-    fn try_from(value: Byml) -> std::result::Result<Self, Self::Error> {
+    fn try_from(value: Byml) -> core::result::Result<Self, Self::Error> {
         match value {
             Byml::Bool(v) => Ok(v),
             _ => Err(value),
@@ -649,7 +652,7 @@ impl From<i32> for Byml {
 impl TryFrom<Byml> for i32 {
     type Error = Byml;
 
-    fn try_from(value: Byml) -> std::result::Result<Self, Self::Error> {
+    fn try_from(value: Byml) -> core::result::Result<Self, Self::Error> {
         value.as_int().map_err(|_| value)
     }
 }
@@ -663,7 +666,7 @@ impl From<u32> for Byml {
 impl TryFrom<Byml> for u32 {
     type Error = Byml;
 
-    fn try_from(value: Byml) -> std::result::Result<Self, Self::Error> {
+    fn try_from(value: Byml) -> core::result::Result<Self, Self::Error> {
         value.as_int().map_err(|_| value)
     }
 }
@@ -677,7 +680,7 @@ impl From<i64> for Byml {
 impl TryFrom<Byml> for i64 {
     type Error = Byml;
 
-    fn try_from(value: Byml) -> std::result::Result<Self, Self::Error> {
+    fn try_from(value: Byml) -> core::result::Result<Self, Self::Error> {
         value.as_int().map_err(|_| value)
     }
 }
@@ -691,7 +694,7 @@ impl From<u64> for Byml {
 impl TryFrom<Byml> for u64 {
     type Error = Byml;
 
-    fn try_from(value: Byml) -> std::result::Result<Self, Self::Error> {
+    fn try_from(value: Byml) -> core::result::Result<Self, Self::Error> {
         value.as_int().map_err(|_| value)
     }
 }
@@ -705,7 +708,7 @@ impl From<f32> for Byml {
 impl TryFrom<Byml> for f32 {
     type Error = Byml;
 
-    fn try_from(value: Byml) -> std::result::Result<Self, Self::Error> {
+    fn try_from(value: Byml) -> core::result::Result<Self, Self::Error> {
         value.as_num().map_err(|_| value)
     }
 }
@@ -719,7 +722,7 @@ impl From<f64> for Byml {
 impl TryFrom<Byml> for f64 {
     type Error = Byml;
 
-    fn try_from(value: Byml) -> std::result::Result<Self, Self::Error> {
+    fn try_from(value: Byml) -> core::result::Result<Self, Self::Error> {
         value.as_num().map_err(|_| value)
     }
 }
@@ -727,7 +730,7 @@ impl TryFrom<Byml> for f64 {
 impl TryFrom<Byml> for Vec<u8> {
     type Error = Byml;
 
-    fn try_from(value: Byml) -> std::result::Result<Self, Self::Error> {
+    fn try_from(value: Byml) -> core::result::Result<Self, Self::Error> {
         match value {
             Byml::BinaryData(v) => Ok(v),
             _ => Err(value),
@@ -744,7 +747,7 @@ impl From<Vec<Byml>> for Byml {
 impl TryFrom<Byml> for Vec<Byml> {
     type Error = Byml;
 
-    fn try_from(value: Byml) -> std::result::Result<Self, Self::Error> {
+    fn try_from(value: Byml) -> core::result::Result<Self, Self::Error> {
         match value {
             Byml::Array(v) => Ok(v),
             _ => Err(value),
@@ -761,7 +764,7 @@ impl From<Map> for Byml {
 impl TryFrom<Byml> for Map {
     type Error = Byml;
 
-    fn try_from(value: Byml) -> std::result::Result<Self, Self::Error> {
+    fn try_from(value: Byml) -> core::result::Result<Self, Self::Error> {
         match value {
             Byml::Map(v) => Ok(v),
             _ => Err(value),
@@ -778,7 +781,7 @@ impl From<HashMap> for Byml {
 impl TryFrom<Byml> for HashMap {
     type Error = Byml;
 
-    fn try_from(value: Byml) -> std::result::Result<Self, Self::Error> {
+    fn try_from(value: Byml) -> core::result::Result<Self, Self::Error> {
         match value {
             Byml::HashMap(map) => Ok(map),
             _ => Err(value),
@@ -795,7 +798,7 @@ impl From<ValueHashMap> for Byml {
 impl TryFrom<Byml> for ValueHashMap {
     type Error = Byml;
 
-    fn try_from(value: Byml) -> std::result::Result<Self, Self::Error> {
+    fn try_from(value: Byml) -> core::result::Result<Self, Self::Error> {
         match value {
             Byml::ValueHashMap(map) => Ok(map),
             _ => Err(value),
@@ -821,12 +824,14 @@ impl From<&String> for Byml {
     }
 }
 
+#[cfg(feature = "std")]
 impl From<std::string::String> for Byml {
     fn from(value: std::string::String) -> Self {
         Self::String(value.into())
     }
 }
 
+#[cfg(feature = "std")]
 impl From<&std::string::String> for Byml {
     fn from(value: &std::string::String) -> Self {
         Self::String(value.into())
@@ -836,7 +841,7 @@ impl From<&std::string::String> for Byml {
 impl TryFrom<Byml> for String {
     type Error = Byml;
 
-    fn try_from(value: Byml) -> std::result::Result<Self, Self::Error> {
+    fn try_from(value: Byml) -> core::result::Result<Self, Self::Error> {
         match value {
             Byml::String(v) => Ok(v),
             _ => Err(value),
@@ -868,7 +873,6 @@ impl FromIterator<Byml> for Byml {
     }
 }
 
-
 impl PartialEq for Byml {
     fn eq(&self, other: &Self) -> bool {
         match (self, other) {
@@ -894,8 +898,8 @@ impl PartialEq for Byml {
 
 impl Eq for &Byml {}
 
-impl std::hash::Hash for Byml {
-    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+impl core::hash::Hash for Byml {
+    fn hash<H: core::hash::Hasher>(&self, state: &mut H) {
         match self {
             Byml::String(s) => s.hash(state),
             Byml::BinaryData(b) => b.hash(state),
@@ -932,12 +936,12 @@ impl std::hash::Hash for Byml {
                 b"d".hash(state);
                 d.to_bits().hash(state)
             }
-            Byml::Null => std::hash::Hash::hash(&0, state),
+            Byml::Null => core::hash::Hash::hash(&0, state),
         }
     }
 }
 
-impl<'a, I: Into<BymlIndex<'a>>> std::ops::Index<I> for Byml {
+impl<'a, I: Into<BymlIndex<'a>>> core::ops::Index<I> for Byml {
     type Output = Byml;
 
     fn index(&self, index: I) -> &Self::Output {
@@ -951,7 +955,7 @@ impl<'a, I: Into<BymlIndex<'a>>> std::ops::Index<I> for Byml {
     }
 }
 
-impl<'a, I: Into<BymlIndex<'a>>> std::ops::IndexMut<I> for Byml {
+impl<'a, I: Into<BymlIndex<'a>>> core::ops::IndexMut<I> for Byml {
     fn index_mut(&mut self, index: I) -> &mut Self::Output {
         match (self, index.into()) {
             (Byml::Array(a), BymlIndex::ArrayIdx(i)) => &mut a[i],
