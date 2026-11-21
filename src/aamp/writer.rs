@@ -1,17 +1,13 @@
-use std::{
-    cell::RefCell,
-    collections::hash_map::Entry,
-    hash::Hasher,
-    io::{Cursor, Seek, SeekFrom, Write},
-    rc::Rc,
-    sync::Mutex,
-};
-
+use crate::Entry;
+use crate::FxHashMap;
+use alloc::rc::Rc;
+use binrw::io::{Cursor, Seek, SeekFrom, Write};
 use binrw::prelude::*;
-use rustc_hash::FxHashMap;
+use core::cell::RefCell;
+use core::hash::Hasher;
 
 use super::*;
-use crate::{util::align, Result};
+use crate::{Result, util::align};
 
 impl ParameterIO {
     /// Serialize the parameter IO to binary using the given writer.
@@ -89,7 +85,7 @@ where
 #[inline]
 fn hash_param_data(param: &Parameter) -> u64 {
     let mut hasher = rustc_hash::FxHasher::default();
-    std::hash::Hash::hash(param, &mut hasher);
+    core::hash::Hash::hash(param, &mut hasher);
     hasher.finish()
 }
 
@@ -107,7 +103,7 @@ struct WriteContext<'pio, W: Write + Seek> {
 
 impl<'pio, W: Write + Seek> WriteContext<'pio, W> {
     #[inline(always)]
-    fn get_offset<T: std::fmt::Debug>(&mut self, data: &T) -> u32 {
+    fn get_offset<T: core::fmt::Debug>(&mut self, data: &T) -> u32 {
         self.offsets[&(data as *const _ as usize)]
     }
 
@@ -187,20 +183,21 @@ impl<'pio, W: Write + Seek> WriteContext<'pio, W> {
         // * Recursively collect all objects for child lists. For lists, object processing happens
         //   after recursively processing child lists; however every 2 lists one object from the
         //   parent list is processed.
-        fn do_collect<'ctx, 'pio, W: Write + Seek>(
-            ctx: Rc<Mutex<&mut WriteContext<'pio, W>>>,
+        // Single-threaded by construction (`Rc` already guarantees this), so a
+        // `RefCell` suffices; the `Mutex` carried over from the oead port was
+        // pointless here. Behavior is identical: the lock was never contended.
+        fn do_collect<'pio, W: Write + Seek>(
+            ctx: Rc<RefCell<&mut WriteContext<'pio, W>>>,
             list: &'pio ParameterList,
             process_top_objects_first: bool,
-        ) where
-            'pio: 'ctx,
-        {
+        ) {
             let mut obj_iter = list.objects.0.values();
             let object = RefCell::new(obj_iter.next());
 
             let mut process_one_object = || {
                 if let Some(obj) = object.borrow().as_ref() {
                     for param in obj.0.values() {
-                        let mut ctx = ctx.lock().expect("Context should unlock");
+                        let mut ctx = ctx.borrow_mut();
                         if param.is_string_type() {
                             ctx.string_param_queue.push(param);
                         } else {
@@ -238,11 +235,11 @@ impl<'pio, W: Write + Seek> WriteContext<'pio, W> {
                 process_one_object();
             }
         }
-        do_collect(Rc::new(Mutex::new(self)), &pio.param_root, true)
+        do_collect(Rc::new(RefCell::new(self)), &pio.param_root, true)
     }
 
     fn write_data_section(&mut self) -> BinResult<()> {
-        let queue = std::mem::take(&mut self.param_queue);
+        let queue = core::mem::take(&mut self.param_queue);
         for param in queue {
             self.write_parameter_data(param)?;
         }
@@ -251,7 +248,7 @@ impl<'pio, W: Write + Seek> WriteContext<'pio, W> {
     }
 
     fn write_string_section(&mut self) -> BinResult<()> {
-        let queue = std::mem::take(&mut self.string_param_queue);
+        let queue = core::mem::take(&mut self.string_param_queue);
         for param in queue {
             self.write_string(param)?;
         }
@@ -374,7 +371,7 @@ impl<'pio, W: Write + Seek> WriteContext<'pio, W> {
         Ok(())
     }
 
-    fn write_offset_for_parent<T: std::fmt::Debug>(
+    fn write_offset_for_parent<T: core::fmt::Debug>(
         &mut self,
         parent: &T,
         offset_in_parent: u32,

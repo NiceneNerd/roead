@@ -1,5 +1,5 @@
-use std::io::{Read, Seek, SeekFrom};
-
+use alloc::format;
+use binrw::io::{Cursor, Read, Seek, SeekFrom};
 use binrw::{BinRead, VecArgs, binrw};
 
 use super::*;
@@ -22,13 +22,10 @@ impl Byml {
         #[cfg(feature = "yaz0")]
         {
             if data.as_ref().starts_with(b"Yaz0") {
-                return Parser::new(std::io::Cursor::new(crate::yaz0::decompress(
-                    data.as_ref(),
-                )?))?
-                .parse();
+                return Parser::new(Cursor::new(crate::yaz0::decompress(data.as_ref())?))?.parse();
             }
         }
-        Parser::new(std::io::Cursor::new(data.as_ref()))?.parse()
+        Parser::new(Cursor::new(data.as_ref()))?.parse()
     }
 }
 
@@ -63,7 +60,7 @@ impl<R: Read + Seek> BinReader<R> {
         self.read()
     }
 
-    fn seek(&mut self, pos: u64) -> std::io::Result<()> {
+    fn seek(&mut self, pos: u64) -> binrw::BinResult<()> {
         self.reader.seek(SeekFrom::Start(pos))?;
         Ok(())
     }
@@ -109,8 +106,8 @@ impl StringTableParser {
             let type_: NodeType = reader.read_at(offset as u64)?;
             let num_entries: crate::util::u24 = reader.read()?;
             if type_ != NodeType::StringTable {
-                // Parser is std-gated this step, so the alloc-backed
-                // InvalidDataD is available here.
+                // InvalidDataD is alloc-backed and the parser is alloc-gated,
+                // so it is available here.
                 return Err(Error::InvalidDataD(format!(
                     "Incorrect BYML node type: found `{type_:?}`, expected `string table`."
                 )));
@@ -141,7 +138,7 @@ impl StringTableParser {
             }
             c = reader.read()?;
         }
-        Ok(std::str::from_utf8(&string_[..i])?.into())
+        Ok(core::str::from_utf8(&string_[..i])?.into())
     }
 }
 
@@ -226,13 +223,7 @@ impl<R: Read + Seek> Parser<R> {
             NodeType::U64 => Byml::U64(read_long(raw)?),
             NodeType::Double => Byml::Double(f64::from_bits(read_long(raw)?)),
             NodeType::Null => Byml::Null,
-            _ => {
-                // TODO(step 3/4): replace with typed alloc-free variant once
-                // the parser moves out of std.
-                return Err(Error::Any(format!(
-                    "Invalid value node type: {node_type:?}"
-                )));
-            }
+            _ => return Err(Error::InvalidNodeType(node_type.name())),
         };
         Ok(value)
     }

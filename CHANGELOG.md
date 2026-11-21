@@ -40,7 +40,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - The `sarc` module requires `std`; `yaz0` requires `alloc`.
 - BYML and AAMP binary APIs (`from_binary`, `to_binary`, `read`, `write`)
-  require `std` until the owned parser/writer paths are ported to alloc.
+  require `alloc`; `sarc` remains `std`-gated until step 5.
 - `sarc/parse.rs` now reports `IndexOutOfRange` and `TooManyFiles` instead of
   `InvalidDataD`.
 

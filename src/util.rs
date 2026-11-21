@@ -3,28 +3,32 @@ pub(crate) fn align(value: u32, size: u32) -> u32 {
     value + (size - value % size) % size
 }
 
-/// `std`-only shim adding `stream_len` to any `Read + Seek` reader.
-#[cfg(feature = "std")]
+/// Shim adding `stream_len` to any `Read + Seek` reader.
+///
+/// Uses `binrw::io`, which re-exports `std::io` under `std` and provides an
+/// equivalent trait API under `no_std`, so this works in both `std` and
+/// `no_std + alloc` builds.
+#[cfg(feature = "binrw")]
 pub(crate) trait SeekShim {
-    fn stream_len(&mut self) -> std::io::Result<u64>
+    fn stream_len(&mut self) -> binrw::io::Result<u64>
     where
-        Self: std::io::Read + std::io::Seek,
+        Self: binrw::io::Read + binrw::io::Seek,
     {
         let old_pos = self.stream_position()?;
-        let len = self.seek(std::io::SeekFrom::End(0))?;
+        let len = self.seek(binrw::io::SeekFrom::End(0))?;
 
         // Avoid seeking a third time when we were already at the end of the
         // stream. The branch is usually way cheaper than a seek operation.
         if old_pos != len {
-            self.seek(std::io::SeekFrom::Start(old_pos))?;
+            self.seek(binrw::io::SeekFrom::Start(old_pos))?;
         }
 
         Ok(len)
     }
 }
 
-#[cfg(feature = "std")]
-impl<T> SeekShim for T where T: std::io::Read + std::io::Seek {}
+#[cfg(feature = "binrw")]
+impl<T> SeekShim for T where T: binrw::io::Read + binrw::io::Seek {}
 
 #[allow(non_camel_case_types)]
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]

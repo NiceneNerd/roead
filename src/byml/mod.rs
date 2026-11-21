@@ -60,15 +60,15 @@
 //! ```
 #[cfg(feature = "yaml")]
 mod text;
-#[cfg(feature = "std")]
-mod writer; // TODO(step 3): alloc
+#[cfg(feature = "alloc")]
+mod writer;
 use alloc::vec::Vec;
 use num_traits::AsPrimitive;
 use smartstring::alias::String;
 
 use crate::{Error, FxHashMap, Result};
-#[cfg(feature = "std")]
-mod parser; // TODO(step 3): alloc
+#[cfg(feature = "alloc")]
+mod parser;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[cfg_attr(feature = "binrw", binrw::binrw, brw(repr = u8))]
@@ -90,6 +90,30 @@ enum NodeType {
     U64 = 0xd5,
     Double = 0xd6,
     Null = 0xff,
+}
+
+impl NodeType {
+    /// The name of this node type, used in alloc-free error messages.
+    const fn name(self) -> &'static str {
+        match self {
+            NodeType::HashMap => "HashMap",
+            NodeType::ValueHashMap => "ValueHashMap",
+            NodeType::String => "String",
+            NodeType::Binary => "Binary",
+            NodeType::File => "File",
+            NodeType::Array => "Array",
+            NodeType::Map => "Map",
+            NodeType::StringTable => "StringTable",
+            NodeType::Bool => "Bool",
+            NodeType::I32 => "I32",
+            NodeType::Float => "Float",
+            NodeType::U32 => "U32",
+            NodeType::I64 => "I64",
+            NodeType::U64 => "U64",
+            NodeType::Double => "Double",
+            NodeType::Null => "Null",
+        }
+    }
 }
 
 #[inline(always)]

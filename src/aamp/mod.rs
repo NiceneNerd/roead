@@ -33,12 +33,12 @@
 //! a non-existent key will panic.
 #[cfg(feature = "aamp-names")]
 mod names;
-#[cfg(feature = "std")]
-mod parser; // TODO(step 3): alloc
+#[cfg(feature = "alloc")]
+mod parser;
 #[cfg(feature = "yaml")]
 mod text;
-#[cfg(feature = "std")]
-mod writer; // TODO(step 3): alloc
+#[cfg(feature = "alloc")]
+mod writer;
 use alloc::boxed::Box;
 use alloc::vec::Vec;
 use indexmap::IndexMap;

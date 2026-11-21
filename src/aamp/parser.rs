@@ -1,9 +1,8 @@
-use std::io::{Read, Seek};
-
+use binrw::io::{Cursor, Read, Seek, SeekFrom};
 use binrw::prelude::*;
 
 use super::*;
-use crate::{util::SeekShim, Error, Result};
+use crate::{Error, Result, util::SeekShim};
 
 impl ParameterIO {
     /// Read a parameter archive from a binary reader.
@@ -19,13 +18,10 @@ impl ParameterIO {
         #[cfg(feature = "yaz0")]
         {
             if data.as_ref().starts_with(b"Yaz0") {
-                return Parser::new(std::io::Cursor::new(crate::yaz0::decompress(
-                    data.as_ref(),
-                )?))?
-                .parse();
+                return Parser::new(Cursor::new(crate::yaz0::decompress(data.as_ref())?))?.parse();
             }
         }
-        Parser::new(std::io::Cursor::new(data.as_ref()))?.parse()
+        Parser::new(Cursor::new(data.as_ref()))?.parse()
     }
 }
 
@@ -82,8 +78,8 @@ impl<R: Read + Seek> Parser<R> {
     }
 
     #[inline]
-    fn seek(&mut self, offset: u32) -> Result<()> {
-        self.reader.seek(std::io::SeekFrom::Start(offset as u64))?;
+    fn seek(&mut self, offset: u32) -> binrw::BinResult<()> {
+        self.reader.seek(SeekFrom::Start(offset as u64))?;
         Ok(())
     }
 
@@ -102,7 +98,7 @@ impl<R: Read + Seek> Parser<R> {
             len += 1;
             c = self.read()?;
         }
-        Ok(unsafe { std::str::from_utf8_unchecked(&string_[..len]) }.into())
+        Ok(unsafe { core::str::from_utf8_unchecked(&string_[..len]) }.into())
     }
 
     #[inline]
@@ -184,7 +180,7 @@ impl<R: Read + Seek> Parser<R> {
         let lists_offset = info.lists_rel_offset as u32 * 4 + offset;
         let objects_offset = info.objects_rel_offset as u32 * 4 + offset;
         let plist = ParameterList {
-            lists:   (0..info.list_count)
+            lists: (0..info.list_count)
                 .map(|i| self.parse_list(lists_offset + 0xC * i as u32))
                 .collect::<Result<_>>()?,
             objects: (0..info.object_count)

@@ -52,7 +52,9 @@
 //! This project is licensed under the GPLv3+ license. oead is licensed under
 //! the GPLv2+ license.
 #![cfg_attr(all(doc, CHANNEL_NIGHTLY), feature(doc_auto_cfg))]
-#![cfg_attr(not(feature = "std"), no_std)]
+// In test builds the harness requires std, so no_std is not applied; the
+// cfg-gated code under test is still selected by features alone.
+#![cfg_attr(all(not(feature = "std"), not(test)), no_std)]
 #![cfg_attr(not(test), deny(clippy::unwrap_used))]
 #[cfg(feature = "alloc")]
 extern crate alloc;
@@ -102,6 +104,9 @@ pub enum Error {
     #[cfg(feature = "alloc")]
     #[error("{0}")]
     Any(String),
+    #[cfg(feature = "alloc")]
+    #[error("Invalid BYML value node type: {0}")]
+    InvalidNodeType(&'static str),
     #[cfg(feature = "std")]
     #[error(transparent)]
     Io(#[from] std::io::Error),
@@ -118,6 +123,20 @@ pub enum Error {
     #[cfg(feature = "yaml")]
     #[error("Parsing YAML binary data failed: {0}")]
     InvalidYamlBinary(#[from] base64::DecodeError),
+}
+
+#[cfg(all(feature = "binrw", not(feature = "std")))]
+impl From<binrw::Error> for Error {
+    fn from(err: binrw::Error) -> Self {
+        Error::BinarySerde(err)
+    }
+}
+
+#[cfg(all(feature = "binrw", not(feature = "std")))]
+impl From<binrw::io::Error> for Error {
+    fn from(err: binrw::io::Error) -> Self {
+        Error::BinarySerde(err.into())
+    }
 }
 
 /// A copyable, fixed-capacity inline string holding at most 16 bytes.
@@ -180,6 +199,11 @@ impl core::fmt::Display for TinyString {
 pub(crate) type FxHashMap<K, V> = rustc_hash::FxHashMap<K, V>;
 #[cfg(all(feature = "alloc", not(feature = "std")))]
 pub(crate) type FxHashMap<K, V> = hashbrown::HashMap<K, V, rustc_hash::FxBuildHasher>;
+
+#[cfg(all(feature = "alloc", not(feature = "std")))]
+pub(crate) use hashbrown::hash_map::Entry;
+#[cfg(feature = "std")]
+pub(crate) use std::collections::hash_map::Entry;
 
 #[cfg_attr(feature = "binrw", binrw::binread, brw(repr = u16))]
 #[derive(Debug, Eq, PartialEq, Copy, Clone)]

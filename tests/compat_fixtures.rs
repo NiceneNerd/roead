@@ -19,12 +19,9 @@
 //! mismatch a diff showing the first differing byte/line is printed and the
 //! test fails.
 //!
-//! Fixtures are cfg-gated: BYML tests require `all(feature = "byml",
-//! feature = "std")`, AAMP tests require `all(feature = "aamp",
-//! feature = "std")`, and YAML (`.yml`) artifact comparisons additionally
-//! require `yaml`.
-// TODO(step 3): relax binary-artifact gates back to `byml`/`aamp` once the
-//! owned parsers and writers no longer require `std`.
+//! Fixtures are cfg-gated: BYML binary artifacts require `feature = "byml"`,
+//! AAMP binary artifacts require `feature = "aamp"`, and YAML (`.yml`)
+//! artifact comparisons additionally require `yaml`.
 
 // ---------------------------------------------------------------------------
 // cfg-free harness: fixture table, hashing, diffing, manifest emission.
@@ -689,7 +686,7 @@ mod harness {
     }
 }
 
-#[cfg(all(feature = "byml", feature = "std"))]
+#[cfg(feature = "byml")]
 mod byml_tests {
     use std::collections::BTreeMap;
 
@@ -813,7 +810,7 @@ mod byml_tests {
     }
 }
 
-#[cfg(all(feature = "aamp", feature = "std"))]
+#[cfg(feature = "aamp")]
 mod aamp_tests {
     use super::harness::*;
 
