@@ -61,33 +61,17 @@ extern crate alloc;
 #[cfg(feature = "alloc")]
 use alloc::string::String;
 
-/// The AAMP module root is compiled whenever the `aamp` feature is on: the
-/// owned model (`owned`) and the binrw-based parser/writer require `alloc`,
-/// but the shared format walk (`reader`) and the flat arena (`arena`) are
-/// core-only so `ParameterIOArena` works with zero features. Inner items
-/// self-gate on `alloc`, `binrw`, `yaml` or `aamp-names` as needed.
 #[cfg(feature = "aamp")]
 pub mod aamp;
-/// The BYML module root is compiled whenever the `byml` feature is on: the
-/// owned model (`owned`) and the binrw-based parser/writer require `alloc`,
-/// but the shared format walk (`reader`) and the flat arena (`arena`) are
-/// core-only so `BymlArena` works with zero features.
 #[cfg(feature = "byml")]
 pub mod byml;
-/// The SARC module root is compiled whenever the `sarc` feature is on: the
-/// reader (`parse`) is core-only and the writer (`write`) requires `std`.
 #[cfg(feature = "sarc")]
 pub mod sarc;
-/// Generic node stores shared by the flat arenas (`byml::arena`,
-/// `aamp::arena`). Core-only: compiles with zero features.
 pub mod storage;
 pub mod types;
 mod util;
 #[cfg(feature = "yaml")]
 mod yaml;
-/// The Yaz0 module root is compiled whenever the `yaz0` feature is on.
-/// `decompress_into`, `decompress_unchecked`, and header parsing are
-/// core-only; compression and the std-only helpers are gated internally.
 #[cfg(feature = "yaz0")]
 pub mod yaz0;
 

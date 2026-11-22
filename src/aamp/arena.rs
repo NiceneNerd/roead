@@ -11,8 +11,8 @@
 //! on `no_std` targets without an allocator.
 //!
 //! The shared format walk lives in `super::reader` and is generic over the
-//! [`AampSink`](super::reader::AampSink) trait; this module provides the
-//! arena sink ([`ArenaSink`]) used by [`ParameterIOArena::from_binary`].
+//! `AampSink` trait; this module provides the arena sink used by
+//! [`ParameterIOArena::from_binary`].
 
 use super::Name;
 use super::reader::{

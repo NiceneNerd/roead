@@ -4,9 +4,9 @@
 //! contains three layers:
 //!
 //! - The [owned tree model][`Byml`] (`owned`), the binrw-based
-//!   [`parser`], and the [`writer`] require `alloc` and produce/consume
+//!   `parser`, and the `writer` require `alloc` and produce/consume
 //!   owned [`Byml`] values.
-//! - [`reader`] contains the shared BYML format walk. It is core-only so
+//! - `reader` contains the shared BYML format walk. It is core-only so
 //!   that it can be used without an allocator.
 //! - [`arena`] is core-only and provides flat, fixed-capacity BYML readers
 //!   ([`BymlArena`]) that borrow all payloads from the input buffer and
@@ -32,7 +32,7 @@
 //!     0xD0, 0x00, 0x00, 0x00,   // child tag: Bool, padding
 //!     0x01, 0x00, 0x00, 0x00,   // value: true
 //! ];
-//! let arena = BymlArena::<ArrayStore<8>>::from_binary(&data)?;
+//! let arena = BymlArena::<FixedStore<Node, 8>>::from_binary(&data)?;
 //! let root = arena.root().expect("root node");
 //! let child = arena.child(root, 0).expect("first child");
 //! assert_eq!(arena.node(child).unwrap().as_bool()?, true);
@@ -95,6 +95,6 @@ pub use crate::{map, array};
 #[cfg(feature = "alloc")]
 pub use reader::BymlRef;
 
-pub use arena::{NodeId, Key, Payload, Node, BymlArena, BymlStack, ArrayStore, SliceStore};
+pub use arena::{BorrowedStore, FixedStore, NodeId, Key, Payload, Node, Store, BymlArena, BymlStack};
 #[cfg(feature = "alloc")]
-pub use arena::VecStore;
+pub use arena::OwnedStore;

@@ -31,14 +31,14 @@ feature.
 
 ## `no_std` and zero-copy readers
 
-roead is `no_std` by default: `--no-default-features` builds a pure `core`
+roead supports `no_std`: `--no-default-features` builds a pure `core`
 library, `alloc` adds the allocating types, and `std` (which implies `alloc`)
 enables the standard library. The owned `Byml` and `ParameterIO` types need
 `alloc`, but the format walks do not:
 
-* **BYML**: `BymlRef` borrows a tree in place; `byml::arena::BymlArena` (over a
-  `VecStore`, an inline `BymlStack`, or a caller-owned `SliceStore`) is flat,
-  fixed-capacity, and needs no allocator.
+* **BYML**: `BymlRef` borrows a tree in place; `byml::arena::BymlArena` (over an
+  `OwnedStore`, an inline `BymlStack`, or a caller-owned `BorrowedStore`) is
+  flat, fixed-capacity, and needs no allocator.
 * **AAMP**: `ParameterIORef` mirrors `ParameterIO` over the input buffer, and
   `aamp::arena::ParameterIOArena`/`ParameterIOStack` provide the flat
   allocator-free form.

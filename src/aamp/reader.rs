@@ -643,7 +643,7 @@ impl<'a> ParameterListRef<'a> {
         self.objects.get(&name.into())
     }
 
-    /// Converts this borrowed list into an owned [`ParameterList`].
+    /// Converts this borrowed list into an owned [`ParameterList`](super::owned::ParameterList).
     pub fn to_owned(&self) -> super::owned::ParameterList {
         super::owned::ParameterList {
             objects: self
@@ -687,7 +687,7 @@ impl<'a> ParameterObjectRef<'a> {
         self.0.iter()
     }
 
-    /// Converts this borrowed object into an owned [`ParameterObject`].
+    /// Converts this borrowed object into an owned [`ParameterObject`](super::owned::ParameterObject).
     pub fn to_owned(&self) -> super::owned::ParameterObject {
         super::owned::ParameterObject(
             self.0
@@ -893,7 +893,7 @@ impl<'a> ParameterIORef<'a> {
         })
     }
 
-    /// Converts this borrowed parameter IO into an owned [`ParameterIO`].
+    /// Converts this borrowed parameter IO into an owned [`ParameterIO`](super::owned::ParameterIO).
     pub fn to_owned(&self) -> super::owned::ParameterIO {
         super::owned::ParameterIO {
             version: self.version,

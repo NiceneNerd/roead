@@ -48,13 +48,13 @@ fn prepared(data: &[u8]) -> Cow<'_, [u8]> {
     data
 }
 
-/// Parse `data` into a `SliceStore` (growing the backing buffer until it
-/// fits) and return its YAML text. A single `SliceStore` parse.
+/// Parse `data` into a `BorrowedStore` (growing the backing buffer until it
+/// fits) and return its YAML text. A single `BorrowedStore` parse.
 fn parse_slice_text(data: &[u8]) -> String {
-    let count = BymlArena::<VecStore<'_>>::from_binary(data).unwrap().len();
+    let count = BymlArena::<OwnedStore<Node<'_>>>::from_binary(data).unwrap().len();
     let mut buffer: Vec<Node<'_>> = Vec::with_capacity(count);
     let slots = buffer.spare_capacity_mut();
-    let arena = BymlArena::<SliceStore<'_, '_>>::from_binary_in(data, slots).unwrap();
+    let arena = BymlArena::<BorrowedStore<'_, Node<'_>>>::from_binary_in(data, slots).unwrap();
     arena.to_text()
 }
 
@@ -79,11 +79,11 @@ fn byte_identity_corpus() {
             "BymlRef byte-identity failed for {name}"
         );
         assert_eq!(
-            BymlArena::<VecStore<'_>>::from_binary(data.as_ref())
+            BymlArena::<OwnedStore<Node<'_>>>::from_binary(data.as_ref())
                 .unwrap()
                 .to_text(),
             expected,
-            "VecStore byte-identity failed for {name}"
+            "OwnedStore byte-identity failed for {name}"
         );
         // BymlStack has a fixed 8192-node capacity: documents that do not
         // fit are the only expected failure. Parse in place: constructing an
@@ -102,7 +102,7 @@ fn byte_identity_corpus() {
         assert_eq!(
             parse_slice_text(data.as_ref()),
             expected,
-            "SliceStore byte-identity failed for {name}"
+            "BorrowedStore byte-identity failed for {name}"
         );
     }
 }
@@ -121,7 +121,7 @@ fn fixture_a1_dynamic() {
         expected
     );
     assert_eq!(
-        BymlArena::<VecStore<'_>>::from_binary(data.as_ref())
+        BymlArena::<OwnedStore<Node<'_>>>::from_binary(data.as_ref())
             .unwrap()
             .to_text(),
         expected
@@ -177,7 +177,7 @@ fn null_root_is_null() {
         let doc = null_doc(0, endian);
         assert_eq!(BymlRef::from_binary(&doc).unwrap().to_text(), "null");
         assert_eq!(
-            BymlArena::<VecStore<'_>>::from_binary(&doc)
+            BymlArena::<OwnedStore<Node<'_>>>::from_binary(&doc)
                 .unwrap()
                 .to_text(),
             "null"
@@ -240,7 +240,7 @@ fn arena_duplicate_map_keys_match_owned() {
         "BymlRef duplicate-key mismatch"
     );
     assert_eq!(
-        BymlArena::<VecStore<'_>>::from_binary(&doc)
+        BymlArena::<OwnedStore<Node<'_>>>::from_binary(&doc)
             .unwrap()
             .to_text(),
         expected,
@@ -273,7 +273,7 @@ fn binary_data_large_identical() {
     let borrowed = BymlRef::from_binary(&owned_bytes).unwrap().to_text();
     assert_eq!(borrowed, owned_text);
 
-    let arena = BymlArena::<VecStore<'_>>::from_binary(&owned_bytes)
+    let arena = BymlArena::<OwnedStore<Node<'_>>>::from_binary(&owned_bytes)
         .unwrap()
         .to_text();
     assert_eq!(arena, owned_text);
@@ -328,7 +328,7 @@ fn yaz0_d3_dynamic() {
             expected
         );
         assert_eq!(
-            BymlArena::<VecStore<'_>>::from_binary(decompressed.as_ref())
+            BymlArena::<OwnedStore<Node<'_>>>::from_binary(decompressed.as_ref())
                 .unwrap()
                 .to_text(),
             expected

@@ -79,14 +79,14 @@ fn yaz0_can_decompress() -> bool {
     cfg!(all(feature = "yaz0", feature = "alloc"))
 }
 
-fn parse_arena<'a, S: ArenaStore<'a> + Default>(data: &'a [u8]) -> BymlArena<S> {
+fn parse_arena<'a, S: Store<Node<'a>> + Default>(data: &'a [u8]) -> BymlArena<S> {
     BymlArena::from_binary(data).unwrap()
 }
 
 /// Parse and return the error, panicking if the document unexpectedly
 /// parses successfully. Avoids `Result::unwrap_err`, which requires
 /// `BymlArena<T>: Debug` (unimplemented for fixed-capacity stores).
-fn expect_err<'a, S: ArenaStore<'a> + Default>(data: &'a [u8]) -> Error {
+fn expect_err<'a, S: Store<Node<'a>> + Default>(data: &'a [u8]) -> Error {
     match BymlArena::<S>::from_binary(data) {
         Err(err) => err,
         Ok(_) => panic!("expected a parse error"),
@@ -97,7 +97,7 @@ fn expect_err_in<'a, 's>(
     data: &'a [u8],
     slots: &'s mut [MaybeUninit<Node<'a>>],
 ) -> Error {
-    match BymlArena::<SliceStore<'s, 'a>>::from_binary_in(data, slots) {
+    match BymlArena::<BorrowedStore<'s, Node<'a>>>::from_binary_in(data, slots) {
         Err(err) => err,
         Ok(_) => panic!("expected a parse error"),
     }
@@ -120,7 +120,7 @@ fn arena_smoke() {
     doc.extend_from_slice(&1u32.to_le_bytes());
     doc.extend_from_slice(&42u32.to_le_bytes());
 
-    let arena = parse_arena::<ArrayStore<8>>(&doc);
+    let arena = parse_arena::<FixedStore<Node, 8>>(&doc);
     let root = arena.root().expect("root node");
     assert_eq!(arena.len(), 3);
     assert!(!arena.is_empty());
@@ -151,7 +151,7 @@ fn arena_smoke() {
 fn arena_null_root() {
     // Root offset 0: an empty document reads as a single Null node.
     let doc = header(Endian::Big, 2, 0, 0, 0);
-    let arena = parse_arena::<ArrayStore<4>>(&doc);
+    let arena = parse_arena::<FixedStore<Node, 4>>(&doc);
     let root = arena.root().expect("root node");
     assert_eq!(arena.len(), 1);
     assert_eq!(arena.node(root).unwrap().payload, Payload::Null);
@@ -180,7 +180,7 @@ fn arena_equivalence_across_corpus() {
         let mut buffer: Vec<Node<'_>> = Vec::with_capacity(1024);
         let ref_arena = loop {
             let slots = buffer.spare_capacity_mut();
-            match BymlArena::<SliceStore<'_, '_>>::from_binary_in(&data, slots) {
+            match BymlArena::<BorrowedStore<'_, Node<'_>>>::from_binary_in(&data, slots) {
                 Ok(arena) => break arena,
                 Err(Error::CapacityExceeded(_)) => buffer.reserve_exact(buffer.capacity() * 2),
                 Err(err) => panic!("unexpected error: {err}"),
@@ -191,7 +191,7 @@ fn arena_equivalence_across_corpus() {
         // A fixed-capacity array store, when the document is small enough
         // to keep its backing array on the stack.
         if node_count <= 4096 {
-            let arr_arena = parse_arena::<ArrayStore<4096>>(&data);
+            let arr_arena = parse_arena::<FixedStore<Node, 4096>>(&data);
             assert_arena_equal(&ref_arena, &arr_arena);
             assert_eq!(node_count, arr_arena.len());
         }
@@ -200,7 +200,7 @@ fn arena_equivalence_across_corpus() {
         let mut buffer: Vec<Node<'_>> = Vec::with_capacity(node_count);
         let slots = buffer.spare_capacity_mut();
         let slice_arena =
-            BymlArena::<SliceStore<'_, '_>>::from_binary_in(&data, slots).unwrap();
+            BymlArena::<BorrowedStore<'_, Node<'_>>>::from_binary_in(&data, slots).unwrap();
         assert_arena_equal(&ref_arena, &slice_arena);
         assert_eq!(node_count, slice_arena.len());
 
@@ -240,7 +240,7 @@ fn assert_payload_eq(a: &Payload<'_>, b: &Payload<'_>) {
     }
 }
 
-fn assert_arena_equal<'a, 'b, S1: ArenaStore<'a>, S2: ArenaStore<'b>>(
+fn assert_arena_equal<'a, 'b, S1: Store<Node<'a>>, S2: Store<Node<'b>>>(
     a: &BymlArena<S1>,
     b: &BymlArena<S2>,
 ) {
@@ -304,41 +304,41 @@ fn capacity_exceeded() {
     let doc = array_of_n_le(9); // 10 nodes total (container + 9 children)
 
     // Fixed-capacity stores overflow.
-    let err = expect_err::<ArrayStore<8>>(&doc);
+    let err = expect_err::<FixedStore<Node, 8>>(&doc);
     assert!(matches!(err, Error::CapacityExceeded(8)));
 
-    let mut slots = [MaybeUninit::uninit(); 8];
+    let mut slots = [MaybeUninit::<Node>::uninit(); 8];
     let err = expect_err_in(&doc, &mut slots);
     assert!(matches!(err, Error::CapacityExceeded(8)));
 
     // With 10 slots the document fits.
     let mut slots = [MaybeUninit::uninit(); 10];
-    let arena = BymlArena::<SliceStore<'_, '_>>::from_binary_in(&doc, &mut slots).unwrap();
+    let arena = BymlArena::<BorrowedStore<'_, Node<'_>>>::from_binary_in(&doc, &mut slots).unwrap();
     assert_eq!(arena.len(), 10);
 }
 
 #[test]
 fn malformed_inputs() {
     // Truncated header (< 0x10 bytes).
-    let err = expect_err::<ArrayStore<64>>(b"BY");
+    let err = expect_err::<FixedStore<Node, 64>>(b"BY");
     assert!(matches!(err, Error::InsufficientData(_, _)));
 
     // Bad magic.
     let mut bad = [0u8; 16];
     bad[..2].copy_from_slice(b"XX");
-    let err = expect_err::<ArrayStore<64>>(&bad);
+    let err = expect_err::<FixedStore<Node, 64>>(&bad);
     assert!(matches!(err, Error::BadMagic(_, _)));
 
     // Unsupported version 8.
     let ver8 = header(Endian::Big, 8, 0, 0, 0);
-    let err = expect_err::<ArrayStore<64>>(&ver8);
+    let err = expect_err::<FixedStore<Node, 64>>(&ver8);
     assert!(matches!(err, Error::InvalidData(_)));
     assert_eq!(err.to_string(), "Unsupported BYML version (1-7 only)");
 
     // Root node offset beyond EOF.
     let mut oob = header(Endian::Big, 2, 0, 0, 0x1000);
     oob.truncate(16);
-    let err = expect_err::<ArrayStore<64>>(&oob);
+    let err = expect_err::<FixedStore<Node, 64>>(&oob);
     assert!(matches!(err, Error::InsufficientData(_, _)));
 
     // String table index out of range: hash key table with 0 entries, root
@@ -348,7 +348,7 @@ fn malformed_inputs() {
     st_oor.extend_from_slice(&[0xC1, 0x01, 0x00, 0x00]); // Map, size 1
     // entry: name_idx=0, type=String, value=0
     st_oor.extend_from_slice(&[0x00, 0x00, 0x00, 0xA0, 0x00, 0x00, 0x00, 0x00]);
-    let err = expect_err::<ArrayStore<64>>(&st_oor);
+    let err = expect_err::<FixedStore<Node, 64>>(&st_oor);
     assert!(matches!(
         err,
         Error::InvalidData("Invalid string table entry index")
@@ -367,7 +367,7 @@ fn malformed_inputs() {
     bad_utf8.push(0xA0); // 0x34: child type tag: String
     bad_utf8.resize(0x3C, 0);
     bad_utf8.extend_from_slice(&0u32.to_be_bytes()); // 0x3C: raw = string index 0
-    let err = expect_err::<ArrayStore<64>>(&bad_utf8);
+    let err = expect_err::<FixedStore<Node, 64>>(&bad_utf8);
     assert!(matches!(err, Error::InvalidUtf8(_)));
 
     // Binary payload extending past EOF.
@@ -378,7 +378,7 @@ fn malformed_inputs() {
     bin_past.resize(0x20, 0);
     bin_past.extend_from_slice(&0x20u32.to_be_bytes()); // value: offset 0x20
     bin_past.extend_from_slice(&0x100u32.to_be_bytes()); // size 0x100 at 0x20 (data would run past EOF)
-    let err = expect_err::<ArrayStore<64>>(&bin_past);
+    let err = expect_err::<FixedStore<Node, 64>>(&bin_past);
     assert!(matches!(err, Error::InsufficientData(_, _)));
 }
 
@@ -393,7 +393,7 @@ fn self_referential_container() {
     doc.extend_from_slice(&0x10u32.to_be_bytes()); // child container offset = 0x10 (self)
 
     // The arena trips its capacity error first.
-    let err = expect_err::<ArrayStore<8>>(&doc);
+    let err = expect_err::<FixedStore<Node, 8>>(&doc);
     assert!(matches!(err, Error::CapacityExceeded(8)));
 }
 
@@ -504,7 +504,7 @@ mod alloc_tests {
             let o = Byml::from_binary(&bytes).unwrap();
             assert_eq!(r.to_owned(), o, "synthetic case {endian:?} v{version}");
 
-            let arena = parse_arena::<VecStore<'_>>(&bytes);
+            let arena = parse_arena::<OwnedStore<Node<'_>>>(&bytes);
             let root = arena.root().expect("root");
             assert_ref_matches_arena(&r, &arena, root);
         }
@@ -524,7 +524,7 @@ mod alloc_tests {
         // accepted and the 129th is rejected.
         let ok = deep(128).to_binary(Endian::Little);
         BymlRef::from_binary(&ok).expect("128 containers should parse");
-        let arena = parse_arena::<VecStore<'_>>(&ok);
+        let arena = parse_arena::<OwnedStore<Node<'_>>>(&ok);
         assert_eq!(arena.len(), 129); // 128 containers plus the null leaf
 
         let err = BymlRef::from_binary(&deep(129).to_binary(Endian::Little)).unwrap_err();
@@ -581,23 +581,23 @@ mod alloc_tests {
 
     #[test]
     fn arena_store_capacities() {
-        let vs: VecStore<'_> = VecStore::new();
-        assert_eq!(vs.capacity(), 0); // hint only; VecStore grows
-        let vs = VecStore::with_capacity(64);
+        let vs: OwnedStore<Node<'_>> = OwnedStore::new();
+        assert_eq!(vs.capacity(), 0); // hint only; OwnedStore grows
+        let vs: OwnedStore<Node<'_>> = OwnedStore::with_capacity(64);
         assert_eq!(vs.capacity(), 64);
-        assert_eq!(ArrayStore::<8>::new().capacity(), 8);
-        let mut slots = [MaybeUninit::uninit(); 8];
-        assert_eq!(SliceStore::new(&mut slots).capacity(), 8);
+        assert_eq!(FixedStore::<Node, 8>::new().capacity(), 8);
+        let mut slots = [MaybeUninit::<Node>::uninit(); 8];
+        assert_eq!(BorrowedStore::new(&mut slots).capacity(), 8);
 
-        // VecStore is unbounded: a 10-node document fits.
+        // OwnedStore is unbounded: a 10-node document fits.
         let doc = super::array_of_n_le(9);
-        let arena = BymlArena::<VecStore<'_>>::from_binary(&doc).unwrap();
+        let arena = BymlArena::<OwnedStore<Node<'_>>>::from_binary(&doc).unwrap();
         assert_eq!(arena.len(), 10);
     }
 
     fn assert_ref_matches_arena(
         ref_node: &BymlRef<'_>,
-        arena: &BymlArena<VecStore<'_>>,
+        arena: &BymlArena<OwnedStore<Node<'_>>>,
         id: NodeId,
     ) {
         let node = arena
@@ -719,7 +719,7 @@ fn value_hash_map_le() -> Vec<u8> {
 #[test]
 fn arena_key_lookups() {
     let doc = map_with_string_key_le();
-    let arena = parse_arena::<ArrayStore<64>>(&doc);
+    let arena = parse_arena::<FixedStore<Node, 64>>(&doc);
     let root = arena.root().expect("root");
     assert_eq!(arena.node(root).unwrap().kind(), "Map");
     assert_eq!(arena.node(root).unwrap().child_count(), 1);
@@ -733,7 +733,7 @@ fn arena_key_lookups() {
     assert_eq!(kids[0].0, Key::Str("abc"));
 
     let hdoc = hash_map_le();
-    let h = parse_arena::<ArrayStore<64>>(&hdoc);
+    let h = parse_arena::<FixedStore<Node, 64>>(&hdoc);
     let root = h.root().expect("root");
     assert_eq!(h.node(root).unwrap().kind(), "HashMap");
     let child = h.get_hash(root, 0xDEADBEEF).expect("hash");
@@ -741,7 +741,7 @@ fn arena_key_lookups() {
     assert_eq!(h.get_hash(root, 1), None);
 
     let vdoc = value_hash_map_le();
-    let v = parse_arena::<ArrayStore<64>>(&vdoc);
+    let v = parse_arena::<FixedStore<Node, 64>>(&vdoc);
     let root = v.root().expect("root");
     assert_eq!(v.node(root).unwrap().kind(), "ValueHashMap");
     let child = v.get_hash(root, 0x1234).expect("hash");

@@ -32,7 +32,7 @@ pub struct Header {
 /// Get the header of Yaz0 compressed data, if it exists.
 ///
 /// Returns `None` when `data` is shorter than a header (0x10 bytes). The
-/// magic is not validated here; [`checked_header`] performs magic validation
+/// magic is not validated here; `checked_header` performs magic validation
 /// and reports [`Error::BadMagic`] for corrupt streams. All reads are
 /// bounds-checked.
 pub fn get_header(data: &[u8]) -> Option<Header> {

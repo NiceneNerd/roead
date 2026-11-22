@@ -14,14 +14,14 @@ and what to write instead.
 
 ## Feature model
 
-`roead` is `no_std` by default:
+`roead` builds as a pure `core` library with no features:
 
 | Features | What you get |
 | --- | --- |
-| *(none)* | Pure `core` library: the zero-copy format walks and arena readers (`byml::arena`, `aamp::arena`), the SARC reader, Yaz0 decompression into caller-provided buffers. |
+| *(none)* | Pure `core` library: the error type and shared utilities. Each format module needs its own feature. |
 | `alloc` | Everything above plus every allocating type and the owned BYML/AAMP parsers and writers. |
 | `std` | `alloc` plus the standard library (implies `alloc`). |
-| `byml`, `aamp`, `sarc`, `yaz0` | Enable the corresponding module. Each module self-gates its items, so e.g. `--features byml` compiles the core-only BYML readers without an allocator. |
+| `byml`, `aamp`, `sarc`, `yaz0` | Enable the corresponding module. Each module self-gates its items, so e.g. `--no-default-features --features byml` compiles the core-only BYML walk and arena readers without an allocator. |
 | `yaml` | Owned *and* borrowed BYML/AAMP ⇄ YAML. Implies `std` (it depends on `ryml`). |
 | `with-serde` | `serde` derives for the owned types. `serde_json` is no longer a dependency. |
 
@@ -88,8 +88,9 @@ let sarc = Sarc::new(decompressed.as_ref())?; // borrows &'a [u8]
 
 ## BYML
 
-- `BymlRef` (borrowed tree) and `byml::arena::{BymlArena, BymlStack,
-  SliceStore, VecStore, ArrayStore}` (flat readers) are new.
+- `BymlRef` (borrowed tree) and `byml::arena::{BymlArena, BymlStack}` (flat
+  readers over the shared `storage::{OwnedStore, FixedStore, BorrowedStore}`
+  stores) are new.
 - `BymlArena::from_binary` requires a `Default` store; use
   `BymlArena::new()` + `parse_in_place(data)` for large inline stores, or
   `from_binary_in(data, slots)` with caller-provided memory.

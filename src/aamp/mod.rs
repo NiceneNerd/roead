@@ -7,8 +7,8 @@
 //! The module contains three layers:
 //! - The owned tree model (`owned`): [`ParameterIO`], [`ParameterList`],
 //!   [`ParameterObject`] and [`Parameter`] require `alloc` and are produced
-//!   by the binrw-based [`parser`] and [`writer`].
-//! - [`reader`] contains the shared AAMP format walk. It is core-only so
+//!   by the binrw-based `parser` and `writer`.
+//! - `reader` contains the shared AAMP format walk. It is core-only so
 //!   that it can be used without an allocator.
 //! - [`arena`] is core-only and provides flat, fixed-capacity AAMP readers
 //!   ([`ParameterIOArena`]) that borrow all payloads from the input buffer

@@ -1,43 +1,25 @@
 //! Flat, fixed-capacity BYML readers that need no allocator at all.
 //!
-//! All nodes are stored in a plain store (`VecStore`, `ArrayStore`, or a
-//! caller-provided `SliceStore`) and every payload (`&str`, `&[u8]`) is
-//! borrowed from the input buffer. Nodes are referenced by [`NodeId`]
-//! indices and linked into sibling lists, so a document is traversed with a
-//! cursor/index API rather than owned handles.
+//! All nodes are stored in a plain [`Store`] ([`OwnedStore`],
+//! [`FixedStore`], or a caller-provided [`BorrowedStore`]) and every payload
+//! (`&str`, `&[u8]`) is borrowed from the input buffer. Nodes are referenced
+//! by [`NodeId`] indices and linked into sibling lists, so a document is
+//! traversed with a cursor/index API rather than owned handles.
 //!
-//! Both [`VecStore`] and [`SliceStore`] are backed by plain memory, so this
-//! module compiles with `--no-default-features` (pure `core`) and works on
-//! `no_std` targets without an allocator.
+//! [`FixedStore`] and [`BorrowedStore`] are backed by plain memory, so this
+//! module compiles with `--no-default-features --features byml` (pure
+//! `core`) and works on `no_std` targets without an allocator.
 //!
 //! The shared format walk lives in `super::reader` and is generic over the
-//! [`BymlSink`](super::reader::BymlSink) trait; this module provides the
-//! arena sink ([`ArenaSink`]) used by [`BymlArena::from_binary`].
+//! `BymlSink` trait; this module provides the arena sink used by
+//! [`BymlArena::from_binary`].
 
 use crate::{Error, Result};
 use super::reader::{self as reader_mod, BymlSink, BYML_MAX_DEPTH, ContainerKind, Leaf};
 
-/// A node index. `NodeId::none()` (`u32::MAX`) is the "no node" sentinel.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub struct NodeId(u32);
-
-impl NodeId {
-    /// The "no node" sentinel (`u32::MAX`).
-    pub const fn none() -> Self {
-        Self(u32::MAX)
-    }
-
-    /// Returns `true` if this is the "no node" sentinel.
-    pub const fn is_none(self) -> bool {
-        self.0 == u32::MAX
-    }
-}
-
-impl From<u32> for NodeId {
-    fn from(id: u32) -> Self {
-        Self(id)
-    }
-}
+pub use crate::storage::{BorrowedStore, FixedStore, NodeId, Store};
+#[cfg(feature = "alloc")]
+pub use crate::storage::OwnedStore;
 
 /// The key under which a node is stored in its parent container.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -214,265 +196,10 @@ impl<'a> Node<'a> {
     }
 }
 
-/// Backing store for a [`BymlArena`].
-///
-/// Implementations decide how node storage is managed: [`VecStore`]
-/// grows like a `Vec`, [`ArrayStore`] uses a fixed-size array, and
-/// [`SliceStore`] uses caller-provided memory. None of them require an
-/// allocator beyond what the caller provides.
-///
-/// # Safety
-///
-/// Implementors must uphold the invariant that slots `[0..len)` are
-/// initialized and slots `[len..capacity)` are uninitialized. `get` and
-/// `get_mut` must only hand out references to initialized slots, and a slot
-/// must be written exactly once (before it is read).
-pub trait ArenaStore<'a> {
-    /// Number of initialized nodes.
-    fn len(&self) -> usize;
-
-    /// Total number of slots (initialized or not).
-    #[allow(dead_code)] // used by `ArrayStore`/`SliceStore` callers; kept for the trait contract
-    fn capacity(&self) -> usize;
-
-    /// Returns `true` if the store contains no nodes.
-    fn is_empty(&self) -> bool {
-        self.len() == 0
-    }
-
-    /// Append a node and return its index. Returns
-    /// [`Error::CapacityExceeded`] when the store is full.
-    fn push(&mut self, node: Node<'a>) -> Result<NodeId>;
-
-    /// Get a shared reference to a node, or `None` if out of range.
-    fn get(&self, id: NodeId) -> Option<&Node<'a>>;
-
-    /// Get a mutable reference to a node, or `None` if out of range.
-    ///
-    /// Callers must not hold two live mutable borrows at once.
-    fn get_mut(&mut self, id: NodeId) -> Option<&mut Node<'a>>;
-
-    /// Allocate the next node id, checking for u32 overflow.
-    fn next_id(&self) -> Result<NodeId> {
-        u32::try_from(self.len())
-            .map(NodeId)
-            .map_err(|_| Error::CapacityExceeded(self.len()))
-    }
-
-    /// Discard all nodes, retaining capacity.
-    fn clear(&mut self);
-}
-
-/// A growable store backed by `alloc::vec::Vec`.
-///
-/// [`VecStore`] has no fixed capacity: it grows like a `Vec` and is bounded
-/// only by available memory, so [`push`](ArenaStore::push) never returns
-/// [`Error::CapacityExceeded`] in practice (only if a node count ever
-/// exceeded `u32::MAX`, which is unreachable for creatable stores).
-///
-/// TODO(step 4a): a hard capacity could be added here if callers need one;
-/// `with_capacity(0)` currently means "unbounded", not "capacity 0".
-#[cfg(feature = "alloc")]
-pub struct VecStore<'a> {
-    nodes: Vec<Node<'a>>,
-}
-
-#[cfg(feature = "alloc")]
-use alloc::vec::Vec;
-
-#[cfg(feature = "alloc")]
-impl<'a> Default for VecStore<'a> {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
-#[cfg(feature = "alloc")]
-impl<'a> VecStore<'a> {
-    /// Create an empty, unbounded store.
-    pub fn new() -> Self {
-        Self { nodes: Vec::new() }
-    }
-
-    /// Create an empty store with pre-allocated capacity (a hint only; the
-    /// store still grows as needed).
-    pub fn with_capacity(capacity: usize) -> Self {
-        Self {
-            nodes: Vec::with_capacity(capacity),
-        }
-    }
-}
-
-#[cfg(feature = "alloc")]
-impl<'a> ArenaStore<'a> for VecStore<'a> {
-    fn len(&self) -> usize {
-        self.nodes.len()
-    }
-
-    fn capacity(&self) -> usize {
-        self.nodes.capacity()
-    }
-
-    fn push(&mut self, node: Node<'a>) -> Result<NodeId> {
-        let id = Self::next_id(self)?;
-        self.nodes.push(node);
-        Ok(id)
-    }
-
-    fn get(&self, id: NodeId) -> Option<&Node<'a>> {
-        self.nodes.get(id.0 as usize)
-    }
-
-    fn get_mut(&mut self, id: NodeId) -> Option<&mut Node<'a>> {
-        self.nodes.get_mut(id.0 as usize)
-    }
-
-    fn clear(&mut self) {
-        self.nodes.clear();
-    }
-}
-
-/// A fixed-capacity store backed by a stack- or statically-allocated array.
-pub struct ArrayStore<'a, const N: usize> {
-    slots: [core::mem::MaybeUninit<Node<'a>>; N],
-    len: usize,
-}
-
-impl<'a, const N: usize> Default for ArrayStore<'a, N> {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
-impl<'a, const N: usize> ArrayStore<'a, N> {
-    /// Create an empty store with room for `N` nodes.
-    pub fn new() -> Self {
-        Self {
-            slots: [core::mem::MaybeUninit::uninit(); N],
-            len: 0,
-        }
-    }
-}
-
-impl<'a, const N: usize> ArenaStore<'a> for ArrayStore<'a, N> {
-    fn len(&self) -> usize {
-        self.len
-    }
-
-    fn capacity(&self) -> usize {
-        N
-    }
-
-    fn push(&mut self, node: Node<'a>) -> Result<NodeId> {
-        if self.len >= N {
-            return Err(Error::CapacityExceeded(N));
-        }
-        let id = Self::next_id(self)?;
-        // `MaybeUninit::write` is a safe fn; the unsafe invariant upheld
-        // here is: `self.len < N` (slot in bounds and uninitialized), and
-        // the slot is written exactly once before `len` is bumped, so it
-        // joins the initialized prefix `[0..len)`.
-        self.slots[self.len].write(node);
-        self.len += 1;
-        Ok(id)
-    }
-
-    fn get(&self, id: NodeId) -> Option<&Node<'a>> {
-        let i = id.0 as usize;
-        if i >= self.len {
-            return None;
-        }
-        // SAFETY: `i < self.len`, so slot `i` has been written exactly
-        // once and not yet dropped (nodes are never removed).
-        unsafe { Some(self.slots[i].assume_init_ref()) }
-    }
-
-    fn get_mut(&mut self, id: NodeId) -> Option<&mut Node<'a>> {
-        let i = id.0 as usize;
-        if i >= self.len {
-            return None;
-        }
-        // SAFETY: `i < self.len`, so slot `i` is initialized; the caller
-        // must not hold another live borrow of this arena (see the trait
-        // safety docs).
-        unsafe { Some(self.slots[i].assume_init_mut()) }
-    }
-
-    fn clear(&mut self) {
-        // Slots below `len` are abandoned, not dropped: `Node` is plain
-        // copy data, so resetting `len` re-joins them to the
-        // uninitialized region.
-        self.len = 0;
-    }
-}
-
-/// A store backed by a caller-provided mutable slice.
-///
-/// `SliceStore` never allocates: the caller supplies the backing memory
-/// (e.g. a stack array or a statically allocated buffer), making it suitable
-/// for `no_std` embedded contexts.
-pub struct SliceStore<'s, 'a> {
-    slots: &'s mut [core::mem::MaybeUninit<Node<'a>>],
-    len: usize,
-}
-
-impl<'s, 'a> SliceStore<'s, 'a> {
-    /// Create an empty store backed by `slots`.
-    pub fn new(slots: &'s mut [core::mem::MaybeUninit<Node<'a>>]) -> Self {
-        Self { slots, len: 0 }
-    }
-}
-
-impl<'s, 'a> ArenaStore<'a> for SliceStore<'s, 'a> {
-    fn len(&self) -> usize {
-        self.len
-    }
-
-    fn capacity(&self) -> usize {
-        self.slots.len()
-    }
-
-    fn push(&mut self, node: Node<'a>) -> Result<NodeId> {
-        if self.len >= self.slots.len() {
-            return Err(Error::CapacityExceeded(self.slots.len()));
-        }
-        let id = Self::next_id(self)?;
-        // `MaybeUninit::write` is a safe fn; the invariant upheld here is:
-        // `self.len < self.slots.len()` (slot in bounds and uninitialized),
-        // the slot is written exactly once, then `len` is bumped so it
-        // joins the initialized prefix `[0..len)`.
-        self.slots[self.len].write(node);
-        self.len += 1;
-        Ok(id)
-    }
-
-    fn get(&self, id: NodeId) -> Option<&Node<'a>> {
-        let i = id.0 as usize;
-        if i >= self.len {
-            return None;
-        }
-        // SAFETY: `i < self.len`, so slot `i` is initialized.
-        unsafe { Some(&*self.slots[i].as_ptr()) }
-    }
-
-    fn get_mut(&mut self, id: NodeId) -> Option<&mut Node<'a>> {
-        let i = id.0 as usize;
-        if i >= self.len {
-            return None;
-        }
-        // SAFETY: `i < self.len`, so slot `i` is initialized.
-        unsafe { Some(&mut *self.slots[i].as_mut_ptr()) }
-    }
-
-    fn clear(&mut self) {
-        self.len = 0;
-    }
-}
-
 /// A flat BYML document stored in `S`, with all payloads borrowed from the
 /// input buffer.
 ///
-/// The lifetime `'a` is carried by the store (`S: ArenaStore<'a>`), which
+/// The lifetime `'a` is carried by the store (`S: Store<Node<'a>>`), which
 /// borrows the document's payloads; `BymlArena` itself adds no lifetime
 /// parameter.
 pub struct BymlArena<S> {
@@ -480,7 +207,7 @@ pub struct BymlArena<S> {
     root: Option<NodeId>,
 }
 
-impl<'a, S: ArenaStore<'a> + Default> BymlArena<S> {
+impl<'a, S: Store<Node<'a>> + Default> BymlArena<S> {
     /// Read a document from binary data, borrowing all strings and
     /// payloads from `data`.
     ///
@@ -491,18 +218,18 @@ impl<'a, S: ArenaStore<'a> + Default> BymlArena<S> {
     ///
     /// Returns [`Error::CapacityExceeded`] if the document does not fit in
     /// `S`. This is available for stores that can be created without
-    /// caller-provided memory ([`VecStore`], [`ArrayStore`]); use
-    /// [`from_binary_in`](BymlArena::from_binary_in) for [`SliceStore`].
+    /// caller-provided memory ([`OwnedStore`], [`FixedStore`]); use
+    /// [`from_binary_in`](BymlArena::from_binary_in) for [`BorrowedStore`].
     ///
     /// # Stack use
     ///
     /// Constructing the store and returning the arena moves the whole
     /// inline store by value a few times, which debug builds do not elide.
-    /// For large [`ArrayStore`] capacities (or very small stacks), prefer
+    /// For large [`FixedStore`] capacities (or very small stacks), prefer
     /// creating the arena with [`new`](BymlArena::new) and parsing with
     /// [`parse_in_place`](BymlArena::parse_in_place) (no large moves), or
     /// use [`from_binary_in`](BymlArena::from_binary_in) with a
-    /// [`SliceStore`].
+    /// [`BorrowedStore`].
     pub fn from_binary(data: &'a [u8]) -> Result<Self> {
         let mut this = Self {
             store: S::default(),
@@ -543,7 +270,7 @@ impl<'a, S: ArenaStore<'a> + Default> BymlArena<S> {
     }
 }
 
-impl<'s, 'a> BymlArena<SliceStore<'s, 'a>> {
+impl<'s, 'a> BymlArena<BorrowedStore<'s, Node<'a>>> {
     /// Read a document into caller-provided `slots`, borrowing all strings
     /// and payloads from `data`. No allocation occurs.
     ///
@@ -553,7 +280,7 @@ impl<'s, 'a> BymlArena<SliceStore<'s, 'a>> {
         data: &'a [u8],
         slots: &'s mut [core::mem::MaybeUninit<Node<'a>>],
     ) -> Result<Self> {
-        let mut store = SliceStore::new(slots);
+        let mut store = BorrowedStore::new(slots);
         let root = {
             let mut sink = ArenaSink {
                 store: &mut store,
@@ -569,13 +296,13 @@ impl<'s, 'a> BymlArena<SliceStore<'s, 'a>> {
     }
 }
 
-impl<'a, S: ArenaStore<'a> + Default> Default for BymlArena<S> {
+impl<'a, S: Store<Node<'a>> + Default> Default for BymlArena<S> {
     fn default() -> Self {
         Self::new()
     }
 }
 
-impl<'a, S: ArenaStore<'a>> BymlArena<S> {
+impl<'a, S: Store<Node<'a>>> BymlArena<S> {
     /// The root node id, or `None` for an empty document (root offset 0,
     /// which this reader represents as a single Null node).
     pub fn root(&self) -> Option<NodeId> {
@@ -633,8 +360,8 @@ impl<'a, S: ArenaStore<'a>> BymlArena<S> {
     }
 }
 
-/// A fixed-capacity arena backed by an [`ArrayStore`].
-pub type BymlStack<'a, const N: usize> = BymlArena<ArrayStore<'a, N>>;
+/// A fixed-capacity arena backed by a [`FixedStore`].
+pub type BymlStack<'a, const N: usize> = BymlArena<FixedStore<Node<'a>, N>>;
 
 /// The sink used by [`BymlArena::from_binary`].
 struct ArenaSink<'b, S> {
@@ -648,7 +375,7 @@ struct ArenaSink<'b, S> {
     depth: usize,
 }
 
-impl<'b, 'a, S: ArenaStore<'a>> ArenaSink<'b, S> {
+impl<'b, 'a, S: Store<Node<'a>>> ArenaSink<'b, S> {
     fn link_child(&mut self, child: NodeId) -> Result<()> {
         debug_assert!(self.depth >= 1);
         let len = self.store.len();
@@ -685,7 +412,7 @@ impl<'b, 'a, S: ArenaStore<'a>> ArenaSink<'b, S> {
     }
 }
 
-impl<'b, 'a, S: ArenaStore<'a>> BymlSink<'a> for ArenaSink<'b, S> {
+impl<'b, 'a, S: Store<Node<'a>>> BymlSink<'a> for ArenaSink<'b, S> {
     type Node = NodeId;
 
     fn leaf(&mut self, payload: Leaf<'a>, key: Key<'a>, aux: u32) -> Result<NodeId> {
@@ -747,7 +474,6 @@ impl<'b, 'a, S: ArenaStore<'a>> BymlSink<'a> for ArenaSink<'b, S> {
         // The child's key/aux were stored when the child node was created
         // (by `leaf` or `begin_container`); here we only link siblings.
         debug_assert!(self.depth >= 1);
-        let _ = self.stack[self.depth - 1];
         self.link_child(child)
     }
 

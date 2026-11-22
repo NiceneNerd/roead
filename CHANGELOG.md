@@ -18,8 +18,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - `byml::BymlRef<'a>` — enum-shaped borrowed tree mirroring `Byml`
     variant-for-variant (`to_owned()` materializes an owned `Byml`).
   - `byml::arena` — flat, fixed-capacity readers that need no allocator:
-    `BymlArena<S>` over a `VecStore` (alloc), an inline `ArrayStore<'a, N>`
-    (`BymlStack<'a, N>` alias), or a caller-provided `SliceStore<'s, 'a>`.
+    `BymlArena<S>` over an `OwnedStore` (alloc), an inline `FixedStore<N>`
+    (`BymlStack<'a, N>` alias), or a caller-provided `BorrowedStore` — the
+    same `storage` stores the AAMP arena uses.
   - `BymlArena::new()` + `parse_in_place(&mut self, data)` parse without
     moving the (potentially very large) inline store by value; re-parsing
     discards previous contents. `from_binary` remains available for

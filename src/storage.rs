@@ -55,7 +55,6 @@ pub trait Store<T> {
     fn len(&self) -> usize;
 
     /// Total number of slots (initialized or not).
-    #[allow(dead_code)] // used by `FixedStore`/`BorrowedStore` callers; kept for the trait contract
     fn capacity(&self) -> usize;
 
     /// Returns `true` if the store contains no nodes.

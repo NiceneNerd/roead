@@ -6,7 +6,7 @@ use base64::Engine;
 use core::cmp::Ordering;
 use ryml::{NodeRef, Tree};
 
-use super::arena::ArenaStore;
+use super::arena::Store;
 use super::*;
 use crate::{Result, yaml::*};
 
@@ -34,7 +34,7 @@ impl<'a> BymlRef<'a> {
     }
 }
 
-impl<'a, S: ArenaStore<'a>> BymlArena<S> {
+impl<'a, S: Store<Node<'a>>> BymlArena<S> {
     /// Serialize the document to YAML, byte-identical to [`Byml::to_text`].
     pub fn to_text(&self) -> String {
         let mut tree = Tree::default();
@@ -200,7 +200,7 @@ fn build_ref_node<'b, 'e>(
 
 /// Container children sorted by key, with duplicate keys collapsed to the
 /// last occurrence (the owned maps overwrite on duplicate insert).
-fn sorted_children<'a, S: ArenaStore<'a>>(
+fn sorted_children<'a, S: Store<Node<'a>>>(
     arena: &BymlArena<S>,
     id: NodeId,
     ord: impl Fn(&Key<'a>, &Key<'a>) -> Ordering,
@@ -217,7 +217,7 @@ fn sorted_children<'a, S: ArenaStore<'a>>(
     out
 }
 
-fn arena_should_use_inline<'a, S: ArenaStore<'a>>(arena: &BymlArena<S>, id: NodeId) -> bool {
+fn arena_should_use_inline<'a, S: Store<Node<'a>>>(arena: &BymlArena<S>, id: NodeId) -> bool {
     let node = arena.node(id).expect("node missing");
     let is_simple = |n: &Node<'_>| !matches!(n.payload, Payload::Array | Payload::Map);
     match node.payload {
@@ -237,7 +237,7 @@ fn arena_should_use_inline<'a, S: ArenaStore<'a>>(arena: &BymlArena<S>, id: Node
     }
 }
 
-fn build_arena_node<'a, 'b, 'e, S: ArenaStore<'a>>(
+fn build_arena_node<'a, 'b, 'e, S: Store<Node<'a>>>(
     arena: &BymlArena<S>,
     mut node: NodeRef<'b, 'e, '_, &'e mut Tree<'b>>,
     id: NodeId,
