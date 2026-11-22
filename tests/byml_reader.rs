@@ -61,16 +61,22 @@ fn header(endian: Endian, version: u16, hkt: u32, st: u32, root: u32) -> Vec<u8>
     out
 }
 
-/// Decompress Yaz0 input when the `yaz0` feature is on; otherwise pass
-/// through. `D-3_Dynamic.byml` is Yaz0-compressed.
+/// Decompress Yaz0 input when the `yaz0` and `alloc` features are on
+/// (`decompress_if` allocates); otherwise pass through. `D-3_Dynamic.byml`
+/// is Yaz0-compressed, so tests skip it unless `yaz0_can_decompress()`.
 fn prepared(data: &[u8]) -> Cow<'_, [u8]> {
     // `#[cfg]` on `let` bindings: the Yaz0 branch is not type-checked
     // without the feature, so `roead::yaz0` need not exist.
-    #[cfg(feature = "yaz0")]
+    #[cfg(all(feature = "yaz0", feature = "alloc"))]
     let data = roead::yaz0::decompress_if(data);
-    #[cfg(not(feature = "yaz0"))]
+    #[cfg(not(all(feature = "yaz0", feature = "alloc")))]
     let data = Cow::Borrowed(data);
     data
+}
+
+/// Whether `D-3_Dynamic.byml` can be decompressed in this build.
+fn yaz0_can_decompress() -> bool {
+    cfg!(all(feature = "yaz0", feature = "alloc"))
 }
 
 fn parse_arena<'a, S: ArenaStore<'a> + Default>(data: &'a [u8]) -> BymlArena<S> {
@@ -157,7 +163,7 @@ fn arena_null_root() {
 fn arena_equivalence_across_corpus() {
     for path in corpus_files() {
         let name = path.file_name().unwrap().to_str().unwrap();
-        if name == "D-3_Dynamic.byml" && !cfg!(feature = "yaz0") {
+        if name == "D-3_Dynamic.byml" && !yaz0_can_decompress() {
             continue;
         }
         let mut data = load(name);
@@ -403,7 +409,7 @@ mod alloc_tests {
     fn cross_equality_corpus() {
         for path in corpus_files() {
             let name = path.file_name().unwrap().to_str().unwrap();
-            if name == "D-3_Dynamic.byml" && !cfg!(feature = "yaz0") {
+            if name == "D-3_Dynamic.byml" && !yaz0_can_decompress() {
                 continue;
             }
             let owned = load(name);

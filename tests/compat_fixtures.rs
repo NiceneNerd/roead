@@ -23,6 +23,10 @@
 //! AAMP binary artifacts require `feature = "aamp"`, and YAML (`.yml`)
 //! artifact comparisons additionally require `yaml`.
 
+// The harness is compiled under every feature set, so helpers that only
+// serve one format's cfg-gated tests look unused in the others.
+#![allow(dead_code)]
+
 // ---------------------------------------------------------------------------
 // cfg-free harness: fixture table, hashing, diffing, manifest emission.
 // ---------------------------------------------------------------------------
@@ -537,7 +541,7 @@ mod harness {
                 out.push('}');
             }
             if self.artifacts.is_empty() {
-                out.push_str("]");
+                out.push(']');
             } else {
                 out.push_str("\n      ]");
             }
@@ -569,10 +573,10 @@ mod harness {
                 if in_block {
                     block.push_str(line);
                     block.push('\n');
-                    if source.is_none() {
-                        if let Some(rest) = line.strip_prefix("      \"source\": \"") {
-                            source = Some(rest.split('"').next().unwrap().to_string());
-                        }
+                    if source.is_none()
+                        && let Some(rest) = line.strip_prefix("      \"source\": \"")
+                    {
+                        source = Some(rest.split('"').next().unwrap().to_string());
                     }
                     if line.starts_with("    }") {
                         if source
@@ -605,7 +609,7 @@ mod harness {
             out.push_str(block);
             out.push('\n');
         }
-        for (_i, entry) in entries.iter().enumerate() {
+        for entry in entries {
             if !first {
                 out.push_str(",\n");
             }
@@ -649,8 +653,9 @@ mod byml_tests {
             // Yaz0-compressed files cannot be parsed without the `yaz0`
             // feature (`cfg!` requires a literal feature name; the only
             // `parse_requires` value in use is "yaz0").
-            if fixture.parse_requires.is_some() && !cfg!(feature = "yaz0") {
-                let req = fixture.parse_requires.unwrap();
+            if let Some(req) = fixture.parse_requires
+                && !cfg!(feature = "yaz0")
+            {
                 entries.push(ManifestEntry {
                     source: fixture.source.into(),
                     format: "byml".into(),

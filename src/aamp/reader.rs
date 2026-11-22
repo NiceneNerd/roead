@@ -75,21 +75,27 @@ impl<'a> BufferRef<'a> {
     /// (if the slice length is not a multiple of 4) are ignored.
     pub fn iter_i32(&self) -> impl Iterator<Item = i32> + '_ {
         self.bytes
-            .chunks_exact(4)
+            .as_chunks::<4>()
+            .0
+            .iter()
             .map(|b| i32::from_le_bytes([b[0], b[1], b[2], b[3]]))
     }
 
     /// Iterates the elements as little-endian `f32` values.
     pub fn iter_f32(&self) -> impl Iterator<Item = f32> + '_ {
         self.bytes
-            .chunks_exact(4)
+            .as_chunks::<4>()
+            .0
+            .iter()
             .map(|b| f32::from_le_bytes([b[0], b[1], b[2], b[3]]))
     }
 
     /// Iterates the elements as little-endian `u32` values.
     pub fn iter_u32(&self) -> impl Iterator<Item = u32> + '_ {
         self.bytes
-            .chunks_exact(4)
+            .as_chunks::<4>()
+            .0
+            .iter()
             .map(|b| u32::from_le_bytes([b[0], b[1], b[2], b[3]]))
     }
 
@@ -168,6 +174,11 @@ impl<'a> CurveRef<'a> {
         self.bytes.len() / CURVE_BLOCK_SIZE
     }
 
+    /// Returns `true` if there are no complete curve blocks.
+    pub fn is_empty(&self) -> bool {
+        self.bytes.len() < CURVE_BLOCK_SIZE
+    }
+
     /// Decodes the curve at `index`, or `None` if out of range.
     pub fn curve(&self, index: usize) -> Option<Curve> {
         self.iter().nth(index)
@@ -175,19 +186,23 @@ impl<'a> CurveRef<'a> {
 
     /// Iterates the decoded curves.
     pub fn iter(&self) -> impl Iterator<Item = Curve> + '_ {
-        self.bytes.chunks_exact(CURVE_BLOCK_SIZE).map(|block| {
-            let a = u32::from_le_bytes([block[0], block[1], block[2], block[3]]);
-            let b = u32::from_le_bytes([block[4], block[5], block[6], block[7]]);
-            let mut floats = [0.0f32; CURVE_FLOAT_COUNT];
-            let mut i = 0;
-            while i < CURVE_FLOAT_COUNT {
-                let o = 8 + i * 4;
-                floats[i] =
-                    f32::from_le_bytes([block[o], block[o + 1], block[o + 2], block[o + 3]]);
-                i += 1;
-            }
-            Curve { a, b, floats }
-        })
+        self.bytes
+            .as_chunks::<CURVE_BLOCK_SIZE>()
+            .0
+            .iter()
+            .map(|block| {
+                let a = u32::from_le_bytes([block[0], block[1], block[2], block[3]]);
+                let b = u32::from_le_bytes([block[4], block[5], block[6], block[7]]);
+                let mut floats = [0.0f32; CURVE_FLOAT_COUNT];
+                let mut i = 0;
+                while i < CURVE_FLOAT_COUNT {
+                    let o = 8 + i * 4;
+                    floats[i] =
+                        f32::from_le_bytes([block[o], block[o + 1], block[o + 2], block[o + 3]]);
+                    i += 1;
+                }
+                Curve { a, b, floats }
+            })
     }
 }
 
@@ -977,13 +992,13 @@ impl<'a> From<&'a super::owned::Parameter> for ParameterRef<'a> {
 /// little-endian only, so this matches the on-disk layout on all supported
 /// targets.
 #[cfg(feature = "alloc")]
-fn byte_slice<'a, T>(slice: &'a [T]) -> &'a [u8] {
+fn byte_slice<T>(slice: &[T]) -> &[u8] {
     // SAFETY: the slice's elements are initialized and the returned borrow is
     // tied to the input slice's lifetime.
     unsafe {
         core::slice::from_raw_parts(
             slice.as_ptr() as *const u8,
-            slice.len() * core::mem::size_of::<T>(),
+            core::mem::size_of_val(slice),
         )
     }
 }
@@ -993,11 +1008,16 @@ fn byte_slice<'a, T>(slice: &'a [T]) -> &'a [u8] {
 /// `a: u32, b: u32, floats: [f32; 30]`, which matches the on-disk curve
 /// block layout.
 #[cfg(feature = "alloc")]
-fn curve_bytes<'a, const N: usize>(curves: &'a [Curve; N]) -> &'a [u8] {
+fn curve_bytes<const N: usize>(curves: &[Curve; N]) -> &[u8] {
     // SAFETY: `Curve` is `#[repr(C)]` and 128 bytes with fields `a`, `b`,
     // `floats` laid out contiguously, matching the on-disk 128-byte curve
     // blocks; the returned borrow is tied to the input slice's lifetime.
-    unsafe { core::slice::from_raw_parts(curves.as_ptr() as *const u8, N * 128) }
+    unsafe {
+        core::slice::from_raw_parts(
+            curves.as_ptr() as *const u8,
+            core::mem::size_of_val(curves),
+        )
+    }
 }
 // Shared format walk
 // ---------------------------------------------------------------------------
@@ -1106,17 +1126,15 @@ impl<'a> Walk<'a> {
                 break;
             }
             len += 1;
-            if let Some(max) = max_len {
-                if len > max {
-                    return Err(Error::InvalidData("AAMP string exceeds its maximum length"));
-                }
+            if let Some(max) = max_len && len > max {
+                return Err(Error::InvalidData("AAMP string exceeds its maximum length"));
             }
         }
         core::str::from_utf8(&data[start..start + len]).map_err(Into::into)
     }
 }
 
-fn read_bytes_at<'a>(data: &'a [u8], pos: usize, len: usize) -> Result<&'a [u8]> {
+fn read_bytes_at(data: &[u8], pos: usize, len: usize) -> Result<&[u8]> {
     let end = pos
         .checked_add(len)
         .ok_or(Error::InsufficientData(data.len(), pos))?;
@@ -1354,7 +1372,7 @@ impl<'a> Walk<'a> {
             Type::Curve1 => ParameterRef::Curve1(CurveRef::new(read_bytes_at(
                 self.data,
                 data_offset as usize,
-                1 * 128,
+                128,
             )?)),
             Type::Curve2 => ParameterRef::Curve2(CurveRef::new(read_bytes_at(
                 self.data,

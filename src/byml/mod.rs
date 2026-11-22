@@ -12,6 +12,11 @@
 //!   ([`BymlArena`]) that borrow all payloads from the input buffer and
 //!   work with zero features.
 //!
+//! With `std` + `yaml`, the YAML layer (`text` for the owned model,
+//! `ref_text` for the borrowed readers) emits byte-identical YAML from
+//! either representation: `Byml::to_text`, `BymlRef::to_text` and
+//! `BymlArena::to_text`.
+//!
 //! Without `alloc`, [`BymlArena`] borrows all payloads from the input
 //! buffer and needs no allocator at all:
 //! ```
@@ -44,7 +49,7 @@
 
 //! Zero-copy arena readers are documented on [`arena::BymlArena`].
 
-#[cfg(test)]
+#[cfg(all(test, feature = "alloc"))]
 static FILES: &[&str] = &[
     "A-1_Dynamic",
     "D-3_Dynamic",

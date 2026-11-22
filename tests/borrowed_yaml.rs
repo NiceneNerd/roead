@@ -191,7 +191,7 @@ fn panic_message(f: impl FnOnce() + std::panic::UnwindSafe) -> String {
     let err = panic::catch_unwind(panic::AssertUnwindSafe(f)).unwrap_err();
     err.downcast_ref::<&str>()
         .map(|s| (*s).to_string())
-        .or_else(|| err.downcast_ref::<String>().map(|s| s.clone()))
+        .or_else(|| err.downcast_ref::<String>().cloned())
         .unwrap_or_default()
 }
 

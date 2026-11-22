@@ -8,7 +8,9 @@
 use crate::{Error, Result, TinyString};
 
 const HEADER_LEN: usize = 0x10;
+#[cfg(feature = "alloc")]
 const WINDOW: usize = 0x1000;
+#[cfg(feature = "alloc")]
 const MIN_MATCH: usize = 3;
 const MAX_MATCH: usize = 0xFF + 0x12;
 // A three byte chunk expands to at most MAX_MATCH bytes.
@@ -497,17 +499,17 @@ pub fn compress_if(data: &[u8], path: impl AsRef<std::path::Path>) -> Cow<'_, [u
 mod tests {
     use super::*;
 
-    #[cfg(feature = "alloc")]
+    #[cfg(feature = "std")]
     use alloc::borrow::Cow;
     #[cfg(feature = "alloc")]
     use alloc::vec::Vec;
 
     static FILES: &[(&str, [u8; 4], usize)] = &[
-        ("ActorInfo.product.sbyml", [b'Y', b'B', 0x02, 0x0], 1963604),
-        ("Demo344_1.sbeventpack", [b'S', b'A', b'R', b'C'], 2847908),
+        ("ActorInfo.product.sbyml", *b"YB\x02\x00", 1963604),
+        ("Demo344_1.sbeventpack", *b"SARC", 2847908),
         (
             "ResourceSizeTable.product.srsizetable",
-            [b'R', b'S', b'T', b'B'],
+            *b"RSTB",
             526804,
         ),
         ("0-0.shknm2", [0x57, 0xE0, 0xE0, 0x57], 17584),

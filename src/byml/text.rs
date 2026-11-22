@@ -313,7 +313,7 @@ mod test {
             .unwrap();
             let byml = Byml::from_text(text).unwrap();
             let text = byml.to_text();
-            println!("{}", &text);
+            println!("{text}");
             let byml = Byml::from_text(text).unwrap();
             assert_eq!(byml, byml);
         }

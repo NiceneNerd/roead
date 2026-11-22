@@ -18,18 +18,19 @@ impl<'a> BymlRef<'a> {
         tree.reserve(20000);
         let root = match self {
             BymlRef::Map(_) | BymlRef::HashMap(_) | BymlRef::ValueHashMap(_) => {
-                tree.to_map(0).unwrap();
-                tree.root_ref_mut().unwrap()
+                tree.to_map(0).expect("failed to make root map");
+                tree.root_ref_mut().expect("root node missing")
             }
             BymlRef::Array(_) => {
-                tree.to_seq(0).unwrap();
-                tree.root_ref_mut().unwrap()
+                tree.to_seq(0).expect("failed to make root sequence");
+                tree.root_ref_mut().expect("root node missing")
             }
             BymlRef::Null => return "null".to_string(),
             _ => panic!("BYML must be container or null to serialize"),
         };
-        build_ref_node(root, self).unwrap();
-        tree.emit().unwrap()
+        build_ref_node(root, self).expect("BymlRef should serialize to YAML without error");
+        tree.emit()
+            .expect("BymlRef should serialize to YAML without error")
     }
 }
 
@@ -44,14 +45,18 @@ impl<'a, S: ArenaStore<'a>> BymlArena<S> {
         };
         let root_node = self.node(root).expect("root node missing from arena");
         match root_node.payload {
-            Payload::Map | Payload::HashMap | Payload::ValueHashMap => tree.to_map(0).unwrap(),
-            Payload::Array => tree.to_seq(0).unwrap(),
+            Payload::Map | Payload::HashMap | Payload::ValueHashMap => {
+                tree.to_map(0).expect("failed to make root map")
+            }
+            Payload::Array => tree.to_seq(0).expect("failed to make root sequence"),
             Payload::Null => return "null".to_string(),
             _ => panic!("BYML must be container or null to serialize"),
         }
-        let dest = tree.root_ref_mut().unwrap();
-        build_arena_node(self, dest, root).unwrap();
-        tree.emit().unwrap()
+        let dest = tree.root_ref_mut().expect("root node missing");
+        build_arena_node(self, dest, root)
+            .expect("BymlArena should serialize to YAML without error");
+        tree.emit()
+            .expect("BymlArena should serialize to YAML without error")
     }
 }
 
@@ -140,8 +145,8 @@ fn build_ref_node<'b, 'e>(
             map_items.sort_by(|a, b| a.0.cmp(b.0));
             for (key, value) in map_items {
                 let mut child = node.append_child()?;
-                child.set_key(*key)?;
-                if string_needs_quotes(*key) {
+                child.set_key(key)?;
+                if string_needs_quotes(key) {
                     let flags = child.node_type()?;
                     child.set_type_flags(flags | ryml::NodeType::WipKeySquo)?;
                 }

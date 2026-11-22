@@ -87,15 +87,13 @@ fn scan_json(json: &str) -> Vec<(&str, usize)> {
                 }
             }
             '}' => {
-                if depth == 2 {
-                    if let Some(start) = obj_start.take() {
-                        if let Some((ext, bext, align)) = scan_object(&json[start..=i]) {
-                            if align >= 0 {
-                                out.push((ext, align as usize));
-                                out.push((bext, align as usize));
-                            }
-                        }
-                    }
+                if depth == 2
+                    && let Some(start) = obj_start.take()
+                    && let Some((ext, bext, align)) = scan_object(&json[start..=i])
+                    && align >= 0
+                {
+                    out.push((ext, align as usize));
+                    out.push((bext, align as usize));
                 }
                 depth = depth.saturating_sub(1);
             }
@@ -121,7 +119,7 @@ fn write_table(pairs: &[(&str, usize)]) {
         content.push_str(&format!("    (\"{}\", {}),\n", ext, align));
     }
     content.push_str("];\n");
-    std::fs::write(&table_path(), content).expect("failed to write aglenv table file");
+    std::fs::write(table_path(), content).expect("failed to write aglenv table file");
     println!(
         "Wrote {}. Regeneration complete — now run: cargo fmt",
         TABLE_REL
@@ -130,7 +128,7 @@ fn write_table(pairs: &[(&str, usize)]) {
 
 #[test]
 fn agl_env_table_matches_json() {
-    let json = std::fs::read_to_string(&json_path()).expect("failed to read aglenv json");
+    let json = std::fs::read_to_string(json_path()).expect("failed to read aglenv json");
     let expected = scan_json(&json);
 
     if std::env::var("UPDATE_AGLENV").is_ok() {

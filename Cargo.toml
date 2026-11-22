@@ -56,9 +56,12 @@ aamp-names = ["std", "scc"]
 byml = ["almost", "num-traits"]
 sarc = ["num-integer"]
 yaz0 = []
-yaml = ["std", "ryml", "lexical", "lexical-core", "base64", "parking_lot", "join_str", "aamp-names"]
+yaml = ["std", "ryml", "lexical", "lexical-core", "base64", "parking_lot", "join_str", "aamp-names", "num-traits"]
 with-serde = ["serde", "smartstring/serde", "indexmap/serde"]
 binrw = ["dep:binrw"]     # dep alias, kept public because cfgs reference it
 
 [lints.rust]
 unexpected_cfgs = { level = "warn", check-cfg = ['cfg(CHANNEL_NIGHTLY)'] }
+
+[lints.cargo]
+unused_dependencies = "allow"

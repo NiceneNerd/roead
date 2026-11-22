@@ -272,6 +272,12 @@ impl<'s, 'a> ParameterIOArena<'a, storage::BorrowedStore<'s, AampNode<'a>>> {
     }
 }
 
+impl<'a, S: Store<AampNode<'a>> + Default> Default for ParameterIOArena<'a, S> {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl<S> core::fmt::Debug for ParameterIOArena<'_, S> {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         f.debug_struct("ParameterIOArena")

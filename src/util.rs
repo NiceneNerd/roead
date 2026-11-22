@@ -1,3 +1,5 @@
+/// Aligns `value` up to the next multiple of `size`.
+#[cfg(feature = "alloc")]
 #[inline(always)]
 pub(crate) fn align(value: u32, size: u32) -> u32 {
     value + (size - value % size) % size
@@ -30,10 +32,12 @@ pub(crate) trait SeekShim {
 #[cfg(feature = "binrw")]
 impl<T> SeekShim for T where T: binrw::io::Read + binrw::io::Seek {}
 
+#[cfg(feature = "alloc")]
 #[allow(non_camel_case_types)]
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 pub(crate) struct u24(pub u32);
 
+#[cfg(feature = "alloc")]
 impl u24 {
     pub fn as_u32(&self) -> u32 {
         self.0

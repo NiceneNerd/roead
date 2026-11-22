@@ -14,6 +14,11 @@
 //!   ([`ParameterIOArena`]) that borrow all payloads from the input buffer
 //!   and work with zero features.
 //!
+//! With `std` + `yaml`, the YAML layer (`text` for the owned model,
+//! `ref_text` for the borrowed readers) emits byte-identical YAML from
+//! either representation: `ParameterIO::to_text`, `ParameterIORef::to_text`
+//! and `ParameterIOArena::to_text`.
+//!
 //! The main type is the [`ParameterIO`], which will usually be constructed
 //! from binary data of a YAML document. Some sample usage:
 //!

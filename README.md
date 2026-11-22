@@ -23,18 +23,40 @@ The roead project brings oead's core functionality by directly porting it.
 [its GitHub repo](https://github.com/zeldamods/oead/).
 
 Each of roead's major modules is configurable as a feature. The default feature
-set includes `byml`, `aamp`, `sarc,` and `yaz0`. For compatibility with many 
-existing tools for these formats, there is also a `yaml` feature which enables
-serializing/deserializing AAMP and BYML files as YAML documents. Finally, serde
-support is available using the `with-serde` feature.
+set includes `std`, `alloc`, `byml`, `aamp`, `sarc`, and `yaz0`. For
+compatibility with many existing tools for these formats, there is also a
+`yaml` feature which enables serializing/deserializing AAMP and BYML files as
+YAML documents. Finally, serde support is available using the `with-serde`
+feature.
+
+## `no_std` and zero-copy readers
+
+roead is `no_std` by default: `--no-default-features` builds a pure `core`
+library, `alloc` adds the allocating types, and `std` (which implies `alloc`)
+enables the standard library. The owned `Byml` and `ParameterIO` types need
+`alloc`, but the format walks do not:
+
+* **BYML**: `BymlRef` borrows a tree in place; `byml::arena::BymlArena` (over a
+  `VecStore`, an inline `BymlStack`, or a caller-owned `SliceStore`) is flat,
+  fixed-capacity, and needs no allocator.
+* **AAMP**: `ParameterIORef` mirrors `ParameterIO` over the input buffer, and
+  `aamp::arena::ParameterIOArena`/`ParameterIOStack` provide the flat
+  allocator-free form.
+* **SARC**: `Sarc::new` borrows the archive and never allocates.
+* **Yaz0**: decompression into a caller-provided buffer is core-only, and the
+  crate has no dependencies at all.
+
+With the `yaml` feature, all four borrowed readers can emit YAML directly
+(`BymlRef::to_text`, `BymlArena::to_text`, `ParameterIORef::to_text`,
+`ParameterIOArena::to_text`), byte-for-byte identical to the owned emitters.
 
 For API documentation, see the docs for each module.
 
 ## Building from Source
 
-roead is pure Rust and builds with any relatively recent stable release (MSRV
-1.80), with no C++ toolchain, CMake, or submodules. The optional `yaml` feature
-is the exception, as it depends on the `ryml` crate.
+roead is pure Rust (except the optional `yaml` feature, which builds the `ryml`
+C++ library) and builds with Rust 1.100 or later using edition 2024. See
+[MIGRATION.md](MIGRATION.md) for the changes between 1.x and 2.0.
 
 ## Contributing
 

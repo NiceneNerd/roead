@@ -567,6 +567,12 @@ impl<'s, 'a> BymlArena<SliceStore<'s, 'a>> {
     }
 }
 
+impl<'a, S: ArenaStore<'a> + Default> Default for BymlArena<S> {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl<'a, S: ArenaStore<'a>> BymlArena<S> {
     /// The root node id, or `None` for an empty document (root offset 0,
     /// which this reader represents as a single Null node).

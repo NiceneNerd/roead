@@ -23,6 +23,7 @@ use roead::storage::{BorrowedStore, FixedStore, Store};
 const ROOT_KEY_HASH: u32 = hash_name("param_root");
 
 /// Every non-yml binary file under `test/aamp/`, recursive.
+#[cfg(feature = "alloc")]
 fn corpus_files() -> Vec<std::path::PathBuf> {
     let mut out: Vec<std::path::PathBuf> = Vec::new();
     add_dir_files("test/aamp", &mut out);
@@ -30,6 +31,7 @@ fn corpus_files() -> Vec<std::path::PathBuf> {
     out
 }
 
+#[cfg(feature = "alloc")]
 fn add_dir_files(dir: &str, out: &mut Vec<std::path::PathBuf>) {
     for entry in std::fs::read_dir(dir).unwrap() {
         let entry = entry.unwrap();
@@ -349,13 +351,13 @@ mod alloc_tests {
         );
         for (name, ref_obj) in ref_list.objects.iter() {
             let child = arena
-                .get(id, name.clone())
+                .get(id, *name)
                 .unwrap_or_else(|| panic!("object {name:?} missing from arena"));
             assert_arena_object_eq(ref_obj, arena, child);
         }
         for (name, ref_list) in ref_list.lists.iter() {
             let child = arena
-                .get(id, name.clone())
+                .get(id, *name)
                 .unwrap_or_else(|| panic!("list {name:?} missing from arena"));
             assert_ref_matches_arena(ref_list, arena, child);
         }
@@ -398,10 +400,10 @@ mod alloc_tests {
             ParameterRef::Vec4(v) => AampPayload::Vec4(*v),
             ParameterRef::Color(c) => AampPayload::Color(*c),
             ParameterRef::Quat(q) => AampPayload::Quat(*q),
-            ParameterRef::String32(s) => AampPayload::String32(*s),
-            ParameterRef::String64(s) => AampPayload::String64(*s),
-            ParameterRef::String256(s) => AampPayload::String256(*s),
-            ParameterRef::StringRef(s) => AampPayload::StringRef(*s),
+            ParameterRef::String32(s) => AampPayload::String32(s),
+            ParameterRef::String64(s) => AampPayload::String64(s),
+            ParameterRef::String256(s) => AampPayload::String256(s),
+            ParameterRef::StringRef(s) => AampPayload::StringRef(s),
             ParameterRef::Curve1(c) => AampPayload::Curve1(*c),
             ParameterRef::Curve2(c) => AampPayload::Curve2(*c),
             ParameterRef::Curve3(c) => AampPayload::Curve3(*c),
@@ -409,7 +411,7 @@ mod alloc_tests {
             ParameterRef::BufferInt(b) => AampPayload::BufferInt(*b),
             ParameterRef::BufferF32(b) => AampPayload::BufferF32(*b),
             ParameterRef::BufferU32(b) => AampPayload::BufferU32(*b),
-            ParameterRef::BufferBinary(b) => AampPayload::BufferBinary(*b),
+            ParameterRef::BufferBinary(b) => AampPayload::BufferBinary(b),
         }
     }
 
@@ -501,7 +503,7 @@ mod alloc_tests {
             "sref"
         );
 
-        assert_eq!(obj.get("Bool").unwrap().as_bool().unwrap(), true);
+        assert!(obj.get("Bool").unwrap().as_bool().unwrap());
         assert_eq!(obj.get("F32").unwrap().as_f32().unwrap(), 1.5);
         assert_eq!(obj.get("I32").unwrap().as_i32().unwrap(), -7);
         assert_eq!(obj.get("U32").unwrap().as_u32().unwrap(), 42);

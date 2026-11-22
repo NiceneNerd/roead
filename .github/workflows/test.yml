@@ -8,19 +8,114 @@ on:
 
 env:
   CARGO_TERM_COLOR: always
-  ACTIONS_ALLOW_UNSECURE_COMMANDS: 'true'
 
 jobs:
-  build_test:
+  test:
+    name: test (${{ matrix.os }})
     runs-on: ${{ matrix.os }}
     strategy:
+      fail-fast: false
       matrix:
         os: [ubuntu-latest, windows-latest, macos-latest]
     steps:
-    - uses: actions/checkout@v2
-    - name: Install Rust toolchain
-      uses: actions-rs/toolchain@v1
-      with:
-        toolchain: stable
-    - name: Run tests
+    - uses: actions/checkout@v4
+    - name: Install Rust
+      uses: dtolnay/rust-toolchain@stable
+    - name: Run tests (all features)
       run: cargo test --all-features
+
+  test-reduced-features:
+    name: test (${{ matrix.features }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        features:
+          # `std` + everything except serde: the yaml emitters, the owned
+          # parsers and the borrowed readers together.
+          - "aamp,byml,yaml,yaz0"
+          # `no_std + alloc`: no std-only items are compiled, but every
+          # allocating type and parser is.
+          - "alloc,byml,aamp,yaz0"
+    steps:
+    - uses: actions/checkout@v4
+    - name: Install Rust
+      uses: dtolnay/rust-toolchain@stable
+    - name: Run tests
+      run: cargo test --no-default-features --features "${{ matrix.features }}"
+
+  no-std:
+    name: no_std check (${{ matrix.name }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: pure core
+            args: --no-default-features
+          - name: byml
+            args: --no-default-features --features byml
+          - name: aamp
+            args: --no-default-features --features aamp
+          - name: sarc
+            args: --no-default-features --features sarc
+          - name: yaz0
+            args: --no-default-features --features yaz0
+          - name: alloc + byml + aamp + yaz0
+            args: --no-default-features --features alloc,byml,aamp,yaz0
+    steps:
+    - uses: actions/checkout@v4
+    - name: Install Rust
+      uses: dtolnay/rust-toolchain@stable
+    - name: Install bare-metal target
+      run: rustup target add thumbv7em-none-eabihf
+    # A Cortex-M target with no std and no allocator: this is the real
+    # `no_std` build, not merely a feature reduction on a hosted target.
+    - name: Check no_std build
+      run: |
+        cargo check --target thumbv7em-none-eabihf ${{ matrix.args }}
+
+  msrv:
+    name: MSRV 1.100
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    - name: Install MSRV toolchain
+      uses: dtolnay/rust-toolchain@1.100
+    - name: Check MSRV build
+      run: cargo check --all-features
+
+  clippy:
+    name: clippy
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    - name: Install Rust
+      uses: dtolnay/rust-toolchain@stable
+      with:
+        components: clippy
+    - name: Run clippy
+      run: cargo clippy --all-features --all-targets -- -D warnings
+
+  dependencies:
+    name: dependency assertions
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    - name: Install Rust
+      uses: dtolnay/rust-toolchain@stable
+    - name: Assert serde_json is absent
+      run: |
+        if cargo tree --all-features -e features -i serde_json >/dev/null 2>&1; then
+          echo "serde_json must not be in the dependency graph" >&2
+          exit 1
+        fi
+    - name: Assert yaz0 adds no dependencies
+      run: |
+        base="$(cargo tree --no-default-features --prefix none -e normal | sort)"
+        yaz0="$(cargo tree --no-default-features --features yaz0 --prefix none -e normal | sort)"
+        if [ "$base" != "$yaz0" ]; then
+          echo "the yaz0 feature must add no dependencies:" >&2
+          diff <(echo "$base") <(echo "$yaz0") >&2
+          exit 1
+        fi
