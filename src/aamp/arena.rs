@@ -108,6 +108,36 @@ impl<'a> From<ParameterRef<'a>> for AampPayload<'a> {
     }
 }
 
+impl<'a> AampPayload<'a> {
+    /// The parameter view of this payload, or `None` for containers.
+    pub fn parameter(&self) -> Option<ParameterRef<'a>> {
+        Some(match self {
+            AampPayload::List | AampPayload::Object => return None,
+            AampPayload::Bool(b) => ParameterRef::Bool(*b),
+            AampPayload::F32(f) => ParameterRef::F32(*f),
+            AampPayload::I32(i) => ParameterRef::I32(*i),
+            AampPayload::U32(u) => ParameterRef::U32(*u),
+            AampPayload::Vec2(v) => ParameterRef::Vec2(*v),
+            AampPayload::Vec3(v) => ParameterRef::Vec3(*v),
+            AampPayload::Vec4(v) => ParameterRef::Vec4(*v),
+            AampPayload::Color(c) => ParameterRef::Color(*c),
+            AampPayload::Quat(q) => ParameterRef::Quat(*q),
+            AampPayload::String32(s) => ParameterRef::String32(s),
+            AampPayload::String64(s) => ParameterRef::String64(s),
+            AampPayload::String256(s) => ParameterRef::String256(s),
+            AampPayload::StringRef(s) => ParameterRef::StringRef(s),
+            AampPayload::Curve1(c) => ParameterRef::Curve1(*c),
+            AampPayload::Curve2(c) => ParameterRef::Curve2(*c),
+            AampPayload::Curve3(c) => ParameterRef::Curve3(*c),
+            AampPayload::Curve4(c) => ParameterRef::Curve4(*c),
+            AampPayload::BufferInt(b) => ParameterRef::BufferInt(*b),
+            AampPayload::BufferF32(b) => ParameterRef::BufferF32(*b),
+            AampPayload::BufferU32(b) => ParameterRef::BufferU32(*b),
+            AampPayload::BufferBinary(b) => ParameterRef::BufferBinary(b),
+        })
+    }
+}
+
 /// A single node in a [`ParameterIOArena`].
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct AampNode<'a> {
@@ -449,19 +479,16 @@ impl<'b, 'a, S: Store<AampNode<'a>>> AampSink<'a> for ArenaSink<'b, S> {
 
     fn add_list(&mut self, child: NodeId, _key: Name) -> Result<()> {
         debug_assert!(self.depth >= 1);
-        let _ = self.stack[self.depth - 1];
         self.link_child(child)
     }
 
     fn add_object(&mut self, child: NodeId, _key: Name) -> Result<()> {
         debug_assert!(self.depth >= 1);
-        let _ = self.stack[self.depth - 1];
         self.link_child(child)
     }
 
     fn add_param(&mut self, child: NodeId, _key: Name) -> Result<()> {
         debug_assert!(self.depth >= 1);
-        let _ = self.stack[self.depth - 1];
         self.link_child(child)
     }
 

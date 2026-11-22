@@ -10,7 +10,6 @@ use super::arena::Store;
 use super::*;
 use crate::{Result, yaml::*};
 
-#[cfg(feature = "alloc")]
 impl<'a> BymlRef<'a> {
     /// Serialize the document to YAML, byte-identical to [`Byml::to_text`].
     pub fn to_text(&self) -> String {
@@ -109,7 +108,6 @@ fn emit_scalar<'b, 'e>(
     Ok(())
 }
 
-#[cfg(feature = "alloc")]
 fn ref_should_use_inline(byml: &BymlRef<'_>) -> bool {
     let is_simple = |by: &BymlRef<'_>| !matches!(by, BymlRef::Array(_) | BymlRef::Map(_));
     match byml {

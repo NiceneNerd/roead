@@ -46,7 +46,6 @@ macro_rules! write_flow_struct {
     }};
 }
 
-#[cfg(feature = "alloc")]
 impl<'a> ParameterIORef<'a> {
     /// Serialize the parameter IO to YAML, byte-identical to
     /// [`ParameterIO::to_text`](super::ParameterIO::to_text).
@@ -251,17 +250,15 @@ fn dedup_children<'a, S: Store<AampNode<'a>>>(
     id: NodeId,
     keep: impl Fn(&AampPayload) -> bool,
 ) -> Vec<(Name, NodeId)> {
-    let mut out: Vec<(Name, NodeId)> = Vec::new();
+    // IndexMap insert keeps the first position and overwrites the value:
+    // exactly the owned maps' duplicate semantics.
+    let mut out: indexmap::IndexMap<Name, NodeId> = indexmap::IndexMap::new();
     for (name, child) in arena.children(id) {
-        if !keep(&arena.node(child).expect("child node missing").payload) {
-            continue;
-        }
-        match out.iter_mut().find(|(existing, _)| *existing == name) {
-            Some(slot) => slot.1 = child,
-            None => out.push((name, child)),
+        if keep(&arena.node(child).expect("child node missing").payload) {
+            out.insert(name, child);
         }
     }
-    out
+    out.into_iter().collect()
 }
 
 fn write_list_arena<'a, 'b, 'e, S: Store<AampNode<'a>>>(
@@ -315,55 +312,16 @@ fn write_object_arena<'a, 'b, 'e, S: Store<AampNode<'a>>>(
 fn write_param_arena<'a, 'b, 'e, S: Store<AampNode<'a>>>(
     arena: &ParameterIOArena<'a, S>,
     id: NodeId,
-    mut node: NodeRef<'b, 'e, '_, &'e mut Tree<'b>>,
+    node: NodeRef<'b, 'e, '_, &'e mut Tree<'b>>,
 ) -> Result<()> {
     let payload = arena
         .node(id)
         .expect("parameter node missing from arena")
         .payload;
-    match payload {
-        AampPayload::Bool(b) => node.set_val(if b { "true" } else { "false" })?,
-        AampPayload::F32(f) => node.set_val(&write_float(f as f64)?)?,
-        AampPayload::I32(i) => node.set_val(&lexical::to_string(i))?,
-        AampPayload::Vec2(v) => write_flow_struct!(node, "!vec2", v, x, y),
-        AampPayload::Vec3(v) => write_flow_struct!(node, "!vec3", v, x, y, z),
-        AampPayload::Vec4(v) => write_flow_struct!(node, "!vec4", v, x, y, z, t),
-        AampPayload::Color(c) => write_flow_struct!(node, "!color", c, r, g, b, a),
-        AampPayload::Quat(q) => write_flow_struct!(node, "!quat", q, a, b, c, d),
-        AampPayload::String32(s) => {
-            node.set_val(s)?;
-            node.set_val_tag("!str32")?;
-        }
-        AampPayload::String64(s) => {
-            node.set_val(s)?;
-            node.set_val_tag("!str64")?;
-        }
-        AampPayload::String256(s) => {
-            node.set_val(s)?;
-            node.set_val_tag("!str256")?;
-        }
-        AampPayload::Curve1(c)
-        | AampPayload::Curve2(c)
-        | AampPayload::Curve3(c)
-        | AampPayload::Curve4(c) => write_curves_ref(node, &c)?,
-        AampPayload::BufferInt(b) => write_buf_num(node, b.iter_i32(), "!buffer_int")?,
-        AampPayload::BufferF32(b) => write_buf_num(node, b.iter_f32(), "!buffer_f32")?,
-        AampPayload::U32(u) => {
-            node.set_val(&format_hex!(&u))?;
-            node.set_val_tag("!u")?;
-        }
-        AampPayload::BufferU32(b) => write_buf_hex(node, b.iter_u32(), "!buffer_u32")?,
-        AampPayload::BufferBinary(b) => write_buf_hex(node, b.iter().copied(), "!buffer_binary")?,
-        AampPayload::StringRef(s) => {
-            if string_needs_quotes(s) {
-                let ty = node.node_type()?;
-                node.set_type_flags(ty | ryml::NodeType::WipValDquo)?;
-            }
-            node.set_val(s)?;
-        }
-        AampPayload::List | AampPayload::Object => {
-            unreachable!("container payload passed to write_param_arena")
-        }
+    // Only parameter children reach this point (`write_object_arena` filters
+    // containers out), so the payload always has a parameter view.
+    match payload.parameter() {
+        Some(param) => write_param_ref(&param, node),
+        None => unreachable!("container payload passed to write_param_arena"),
     }
-    Ok(())
 }

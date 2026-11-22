@@ -446,8 +446,8 @@ impl SarcWriter {
         if let Ok(endian) = reader.read_be::<[u8; 2]>() {
             reader.set_position(0x1C);
             let file_size: u32 = match &endian {
-                b"\xfe\xff" => reader.read_be().expect("Should fine valid u32 file size"),
-                b"\xff\xfe" => reader.read_le().expect("Should fine valid u32 file size"),
+                b"\xfe\xff" => reader.read_be().expect("Should find valid u32 file size"),
+                b"\xff\xfe" => reader.read_le().expect("Should find valid u32 file size"),
                 _ => return 1,
             };
             if file_size as usize != data.len() {
