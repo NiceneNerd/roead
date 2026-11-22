@@ -12,7 +12,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `TinyString`, a copyable fixed-capacity (16-byte) inline string used for
   alloc-free error messages.
 - New typed, alloc-free `Error` variants: `IndexOutOfRange`, `TooManyFiles`,
-  `CapacityExceeded`.
+  `CapacityExceeded`, `InvalidNodeType`.
+- **Zero-copy BYML readers**, borrowing all strings and payloads from the
+  input buffer:
+  - `byml::BymlRef<'a>` — enum-shaped borrowed tree mirroring `Byml`
+    variant-for-variant (`to_owned()` materializes an owned `Byml`).
+  - `byml::arena` — flat, fixed-capacity readers that need no allocator:
+    `BymlArena<S>` over a `VecStore` (alloc), an inline `ArrayStore<'a, N>`
+    (`BymlStack<'a, N>` alias), or a caller-provided `SliceStore<'s, 'a>`.
+  - `BymlArena::new()` + `parse_in_place(&mut self, data)` parse without
+    moving the (potentially very large) inline store by value; re-parsing
+    discards previous contents. `from_binary` remains available for
+    `Default` stores, and `from_binary_in` for caller-owned memory.
+- **Zero-copy AAMP readers**: `aamp::ParameterIORef<'a>` with
+  `BufferRef<'a>`/`CurveRef<'a>` payload views (endian-safe iterators plus
+  alignment-checked, little-endian-gated typed slices), and
+  `aamp::arena::ParameterIOArena`/`ParameterIOStack` built on the same
+  generic stores (`storage::{Store, OwnedStore, FixedStore, BorrowedStore}`).
+- **YAML emission directly from the zero-copy readers** (`std` + `yaml`):
+  `BymlRef::to_text()` and `BymlArena::to_text()`. Output is byte-identical
+  to the owned emitters, so no owned tree has to be materialized.
+- Container nesting is capped at 128 levels (`BYML_MAX_DEPTH`,
+  `AAMP_MAX_DEPTH`), which also bounds malicious self-referential input.
 
 ### Changed
 
@@ -20,7 +41,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - New feature split: `std` implies `alloc`, both are on by default, and
   `--no-default-features` builds a pure `no_std` library. The `std` feature
   gathers the std-only dependencies (yaml machinery, name table, ...), while
-  `alloc` gathers the allocator and everything that needs it.
+  `alloc` gathers the allocator and everything that needs it. The owned
+  BYML/AAMP parsers and writers now require `alloc` rather than `std`.
+- The `byml` and `aamp` modules are gated on their own features (not on
+  `alloc`); each item inside self-gates, so the zero-copy arenas are
+  available with no allocator at all.
 - `SarcWriter` no longer parses `data/aglenv_file_info.json` at runtime: the
   AGLEnv alignment table is checked in as generated data
   (`src/sarc/aglenv.rs`) and verified against the source JSON by
@@ -41,14 +66,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `Result` is now `core::result::Result<T, Error>`.
 - `Endian`'s binrw derive was removed entirely; use [`Endian::from_bom`]
   to interpret a SARC BOM.
-
-### Changed
-
-- Bumped edition to 2024 and MSRV to 1.100; crate version is now 2.0.0.
-- New feature split: `std` implies `alloc`, both are on by default, and
-  `--no-default-features` builds a pure `no_std` library. The `std` feature
-  gathers the std-only dependencies (yaml machinery, name table, ...), while
-  `alloc` gathers the allocator and everything that needs it.
 - **SARC reader is now alloc-free** and no longer requires `std`:
   - `Sarc::new(data: &'a [u8]) -> Result<Sarc<'a>>` borrows the data and
     never allocates or owns it. The old `new<T: Into<Cow<'a, [u8]>>>`
@@ -82,6 +99,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   buffer/non-buffer pairs are always split while byte-identical wide4 structs
   (`Vec4`/`Color`/`Quat`) still deduplicate safely. Found via the new
   zero-copy reader's synthetic coverage.
+- AAMP parsing of `BufferF32` parameters read the element count from the
+  parameter entry offset (`param_offset - 4`) instead of `data_offset - 4`
+  like every other buffer type, so any archive containing a float buffer
+  failed to parse (`BinarySerde`). The count is now read from
+  `data_offset - 4`; the writer was already correct. The bundled corpus
+  contains no float buffers, which is why this went unnoticed.
+- AAMP `read_null_string` used `str::from_utf8_unchecked` (undefined
+  behaviour on invalid UTF-8); it now validates with
+  `core::str::from_utf8` and returns `Error::InvalidUtf8`.
+- `Curve` is now `#[repr(C)]`. Rust had been free to reorder its fields, so
+  reinterpreting `&[Curve; N]` as bytes for curve parameters produced
+  corrupted values.
 
 ## [1.0.0] - 2024-08-17
 

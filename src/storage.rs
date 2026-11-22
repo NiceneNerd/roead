@@ -64,6 +64,9 @@ pub trait Store<T> {
     /// [`Error::CapacityExceeded`] when the store is full.
     fn push(&mut self, node: T) -> Result<NodeId>;
 
+    /// Discard all nodes, retaining capacity.
+    fn clear(&mut self);
+
     /// Get a shared reference to a node, or `None` if out of range.
     fn get(&self, id: NodeId) -> Option<&T>;
 
@@ -133,6 +136,10 @@ impl<T> Store<T> for OwnedStore<T> {
         Ok(id)
     }
 
+    fn clear(&mut self) {
+        self.nodes.clear();
+    }
+
     fn get(&self, id: NodeId) -> Option<&T> {
         self.nodes.get(id.0 as usize)
     }
@@ -185,6 +192,13 @@ impl<T, const N: usize> Store<T> for FixedStore<T, N> {
         self.slots[self.len].write(node);
         self.len += 1;
         Ok(id)
+    }
+
+    fn clear(&mut self) {
+        // Slots below `len` are simply abandoned: `T` is never dropped
+        // (nodes are plain data), so resetting `len` re-joins them to the
+        // uninitialized region.
+        self.len = 0;
     }
 
     fn get(&self, id: NodeId) -> Option<&T> {
@@ -247,6 +261,10 @@ impl<'s, T> Store<T> for BorrowedStore<'s, T> {
         self.slots[self.len].write(node);
         self.len += 1;
         Ok(id)
+    }
+
+    fn clear(&mut self) {
+        self.len = 0;
     }
 
     fn get(&self, id: NodeId) -> Option<&T> {

@@ -258,6 +258,9 @@ pub trait ArenaStore<'a> {
             .map(NodeId)
             .map_err(|_| Error::CapacityExceeded(self.len()))
     }
+
+    /// Discard all nodes, retaining capacity.
+    fn clear(&mut self);
 }
 
 /// A growable store backed by `alloc::vec::Vec`.
@@ -322,6 +325,10 @@ impl<'a> ArenaStore<'a> for VecStore<'a> {
 
     fn get_mut(&mut self, id: NodeId) -> Option<&mut Node<'a>> {
         self.nodes.get_mut(id.0 as usize)
+    }
+
+    fn clear(&mut self) {
+        self.nodes.clear();
     }
 }
 
@@ -390,6 +397,13 @@ impl<'a, const N: usize> ArenaStore<'a> for ArrayStore<'a, N> {
         // safety docs).
         unsafe { Some(self.slots[i].assume_init_mut()) }
     }
+
+    fn clear(&mut self) {
+        // Slots below `len` are abandoned, not dropped: `Node` is plain
+        // copy data, so resetting `len` re-joins them to the
+        // uninitialized region.
+        self.len = 0;
+    }
 }
 
 /// A store backed by a caller-provided mutable slice.
@@ -449,6 +463,10 @@ impl<'s, 'a> ArenaStore<'a> for SliceStore<'s, 'a> {
         // SAFETY: `i < self.len`, so slot `i` is initialized.
         unsafe { Some(&mut *self.slots[i].as_mut_ptr()) }
     }
+
+    fn clear(&mut self) {
+        self.len = 0;
+    }
 }
 
 /// A flat BYML document stored in `S`, with all payloads borrowed from the
@@ -475,20 +493,51 @@ impl<'a, S: ArenaStore<'a> + Default> BymlArena<S> {
     /// `S`. This is available for stores that can be created without
     /// caller-provided memory ([`VecStore`], [`ArrayStore`]); use
     /// [`from_binary_in`](BymlArena::from_binary_in) for [`SliceStore`].
+    ///
+    /// # Stack use
+    ///
+    /// Constructing the store and returning the arena moves the whole
+    /// inline store by value a few times, which debug builds do not elide.
+    /// For large [`ArrayStore`] capacities (or very small stacks), prefer
+    /// creating the arena with [`new`](BymlArena::new) and parsing with
+    /// [`parse_in_place`](BymlArena::parse_in_place) (no large moves), or
+    /// use [`from_binary_in`](BymlArena::from_binary_in) with a
+    /// [`SliceStore`].
     pub fn from_binary(data: &'a [u8]) -> Result<Self> {
-        let mut store = S::default();
+        let mut this = Self {
+            store: S::default(),
+            root: None,
+        };
+        this.parse_in_place(data)?;
+        Ok(this)
+    }
+
+    /// Create an empty arena over a default-constructed store.
+    pub fn new() -> Self {
+        Self {
+            store: S::default(),
+            root: None,
+        }
+    }
+
+    /// Parse `data` into this arena, discarding any previous contents.
+    ///
+    /// All strings and payloads are borrowed from `data`; nothing is
+    /// allocated and the store is never moved. Returns
+    /// [`Error::CapacityExceeded`] if the document does not fit in the
+    /// store.
+    pub fn parse_in_place(&mut self, data: &'a [u8]) -> Result<()> {
+        self.store.clear();
         let root = {
             let mut sink = ArenaSink {
-                store: &mut store,
+                store: &mut self.store,
                 stack: [(NodeId::none(), None); BYML_MAX_DEPTH],
                 depth: 0,
             };
             reader_mod::parse_byml(data, &mut sink)?
         };
-        Ok(BymlArena {
-            store,
-            root: Some(root),
-        })
+        self.root = Some(root);
+        Ok(())
     }
 }
 

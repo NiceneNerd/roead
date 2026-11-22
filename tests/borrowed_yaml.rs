@@ -86,10 +86,13 @@ fn byte_identity_corpus() {
             "VecStore byte-identity failed for {name}"
         );
         // BymlStack has a fixed 8192-node capacity: skip documents that
-        // don't fit.
-        if let Ok(stack_arena) = BymlArena::<ArrayStore<8192>>::from_binary(data.as_ref()) {
+        // don't fit. Parse in place: constructing an 8192-node inline store
+        // and moving it by value would overflow small stacks in debug
+        // builds (moves are not elided there).
+        let mut stack = BymlStack::<8192>::new();
+        if stack.parse_in_place(data.as_ref()).is_ok() {
             assert_eq!(
-                stack_arena.to_text(),
+                stack.to_text(),
                 expected,
                 "BymlStack byte-identity failed for {name}"
             );
@@ -292,4 +295,37 @@ fn yaz0_d3_dynamic() {
         // Without yaz0 the document cannot be parsed; just ensure the test
         // compiles and passes vacuously.
     }
+}
+
+// ---------------------------------------------------------------------------
+// 8. Stack arenas: parse_in_place, store reuse, and small from_binary
+// ---------------------------------------------------------------------------
+
+/// A tiny corpus file that fits a 1024-node stack arena.
+const TINY_BYML: &str = "Mrg_01e57204_MrgD100_B4-B3-B2-1A90E17A.bcett.byml";
+
+#[test]
+fn stack_parse_in_place_reuse_and_from_binary() {
+    let tiny_raw = load(TINY_BYML);
+    let tiny = prepared(&tiny_raw);
+    let tiny_expected = Byml::from_binary(tiny.as_ref()).unwrap().to_text();
+    let other_raw = load("LevelSensor.byml");
+    let other = prepared(&other_raw);
+    let other_expected = Byml::from_binary(other.as_ref()).unwrap().to_text();
+
+    // `parse_in_place` moves nothing, so an inline capacity that fits both
+    // documents is safe on a default-size test thread. (`LevelSensor.byml`
+    // needs ~2.6k nodes; the tiny file needs 66.)
+    let mut stack = BymlStack::<4096>::new();
+    stack.parse_in_place(tiny.as_ref()).unwrap();
+    assert_eq!(stack.to_text(), tiny_expected);
+
+    // Re-parsing a different document into the same arena discards the
+    // previous contents (`Store::clear`).
+    stack.parse_in_place(other.as_ref()).unwrap();
+    assert_eq!(stack.to_text(), other_expected);
+
+    // `from_binary` remains available for small inline capacities.
+    let from_bin = BymlStack::<1024>::from_binary(tiny.as_ref()).unwrap();
+    assert_eq!(from_bin.to_text(), tiny_expected);
 }

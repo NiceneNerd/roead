@@ -187,17 +187,52 @@ impl<'a, S: Store<AampNode<'a>> + Default> ParameterIOArena<S> {
     /// [`FixedStore`](crate::storage::FixedStore)); use
     /// [`from_binary_in`](ParameterIOArena::from_binary_in) for
     /// [`BorrowedStore`](crate::storage::BorrowedStore).
+    ///
+    /// # Stack use
+    ///
+    /// Constructing the store and returning the arena moves the whole
+    /// inline store by value a few times, which debug builds do not elide.
+    /// For large [`FixedStore`](crate::storage::FixedStore) capacities (or
+    /// very small stacks), prefer creating the arena with
+    /// [`new`](ParameterIOArena::new) and parsing with
+    /// [`parse_in_place`](ParameterIOArena::parse_in_place) (no large
+    /// moves), or use [`from_binary_in`](ParameterIOArena::from_binary_in)
+    /// with a [`BorrowedStore`](crate::storage::BorrowedStore).
     pub fn from_binary(data: &'a [u8]) -> Result<Self> {
-        let mut store = S::default();
+        let mut this = Self {
+            store: S::default(),
+            root: NodeId::none(),
+        };
+        this.parse_in_place(data)?;
+        Ok(this)
+    }
+
+    /// Create an empty arena over a default-constructed store.
+    pub fn new() -> Self {
+        Self {
+            store: S::default(),
+            root: NodeId::none(),
+        }
+    }
+
+    /// Parse `data` into this arena, discarding any previous contents.
+    ///
+    /// All strings and payloads are borrowed from `data`; nothing is
+    /// allocated and the store is never moved. Returns
+    /// [`Error::CapacityExceeded`] if the document does not fit in the
+    /// store.
+    pub fn parse_in_place(&mut self, data: &'a [u8]) -> Result<()> {
+        self.store.clear();
         let root = {
             let mut sink = ArenaSink {
-                store: &mut store,
+                store: &mut self.store,
                 stack: [(NodeId::none(), None); AAMP_MAX_DEPTH + 1],
                 depth: 0,
             };
             reader_mod::parse_aamp(data, &mut sink)?
         };
-        Ok(ParameterIOArena { store, root })
+        self.root = root;
+        Ok(())
     }
 }
 
