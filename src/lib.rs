@@ -237,9 +237,9 @@ pub(crate) type FxHashMap<K, V> = rustc_hash::FxHashMap<K, V>;
 #[cfg(all(feature = "alloc", not(feature = "std")))]
 pub(crate) type FxHashMap<K, V> = hashbrown::HashMap<K, V, rustc_hash::FxBuildHasher>;
 
-#[cfg(all(feature = "alloc", not(feature = "std")))]
+#[cfg(all(feature = "aamp", feature = "alloc", not(feature = "std")))]
 pub(crate) use hashbrown::hash_map::Entry;
-#[cfg(feature = "std")]
+#[cfg(all(feature = "aamp", feature = "std"))]
 pub(crate) use std::collections::hash_map::Entry;
 
 #[derive(Debug, Eq, PartialEq, Copy, Clone)]

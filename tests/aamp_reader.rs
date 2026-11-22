@@ -623,8 +623,14 @@ mod alloc_tests {
 
     #[test]
     fn depth_cap() {
-        // >128-deep list nesting hits the depth cap.
-        let pio = ParameterIO::new().with_list("l", deep_list(130));
+        // The root list is level 1, so 128 lists total are accepted and the
+        // 129th is rejected.
+        let ok = ParameterIO::new().with_list("l", deep_list(126)).to_binary();
+        ParameterIORef::from_binary(&ok).expect("128 lists should parse");
+        ParameterIOArena::<FixedStore<AampNode<'_>, 4096>>::from_binary(&ok)
+            .expect("128 lists should parse");
+
+        let pio = ParameterIO::new().with_list("l", deep_list(127));
         let bytes = pio.to_binary();
 
         let err = ParameterIORef::from_binary(&bytes).unwrap_err();

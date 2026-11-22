@@ -10,7 +10,7 @@ pub(crate) fn align(value: u32, size: u32) -> u32 {
 /// Uses `binrw::io`, which re-exports `std::io` under `std` and provides an
 /// equivalent trait API under `no_std`, so this works in both `std` and
 /// `no_std + alloc` builds.
-#[cfg(feature = "binrw")]
+#[cfg(all(feature = "binrw", feature = "alloc"))]
 pub(crate) trait SeekShim {
     fn stream_len(&mut self) -> binrw::io::Result<u64>
     where
@@ -29,11 +29,13 @@ pub(crate) trait SeekShim {
     }
 }
 
-#[cfg(feature = "binrw")]
+#[cfg(all(feature = "binrw", feature = "alloc"))]
 impl<T> SeekShim for T where T: binrw::io::Read + binrw::io::Seek {}
 
-#[cfg(feature = "alloc")]
-#[allow(non_camel_case_types)]
+// With `binrw` but without `alloc` only the (uncalled) binrw impls below
+// name the type, so dead-code analysis flags it.
+#[cfg(any(feature = "alloc", feature = "binrw"))]
+#[allow(non_camel_case_types, dead_code)]
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 pub(crate) struct u24(pub u32);
 

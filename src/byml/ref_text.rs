@@ -198,6 +198,25 @@ fn build_ref_node<'b, 'e>(
     Ok(())
 }
 
+/// Container children sorted by key, with duplicate keys collapsed to the
+/// last occurrence (the owned maps overwrite on duplicate insert).
+fn sorted_children<'a, S: ArenaStore<'a>>(
+    arena: &BymlArena<S>,
+    id: NodeId,
+    ord: impl Fn(&Key<'a>, &Key<'a>) -> Ordering,
+) -> Vec<(Key<'a>, NodeId)> {
+    let mut children: Vec<(Key<'a>, NodeId)> = arena.children(id).collect();
+    children.sort_by(|a, b| ord(&a.0, &b.0));
+    let mut out: Vec<(Key<'a>, NodeId)> = Vec::with_capacity(children.len());
+    for (key, child) in children {
+        match out.last_mut() {
+            Some(last) if last.0 == key => *last = (key, child),
+            _ => out.push((key, child)),
+        }
+    }
+    out
+}
+
 fn arena_should_use_inline<'a, S: ArenaStore<'a>>(arena: &BymlArena<S>, id: NodeId) -> bool {
     let node = arena.node(id).expect("node missing");
     let is_simple = |n: &Node<'_>| !matches!(n.payload, Payload::Array | Payload::Map);
@@ -242,8 +261,7 @@ fn build_arena_node<'a, 'b, 'e, S: ArenaStore<'a>>(
             } else {
                 node.change_type(ryml::NodeType::Map)?;
             }
-            let mut children: Vec<(Key<'_>, NodeId)> = arena.children(id).collect();
-            children.sort_by(|a, b| match (&a.0, &b.0) {
+            let children = sorted_children(arena, id, |a, b| match (a, b) {
                 (Key::Str(s1), Key::Str(s2)) => s1.as_bytes().cmp(s2.as_bytes()),
                 _ => Ordering::Equal,
             });
@@ -265,8 +283,7 @@ fn build_arena_node<'a, 'b, 'e, S: ArenaStore<'a>>(
             } else {
                 node.change_type(ryml::NodeType::Map)?;
             }
-            let mut children: Vec<(Key<'_>, NodeId)> = arena.children(id).collect();
-            children.sort_by(|a, b| match (&a.0, &b.0) {
+            let children = sorted_children(arena, id, |a, b| match (a, b) {
                 (Key::Hash(h1), Key::Hash(h2)) => h1.cmp(h2),
                 _ => Ordering::Equal,
             });
@@ -285,8 +302,7 @@ fn build_arena_node<'a, 'b, 'e, S: ArenaStore<'a>>(
             } else {
                 node.change_type(ryml::NodeType::Map)?;
             }
-            let mut children: Vec<(Key<'_>, NodeId)> = arena.children(id).collect();
-            children.sort_by(|a, b| match (&a.0, &b.0) {
+            let children = sorted_children(arena, id, |a, b| match (a, b) {
                 (Key::Hash(h1), Key::Hash(h2)) => h1.cmp(h2),
                 _ => Ordering::Equal,
             });

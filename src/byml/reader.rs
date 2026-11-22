@@ -379,6 +379,9 @@ fn walk_container<'a, Sink: BymlSink<'a>>(
 
 /// Walk a value entry: read the raw u32 at `pos`, then dispatch to a
 /// container or a leaf according to `node_type`.
+///
+/// `depth` is this entry's own container level (the root container is
+/// level 1).
 fn walk_entry<'a, Sink: BymlSink<'a>>(
     walk: &mut Walk<'a>,
     sink: &mut Sink,
@@ -390,12 +393,7 @@ fn walk_entry<'a, Sink: BymlSink<'a>>(
 ) -> Result<Sink::Node> {
     let raw = walk.read_u32_at(pos as usize)?;
     if is_container_tag(node_type) {
-        if depth > BYML_MAX_DEPTH {
-            return Err(Error::InvalidData(
-                "BYML container nesting exceeds maximum depth",
-            ));
-        }
-        walk_container(walk, sink, raw, key, aux, depth + 1)
+        walk_container(walk, sink, raw, key, aux, depth)
     } else {
         walk_leaf(walk, sink, node_type, raw, key, aux)
     }

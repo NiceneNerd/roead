@@ -241,15 +241,21 @@ fn write_io_arena<'a, S: Store<AampNode<'a>>>(
     Ok(())
 }
 
-/// The children of `id` with duplicate names collapsed the way the owned
-/// maps collapse them: the first occurrence fixes the position and the last
-/// occurrence supplies the value.
+/// The children of `id` whose payload satisfies `keep`, with duplicate names
+/// collapsed the way the owned maps collapse them: the first occurrence
+/// fixes the position and the last occurrence supplies the value. Objects
+/// and lists are separate namespaces in the owned model, so dedup runs
+/// within each namespace.
 fn dedup_children<'a, S: Store<AampNode<'a>>>(
     arena: &ParameterIOArena<'a, S>,
     id: NodeId,
+    keep: impl Fn(&AampPayload) -> bool,
 ) -> Vec<(Name, NodeId)> {
     let mut out: Vec<(Name, NodeId)> = Vec::new();
     for (name, child) in arena.children(id) {
+        if !keep(&arena.node(child).expect("child node missing").payload) {
+            continue;
+        }
         match out.iter_mut().find(|(existing, _)| *existing == name) {
             Some(slot) => slot.1 = child,
             None => out.push((name, child)),
@@ -265,21 +271,12 @@ fn write_list_arena<'a, 'b, 'e, S: Store<AampNode<'a>>>(
     mut node: NodeRef<'b, 'e, '_, &'e mut Tree<'b>>,
 ) -> Result<()> {
     node.change_type(ryml::NodeType::Map)?;
-    let children = dedup_children(arena, id);
 
     let mut objects = node.append_child()?;
     objects.set_key("objects")?;
     objects.change_type(ryml::NodeType::Map)?;
-    let object_children = children
-        .iter()
-        .copied()
-        .filter(|(_, child_id)| {
-            matches!(
-                arena.node(*child_id).map(|node| node.payload),
-                Some(AampPayload::Object)
-            )
-        });
-    for (index, (key, child_id)) in object_children.enumerate() {
+    let object_children = dedup_children(arena, id, |p| matches!(p, AampPayload::Object));
+    for (index, (key, child_id)) in object_children.into_iter().enumerate() {
         let mut child = objects.append_child()?;
         set_key_name!(child, key, index, parent_hash);
         write_object_arena(arena, child_id, key.0, child)?;
@@ -288,16 +285,8 @@ fn write_list_arena<'a, 'b, 'e, S: Store<AampNode<'a>>>(
     let mut lists = node.append_child()?;
     lists.set_key("lists")?;
     lists.change_type(ryml::NodeType::Map)?;
-    let list_children = children
-        .iter()
-        .copied()
-        .filter(|(_, child_id)| {
-            matches!(
-                arena.node(*child_id).map(|node| node.payload),
-                Some(AampPayload::List)
-            )
-        });
-    for (index, (key, child_id)) in list_children.enumerate() {
+    let list_children = dedup_children(arena, id, |p| matches!(p, AampPayload::List));
+    for (index, (key, child_id)) in list_children.into_iter().enumerate() {
         let mut child = lists.append_child()?;
         set_key_name!(child, key, index, parent_hash);
         write_list_arena(arena, child_id, key.0, child)?;
@@ -313,7 +302,8 @@ fn write_object_arena<'a, 'b, 'e, S: Store<AampNode<'a>>>(
     mut node: NodeRef<'b, 'e, '_, &'e mut Tree<'b>>,
 ) -> Result<()> {
     node.change_type(ryml::NodeType::Map)?;
-    for (index, (key, child_id)) in dedup_children(arena, id).into_iter().enumerate() {
+    let params = dedup_children(arena, id, |p| !matches!(p, AampPayload::List | AampPayload::Object));
+    for (index, (key, child_id)) in params.into_iter().enumerate() {
         let mut child = node.append_child()?;
         set_key_name!(child, key, index, parent_hash);
         write_param_arena(arena, child_id, child)?;

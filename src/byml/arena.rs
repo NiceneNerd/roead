@@ -526,8 +526,10 @@ impl<'a, S: ArenaStore<'a> + Default> BymlArena<S> {
     /// allocated and the store is never moved. Returns
     /// [`Error::CapacityExceeded`] if the document does not fit in the
     /// store.
+    /// On error the arena is left empty (`root()` returns `None`).
     pub fn parse_in_place(&mut self, data: &'a [u8]) -> Result<()> {
         self.store.clear();
+        self.root = None;
         let root = {
             let mut sink = ArenaSink {
                 store: &mut self.store,

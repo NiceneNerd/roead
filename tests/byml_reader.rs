@@ -512,7 +512,6 @@ mod alloc_tests {
 
     #[test]
     fn depth_cap() {
-        // A 130-deep nested array exceeds the 128-deep container cap.
         fn deep(depth: u32) -> roead::byml::Byml {
             if depth == 0 {
                 roead::byml::Byml::Null
@@ -520,9 +519,15 @@ mod alloc_tests {
                 roead::byml::Byml::Array(vec![deep(depth - 1)])
             }
         }
-        let doc = deep(130);
-        let bytes = doc.to_binary(Endian::Little);
-        let err = BymlRef::from_binary(&bytes).unwrap_err();
+
+        // The root container is level 1, so 128 nested containers are
+        // accepted and the 129th is rejected.
+        let ok = deep(128).to_binary(Endian::Little);
+        BymlRef::from_binary(&ok).expect("128 containers should parse");
+        let arena = parse_arena::<VecStore<'_>>(&ok);
+        assert_eq!(arena.len(), 129); // 128 containers plus the null leaf
+
+        let err = BymlRef::from_binary(&deep(129).to_binary(Endian::Little)).unwrap_err();
         assert!(matches!(err, Error::InvalidData(_)));
         assert_eq!(
             err.to_string(),

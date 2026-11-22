@@ -227,8 +227,13 @@ impl<'a, S: Store<AampNode<'a>> + Default> ParameterIOArena<'a, S> {
     /// allocated and the store is never moved. Returns
     /// [`Error::CapacityExceeded`] if the document does not fit in the
     /// store.
+    /// On error the arena is left empty: `root()` returns `None` and the
+    /// header values are reset.
     pub fn parse_in_place(&mut self, data: &'a [u8]) -> Result<()> {
         self.store.clear();
+        self.root = NodeId::none();
+        self.version = 0;
+        self.data_type = "";
         let (root, version, data_type) = {
             let mut sink = ArenaSink {
                 store: &mut self.store,
@@ -290,10 +295,10 @@ impl<S> core::fmt::Debug for ParameterIOArena<'_, S> {
 }
 
 impl<'a, S: Store<AampNode<'a>>> ParameterIOArena<'a, S> {
-    /// The root node id (always `Some` after a successful
-    /// [`from_binary`](ParameterIOArena::from_binary)).
+    /// The root node id, or `None` if the arena is empty (never parsed, or
+    /// the last parse failed).
     pub fn root(&self) -> Option<NodeId> {
-        Some(self.root)
+        if self.root.is_none() { None } else { Some(self.root) }
     }
 
     /// The data version from the header (not the AAMP format version).

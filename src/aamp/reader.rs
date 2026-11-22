@@ -945,6 +945,11 @@ impl<'a> From<&'a super::owned::ParameterObject> for ParameterObjectRef<'a> {
     }
 }
 
+/// Views an owned parameter over its native storage.
+///
+/// Buffer and curve payloads are reinterpreted as raw bytes and decoded as
+/// little-endian, so this assumes a little-endian host (AAMP is a
+/// little-endian-only format).
 #[cfg(feature = "alloc")]
 impl<'a> From<&'a super::owned::Parameter> for ParameterRef<'a> {
     fn from(parameter: &'a super::owned::Parameter) -> Self {
@@ -988,9 +993,8 @@ impl<'a> From<&'a super::owned::Parameter> for ParameterRef<'a> {
     }
 }
 
-/// Reinterprets `slice` as a byte slice with the same lifetime. AAMP is
-/// little-endian only, so this matches the on-disk layout on all supported
-/// targets.
+/// Reinterprets `slice` as a byte slice with the same lifetime. The bytes
+/// are later decoded as little-endian, so this assumes a little-endian host.
 #[cfg(feature = "alloc")]
 fn byte_slice<T>(slice: &[T]) -> &[u8] {
     // SAFETY: the slice's elements are initialized and the returned borrow is
@@ -1006,7 +1010,7 @@ fn byte_slice<T>(slice: &[T]) -> &[u8] {
 /// Reinterprets `curves` (an array of `N` 128-byte `Curve` values) as a byte
 /// slice with the same lifetime. `Curve` is assumed to be laid out as
 /// `a: u32, b: u32, floats: [f32; 30]`, which matches the on-disk curve
-/// block layout.
+/// block layout on a little-endian host.
 #[cfg(feature = "alloc")]
 fn curve_bytes<const N: usize>(curves: &[Curve; N]) -> &[u8] {
     // SAFETY: `Curve` is `#[repr(C)]` and 128 bytes with fields `a`, `b`,

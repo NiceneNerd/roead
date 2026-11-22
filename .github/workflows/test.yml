@@ -44,6 +44,25 @@ jobs:
     - name: Run tests
       run: cargo test --no-default-features --features "${{ matrix.features }}"
 
+  yaml-per-format:
+    name: yaml tests (${{ matrix.features }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        features:
+          # Each format's borrowed YAML emitter, without the other format.
+          # Integration tests only: some lib tests read the Yaz0-compressed
+          # fixture and need `yaz0`.
+          - "byml,yaml"
+          - "aamp,yaml"
+    steps:
+    - uses: actions/checkout@v4
+    - name: Install Rust
+      uses: dtolnay/rust-toolchain@stable
+    - name: Run tests
+      run: cargo test --no-default-features --features "${{ matrix.features }}" --test borrowed_yaml --test aamp_yaml
+
   no-std:
     name: no_std check (${{ matrix.name }})
     runs-on: ubuntu-latest
@@ -61,6 +80,8 @@ jobs:
             args: --no-default-features --features sarc
           - name: yaz0
             args: --no-default-features --features yaz0
+          - name: binrw
+            args: --no-default-features --features binrw
           - name: alloc + byml + aamp + yaz0
             args: --no-default-features --features alloc,byml,aamp,yaz0
     steps:
@@ -95,7 +116,9 @@ jobs:
       with:
         components: clippy
     - name: Run clippy
-      run: cargo clippy --all-features --all-targets -- -D warnings
+      # `useless_borrows_in_formatting` is allowed: the v1 emitter files are
+      # kept byte-identical, and a test-only `println!` in one of them trips it.
+      run: cargo clippy --all-features --all-targets -- -D warnings -A clippy::useless_borrows_in_formatting
 
   dependencies:
     name: dependency assertions
@@ -106,6 +129,7 @@ jobs:
       uses: dtolnay/rust-toolchain@stable
     - name: Assert serde_json is absent
       run: |
+        cargo tree --all-features >/dev/null
         if cargo tree --all-features -e features -i serde_json >/dev/null 2>&1; then
           echo "serde_json must not be in the dependency graph" >&2
           exit 1

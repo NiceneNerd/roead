@@ -47,6 +47,9 @@ impl From<u32> for NodeId {
 /// initialized and slots `[len..capacity)` are uninitialized. `get` and
 /// `get_mut` must only hand out references to initialized slots, and a slot
 /// must be written exactly once (before it is read).
+///
+/// Implementations never run `T`'s destructor (on `clear` or drop), so `T`
+/// should be a plain-data node type.
 pub trait Store<T> {
     /// Number of initialized nodes.
     fn len(&self) -> usize;
@@ -75,11 +78,14 @@ pub trait Store<T> {
     /// Callers must not hold two live mutable borrows at once.
     fn get_mut(&mut self, id: NodeId) -> Option<&mut T>;
 
-    /// Allocate the next node id, checking for `u32` overflow.
+    /// Allocate the next node id, checking for `u32` overflow. `u32::MAX`
+    /// is reserved for [`NodeId::none`], so a store may hold at most
+    /// `u32::MAX - 1` nodes.
     fn next_id(&self) -> Result<NodeId> {
-        u32::try_from(self.len())
-            .map(NodeId)
-            .map_err(|_| Error::CapacityExceeded(self.len()))
+        if self.len() >= u32::MAX as usize {
+            return Err(Error::CapacityExceeded(self.len()));
+        }
+        Ok(NodeId(self.len() as u32))
     }
 }
 
@@ -264,6 +270,9 @@ impl<'s, T> Store<T> for BorrowedStore<'s, T> {
     }
 
     fn clear(&mut self) {
+        // Nodes are plain data (see the trait docs): abandoning the slots
+        // without dropping them is sound, and `len = 0` re-joins them to
+        // the uninitialized region.
         self.len = 0;
     }
 
