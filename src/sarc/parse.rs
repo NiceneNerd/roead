@@ -57,11 +57,9 @@ impl<'a> Iterator for FileIterator<'a> {
                 name: if self.entry.rel_name_opt_offset != 0 {
                     let name_offset = self.sarc.names_offset as usize
                         + (self.entry.rel_name_opt_offset & 0xFFFFFF) as usize * 4;
-                    let term_pos = find_null(&self.sarc.data[name_offset..]).ok()?;
-                    Some(
-                        core::str::from_utf8(&self.sarc.data[name_offset..name_offset + term_pos])
-                            .ok()?,
-                    )
+                    let name_data = self.sarc.data.get(name_offset..)?;
+                    let term_pos = find_null(name_data).ok()?;
+                    Some(core::str::from_utf8(&name_data[..term_pos]).ok()?)
                 } else {
                     None
                 },
@@ -350,10 +348,12 @@ impl<'a> Sarc<'_> {
             name: if entry.rel_name_opt_offset != 0 {
                 let name_offset = self.names_offset as usize
                     + (entry.rel_name_opt_offset & 0xFFFFFF) as usize * 4;
-                let term_pos = find_null(&self.data[name_offset..])?;
-                Some(core::str::from_utf8(
-                    &self.data[name_offset..name_offset + term_pos],
-                )?)
+                let name_data = self
+                    .data
+                    .get(name_offset..)
+                    .ok_or(Error::InsufficientData(self.data.len(), name_offset))?;
+                let term_pos = find_null(name_data)?;
+                Some(core::str::from_utf8(&name_data[..term_pos])?)
             } else {
                 None
             },

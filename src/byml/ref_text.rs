@@ -226,10 +226,14 @@ fn arena_should_use_inline<'a, S: Store<Node<'a>>>(arena: &BymlArena<S>, id: Nod
                     .all(|(_, c)| is_simple(arena.node(c).expect("child missing")))
         }
         Payload::Map => {
-            node.child_count() < 10
-                && arena
-                    .children(id)
-                    .all(|(_, c)| is_simple(arena.node(c).expect("child missing")))
+            let children = sorted_children(arena, id, |a, b| match (a, b) {
+                (Key::Str(s1), Key::Str(s2)) => s1.as_bytes().cmp(s2.as_bytes()),
+                _ => Ordering::Equal,
+            });
+            children.len() < 10
+                && children
+                    .iter()
+                    .all(|(_, c)| is_simple(arena.node(*c).expect("child missing")))
         }
         _ => false,
     }

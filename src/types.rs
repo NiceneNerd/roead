@@ -117,7 +117,10 @@ impl<const N: usize> AsMut<str> for FixedSafeString<N> {
 impl<const N: usize> From<&str> for FixedSafeString<N> {
     fn from(s: &str) -> Self {
         let mut data = [0; N];
-        let len = core::cmp::min(N, s.len());
+        let mut len = core::cmp::min(N, s.len());
+        while !s.is_char_boundary(len) {
+            len -= 1;
+        }
         data[..len].copy_from_slice(&s.as_bytes()[..len]);
         Self { data, len }
     }

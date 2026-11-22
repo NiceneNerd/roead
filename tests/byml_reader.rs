@@ -370,6 +370,13 @@ fn malformed_inputs() {
     let err = expect_err::<FixedStore<Node, 64>>(&bad_utf8);
     assert!(matches!(err, Error::InvalidUtf8(_)));
 
+    // A string payload offset beyond EOF must error rather than panic.
+    let mut bad_string_offset = bad_utf8.clone();
+    bad_string_offset[0x20..0x24].copy_from_slice(&0x1000u32.to_be_bytes());
+    bad_string_offset[0x24..0x28].copy_from_slice(&0x1001u32.to_be_bytes());
+    let err = expect_err::<FixedStore<Node, 64>>(&bad_string_offset);
+    assert!(matches!(err, Error::InsufficientData(_, _)));
+
     // Binary payload extending past EOF.
     let mut bin_past = header(Endian::Big, 2, 0, 0, 0x10);
     bin_past.push(0xC0); // Array

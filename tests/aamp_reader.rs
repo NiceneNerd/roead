@@ -416,6 +416,19 @@ mod alloc_tests {
     }
 
     #[test]
+    fn owned_string_conversion_preserves_utf8_boundaries() {
+        let text = "1234567890123456789012345678901é";
+        let owned = ParameterRef::String32(text).to_owned();
+        assert_eq!(owned.as_string32().unwrap().as_str(), &text[..31]);
+
+        let fixed = FixedSafeString::<4>::from("abcé");
+        assert_eq!(fixed.as_str(), "abc");
+
+        let tiny = roead::TinyString::from("123456789012345é");
+        assert_eq!(tiny.as_str(), "123456789012345");
+    }
+
+    #[test]
     fn cross_equality_corpus() {
         for path in corpus_files() {
             let data = std::fs::read(&path).unwrap();

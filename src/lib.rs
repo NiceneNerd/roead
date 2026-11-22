@@ -142,8 +142,8 @@ impl From<binrw::io::Error> for Error {
 /// A copyable, fixed-capacity inline string holding at most 16 bytes.
 ///
 /// Used for error messages in alloc-free contexts. The contents are always
-/// valid UTF-8: [`From<&str>`] truncates input longer than 16 bytes (in
-/// release) and panics on overflow in debug builds via `debug_assert!`.
+/// valid UTF-8: [`From<&str>`] truncates input longer than 16 bytes at a
+/// character boundary.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub struct TinyString {
     data: [u8; 16],
@@ -190,11 +190,10 @@ impl TinyString {
 impl From<&str> for TinyString {
     fn from(s: &str) -> Self {
         let bytes = s.as_bytes();
-        let len = bytes.len().min(16);
-        debug_assert!(
-            len == bytes.len(),
-            "TinyString can hold at most 16 bytes; input was truncated"
-        );
+        let mut len = bytes.len().min(16);
+        while !s.is_char_boundary(len) {
+            len -= 1;
+        }
         let mut data = [0; 16];
         data[..len].copy_from_slice(&bytes[..len]);
         Self {

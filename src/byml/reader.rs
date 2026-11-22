@@ -201,15 +201,20 @@ impl<'a> Walk<'a> {
         let offset = self.read_u32_at(off_pos)? as usize;
         let next_offset = self.read_u32_at(off_pos + 4)? as usize;
         let max_len = next_offset.saturating_sub(offset);
-        let start = base.checked_add(offset).ok_or(Error::InsufficientData(self.data.len(), base))?;
-        let avail = self.data.len().saturating_sub(start);
-        let end = start + max_len.min(avail);
+        let start = base
+            .checked_add(offset)
+            .ok_or(Error::InsufficientData(self.data.len(), base))?;
+        let bytes = self
+            .data
+            .get(start..)
+            .ok_or(Error::InsufficientData(self.data.len(), start))?;
+        let end = max_len.min(bytes.len());
         let mut len = 0;
-        while start + len < end && self.data[start + len] != 0 {
+        while len < end && bytes[len] != 0 {
             len += 1;
         }
         // `Utf8Error` converts into [`Error::InvalidUtf8`] via `From`.
-        core::str::from_utf8(&self.data[start..start + len]).map_err(Into::into)
+        core::str::from_utf8(&bytes[..len]).map_err(Into::into)
     }
 
     /// Resolve an index into the string table.

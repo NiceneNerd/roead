@@ -209,44 +209,44 @@ fn scalar_root_panics() {
 
 #[test]
 fn arena_duplicate_map_keys_match_owned() {
-    // A big-endian map with two entries under the same string key: the
-    // owned map overwrites on duplicate insert, so the arena emitter must
-    // collapse to the last value as well.
-    let mut doc = b"BY".to_vec();
-    doc.extend_from_slice(&2u16.to_be_bytes()); // version
-    doc.extend_from_slice(&0x2Cu32.to_be_bytes()); // hash key table at 0x2C
-    doc.extend_from_slice(&0u32.to_be_bytes()); // no string table
-    doc.extend_from_slice(&0x10u32.to_be_bytes()); // root at 0x10
-    doc.push(0xC1); // Map
-    doc.extend_from_slice(&2u32.to_be_bytes()[1..]); // size = 2
-    for value in [0x24u32, 0x28u32] {
-        doc.extend_from_slice(&0u32.to_be_bytes()[1..]); // name index 0
-        doc.push(0xD1); // I32
-        doc.extend_from_slice(&value.to_be_bytes());
-    }
-    doc.extend_from_slice(&1i32.to_be_bytes()); // first value
-    doc.extend_from_slice(&2i32.to_be_bytes()); // second value
-    // String table node at 0x2C: tag 0xC2, size 1, then start/end offsets
-    // relative to the node, then the string.
-    doc.extend_from_slice(&[0xC2, 0x00, 0x00, 0x01]);
-    doc.extend_from_slice(&0x0Cu32.to_be_bytes()); // start: 0x2C + 12 = 0x38
-    doc.extend_from_slice(&0x10u32.to_be_bytes()); // end: 0x2C + 16 = 0x3C
-    doc.extend_from_slice(b"key\0");
+    // The owned map overwrites on duplicate insert. The arena emitter must
+    // collapse to the last value before deciding whether to use flow style:
+    // ten raw entries can therefore still produce an inline one-entry map.
+    for count in [2u32, 10] {
+        let hash_key_table = 0x10 + 4 + 8 * count;
+        let mut doc = b"BY".to_vec();
+        doc.extend_from_slice(&2u16.to_be_bytes()); // version
+        doc.extend_from_slice(&hash_key_table.to_be_bytes());
+        doc.extend_from_slice(&0u32.to_be_bytes()); // no string table
+        doc.extend_from_slice(&0x10u32.to_be_bytes()); // root at 0x10
+        doc.push(0xC1); // Map
+        doc.extend_from_slice(&count.to_be_bytes()[1..]);
+        for value in 0..count {
+            doc.extend_from_slice(&0u32.to_be_bytes()[1..]); // name index 0
+            doc.push(0xD1); // I32
+            doc.extend_from_slice(&value.to_be_bytes());
+        }
+        // String table: tag 0xC2, size 1, then relative start/end offsets.
+        doc.extend_from_slice(&[0xC2, 0x00, 0x00, 0x01]);
+        doc.extend_from_slice(&0x0Cu32.to_be_bytes());
+        doc.extend_from_slice(&0x10u32.to_be_bytes());
+        doc.extend_from_slice(b"key\0");
 
-    let expected = Byml::from_binary(&doc).unwrap().to_text();
-    assert_eq!(
-        BymlRef::from_binary(&doc).unwrap().to_text(),
-        expected,
-        "BymlRef duplicate-key mismatch"
-    );
-    assert_eq!(
-        BymlArena::<OwnedStore<Node<'_>>>::from_binary(&doc)
-            .unwrap()
-            .to_text(),
-        expected,
-        "arena duplicate-key mismatch"
-    );
-    assert_eq!(parse_slice_text(&doc), expected);
+        let expected = Byml::from_binary(&doc).unwrap().to_text();
+        assert_eq!(
+            BymlRef::from_binary(&doc).unwrap().to_text(),
+            expected,
+            "BymlRef duplicate-key mismatch with {count} raw entries"
+        );
+        assert_eq!(
+            BymlArena::<OwnedStore<Node<'_>>>::from_binary(&doc)
+                .unwrap()
+                .to_text(),
+            expected,
+            "arena duplicate-key mismatch with {count} raw entries"
+        );
+        assert_eq!(parse_slice_text(&doc), expected);
+    }
 }
 
 // ---------------------------------------------------------------------------

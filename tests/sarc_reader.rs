@@ -173,7 +173,7 @@ fn index_out_of_range() {
 
 #[cfg(feature = "std")]
 #[test]
-fn data_range_out_of_bounds() {
+fn entry_offsets_out_of_bounds() {
     // num_files=1 whose single entry claims a data range past the end of the
     // archive. Layout: SARC(0x14) + SFAT(0x0C) + 1 entry(0x10) + SFNT(0x08).
     let mut buf = vec![0u8; 0x38];
@@ -197,6 +197,15 @@ fn data_range_out_of_bounds() {
     let sarc = Sarc::new(&buf).unwrap();
     assert_eq!(sarc.len(), 1);
     assert!(sarc.file_at(0).is_err());
+
+    // An invalid name offset must likewise error in file_at and terminate
+    // iteration rather than panic in either path.
+    buf[0x24..0x28].copy_from_slice(&0x00FF_FFFFu32.to_le_bytes());
+    buf[0x28..0x30].fill(0);
+    let sarc = Sarc::new(&buf).unwrap();
+    let err = sarc.file_at(0).unwrap_err();
+    assert!(matches!(err, Error::InsufficientData(..)));
+    assert!(sarc.files().next().is_none());
 }
 
 // ---- are_files_equal + File equality (fast path) ----
