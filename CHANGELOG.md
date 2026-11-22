@@ -19,9 +19,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Bumped edition to 2024 and MSRV to 1.100; crate version is now 2.0.0.
 - New feature split: `std` implies `alloc`, both are on by default, and
   `--no-default-features` builds a pure `no_std` library. The `std` feature
-  gathers the std-only dependencies (yaml machinery, name table,
-  `SarcWriter`'s serde_json, ...), while `alloc` gathers the allocator and
-  everything that needs it.
+  gathers the std-only dependencies (yaml machinery, name table, ...), while
+  `alloc` gathers the allocator and everything that needs it.
+- `SarcWriter` no longer parses `data/aglenv_file_info.json` at runtime: the
+  AGLEnv alignment table is checked in as generated data
+  (`src/sarc/aglenv.rs`) and verified against the source JSON by
+  `tests/sarc_aglenv.rs` (`UPDATE_AGLENV=1` to regenerate, `cargo fmt` to
+  format). `serde` and `serde_json` are no longer dependencies of the `std`
+  feature (`serde` remains available via `with-serde`).
 - `Error` rework:
   - `Clone` for `Error` was removed (it was a panicking stub; wrapping errors
     are not generally cloneable).
@@ -42,9 +47,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Bumped edition to 2024 and MSRV to 1.100; crate version is now 2.0.0.
 - New feature split: `std` implies `alloc`, both are on by default, and
   `--no-default-features` builds a pure `no_std` library. The `std` feature
-  gathers the std-only dependencies (yaml machinery, name table,
-  `SarcWriter`'s serde_json, ...), while `alloc` gathers the allocator and
-  everything that needs it.
+  gathers the std-only dependencies (yaml machinery, name table, ...), while
+  `alloc` gathers the allocator and everything that needs it.
 - **SARC reader is now alloc-free** and no longer requires `std`:
   - `Sarc::new(data: &'a [u8]) -> Result<Sarc<'a>>` borrows the data and
     never allocates or owns it. The old `new<T: Into<Cow<'a, [u8]>>>`

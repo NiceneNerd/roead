@@ -30,7 +30,6 @@ rustc-hash = { version = "2.0", optional = true, default-features = false }
 ryml = { version = "0.3.2", optional = true, features = ["std"] }
 scc = { version = "2.1", optional = true }
 serde = { version = "1", optional = true, default-features = false, features = ["derive", "alloc"] }
-serde_json = { version = "1", optional = true }
 smartstring = { version = "1", optional = true, default-features = false }
 thiserror = { version = "2", default-features = false }
 
@@ -46,10 +45,10 @@ default = ["std", "alloc", "aamp", "byml", "sarc", "yaz0"]
 # std-only facilities. The YAML machinery (ryml/lexical/base64/parking_lot/
 # join_str/scc) is deliberately NOT here: those deps are only referenced by
 # `yaml`-gated code, and enabling them with `std` would make them unused
-# dependencies whenever `yaml` is off. SarcWriter's serde/serde_json are
-# temporary (see step 6).
-std = ["alloc", "serde", "serde_json", "binrw?/std", "indexmap?/std", "smartstring?/std", "rustc-hash?/std", "base64?/std"]
-# TODO(step 6): drop serde/serde_json from `std` once SarcWriter no longer needs them
+# dependencies whenever `yaml` is off. `SarcWriter` no longer needs serde or
+# serde_json (its AGLEnv alignment table is checked in as generated data — see
+# src/sarc/aglenv.rs).
+std = ["alloc", "binrw?/std", "indexmap?/std", "smartstring?/std", "rustc-hash?/std", "base64?/std"]
 # allocator + everything that needs it
 alloc = ["smartstring", "indexmap", "rustc-hash", "binrw", "hashbrown"]
 aamp = ["almost", "num-traits"]

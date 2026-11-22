@@ -41,12 +41,23 @@
 //! # Ok(())
 //! # }
 //! ```
+#[cfg(feature = "std")]
+mod aglenv;
 mod parse;
 #[cfg(feature = "std")]
 mod write;
 pub use parse::Sarc;
 #[cfg(feature = "std")]
 pub use write::SarcWriter;
+
+/// The checked-in AGLEnv alignment requirements: `(extension, alignment)`
+/// pairs flattened in `data/aglenv_file_info.json` entry order (entries with
+/// negative alignment excluded). Used by [`SarcWriter`] for default
+/// alignments and verified against the source JSON by `tests/sarc_aglenv.rs`.
+#[cfg(feature = "std")]
+pub fn agl_env_alignment_requirements() -> &'static [(&'static str, usize)] {
+    aglenv::AGLENV_ALIGNMENT_REQUIREMENTS
+}
 
 /// Provides readonly access to a file that is stored in a SARC archive.
 #[derive(Debug, Eq)]

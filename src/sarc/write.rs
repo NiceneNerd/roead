@@ -10,14 +10,13 @@ use binrw::{BinReaderExt, BinWrite, io::Write};
 use indexmap::IndexMap;
 use num_integer::Integer;
 use rustc_hash::{FxHashMap, FxHashSet};
-use serde::Deserialize;
 
+use super::aglenv::AGLENV_ALIGNMENT_REQUIREMENTS;
 use super::*;
 use crate::sarc::parse::{ResFatEntry, ResFatHeader, ResFntHeader, ResHeader};
 use crate::{Endian, Result};
 
 static FACTORY_INFO: &str = include_str!("../../data/botw_resource_factory_info.tsv");
-static AGLENV_INFO: &str = include_str!("../../data/aglenv_file_info.json");
 const HASH_MULTIPLIER: u32 = 0x65;
 
 impl BinWrite for Endian {
@@ -150,35 +149,11 @@ fn get_botw_factory_names() -> &'static FxHashSet<&'static str> {
     FACTOR_NAMES.deref()
 }
 
-#[derive(Deserialize)]
-#[allow(dead_code)]
-struct AglEnvInfo {
-    id: u16,
-    i0: u16,
-    ext: String,
-    bext: String,
-    s: Option<String>,
-    align: i32,
-    system: String,
-    desc: String,
-}
-
 #[inline(always)]
 fn align(pos: usize, alignment: usize) -> usize {
     let pos = pos as i64;
     let alignment = alignment as i64;
     (pos + (alignment - pos % alignment) % alignment) as usize
-}
-
-fn get_agl_env_alignment_requirements() -> &'static Vec<(String, usize)> {
-    static AGLENV_ALIGN: LazyLock<Vec<(String, usize)>> = LazyLock::new(|| {
-        unsafe { serde_json::from_str::<Vec<AglEnvInfo>>(AGLENV_INFO).unwrap_unchecked() }
-            .into_iter()
-            .filter_map(|e| (e.align >= 0).then_some((e.align as usize, e)))
-            .flat_map(|(align, entry)| [(entry.ext, align), (entry.bext, align)].into_iter())
-            .collect()
-    });
-    AGLENV_ALIGN.deref()
 }
 
 /// A simple SARC archive writer
@@ -390,8 +365,8 @@ impl SarcWriter {
     fn add_default_alignments(&mut self) {
         // This is perfectly sound because all of these alignments are powers
         // of 2 and thus the calls cannot fail.
-        for (ext, alignment) in get_agl_env_alignment_requirements() {
-            self.add_alignment_requirement(ext.clone(), *alignment);
+        for &(ext, alignment) in AGLENV_ALIGNMENT_REQUIREMENTS {
+            self.add_alignment_requirement(ext.to_string(), alignment);
         }
         self.add_alignment_requirement("ksky".to_owned(), 8);
         self.add_alignment_requirement("bksky".to_owned(), 8);
@@ -620,6 +595,34 @@ mod tests {
                         .0
                 );
             }
+        }
+    }
+
+    #[test]
+    fn default_alignments_match_table_last_wins() {
+        use crate::Endian;
+
+        let mut writer = SarcWriter::new(Endian::Little);
+        writer.add_default_alignments();
+
+        // Every source entry uses alignment 8, and the duplicated extensions
+        // (aglenv, baglenv) repeat with that same alignment, so HashMap
+        // last-wins still resolves to 8 for each of them. The map must reflect
+        // the checked-in table entry-for-entry.
+        for (ext, align) in [
+            ("aglenv", 8usize),
+            ("baglenv", 8),
+            ("aglblm", 8),
+            ("agldof", 8),
+            ("glght", 8),
+            ("pref", 8),
+            ("glpbd", 8),
+        ] {
+            assert_eq!(
+                writer.alignment_map.get(ext),
+                Some(&align),
+                "default alignment for {ext} should equal its table entry {align} (last-wins)"
+            );
         }
     }
 }
