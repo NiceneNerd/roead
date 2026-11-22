@@ -30,8 +30,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `aamp::arena::ParameterIOArena`/`ParameterIOStack` built on the same
   generic stores (`storage::{Store, OwnedStore, FixedStore, BorrowedStore}`).
 - **YAML emission directly from the zero-copy readers** (`std` + `yaml`):
-  `BymlRef::to_text()` and `BymlArena::to_text()`. Output is byte-identical
-  to the owned emitters, so no owned tree has to be materialized.
+  `BymlRef::to_text()`, `BymlArena::to_text()`, `ParameterIORef::to_text()`
+  and `ParameterIOArena::to_text()`. Output is byte-identical to the owned
+  emitters, so no owned tree has to be materialized. `ParameterIOArena` also
+  retains the header's `version` and `data_type` (`version()`, `data_type()`)
+  so it can emit them without the owned type.
 - Container nesting is capped at 128 levels (`BYML_MAX_DEPTH`,
   `AAMP_MAX_DEPTH`), which also bounds malicious self-referential input.
 

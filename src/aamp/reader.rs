@@ -1125,13 +1125,17 @@ fn read_bytes_at<'a>(data: &'a [u8], pos: usize, len: usize) -> Result<&'a [u8]>
 }
 
 /// Runs the shared format walk over `data`, reporting into `sink`. Returns
-/// the root node produced by the sink (the root list).
+/// the root node produced by the sink (the root list) together with the
+/// header's data `version` and `data_type` string.
 pub(crate) fn parse_aamp<'a, Sink: AampSink<'a>>(
     data: &'a [u8],
     sink: &mut Sink,
-) -> Result<Sink::Node> {
+) -> Result<(Sink::Node, u32, &'a str)> {
     let mut walk = Walk::new(data)?;
-    walk.walk_root(sink)
+    let version = walk.version();
+    let data_type = walk.data_type();
+    let node = walk.walk_root(sink)?;
+    Ok((node, version, data_type))
 }
 
 /// Sink for the shared AAMP format walk.

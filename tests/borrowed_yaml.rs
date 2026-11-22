@@ -8,11 +8,14 @@
 use std::borrow::Cow;
 use std::fs;
 use std::panic;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 use roead::Endian;
+use roead::aamp::arena::{AampNode, ParameterIOArena, ParameterIOStack};
+use roead::aamp::{ParameterIO, ParameterIORef};
 use roead::byml::arena::*;
 use roead::byml::{Byml, BymlRef};
+use roead::storage::{BorrowedStore, OwnedStore};
 
 /// Path of a file inside `test/byml/`.
 fn byml_file(name: &str) -> PathBuf {
@@ -328,4 +331,251 @@ fn stack_parse_in_place_reuse_and_from_binary() {
     // `from_binary` remains available for small inline capacities.
     let from_bin = BymlStack::<1024>::from_binary(tiny.as_ref()).unwrap();
     assert_eq!(from_bin.to_text(), tiny_expected);
+}
+
+// ---------------------------------------------------------------------------
+// AAMP: byte-identity against the owned emitter, across the corpus
+// ---------------------------------------------------------------------------
+
+/// Every non-YAML binary file under `test/aamp/`, recursively, sorted.
+fn aamp_corpus_files() -> Vec<PathBuf> {
+    fn add(dir: &Path, out: &mut Vec<PathBuf>) {
+        for entry in fs::read_dir(dir).unwrap() {
+            let path = entry.unwrap().path();
+            if path.is_dir() {
+                add(&path, out);
+            } else if path.extension().and_then(|e| e.to_str()) != Some("yml") {
+                out.push(path);
+            }
+        }
+    }
+    let mut out = Vec::new();
+    add(Path::new("test/aamp"), &mut out);
+    out.sort();
+    out
+}
+
+/// Read an AAMP corpus file.
+fn aamp_load(path: &Path) -> Vec<u8> {
+    fs::read(path).unwrap()
+}
+
+#[test]
+fn aamp_byte_identity_corpus() {
+    for path in aamp_corpus_files() {
+        let data = aamp_load(&path);
+        let expected = ParameterIO::from_binary(&data).unwrap().to_text();
+
+        assert_eq!(
+            ParameterIORef::from_binary(&data).unwrap().to_text(),
+            expected,
+            "ParameterIORef byte-identity failed for {}",
+            path.display()
+        );
+        assert_eq!(
+            ParameterIOArena::<OwnedStore<AampNode<'_>>>::from_binary(&data)
+                .unwrap()
+                .to_text(),
+            expected,
+            "OwnedStore byte-identity failed for {}",
+            path.display()
+        );
+
+        // A caller-owned `BorrowedStore`, sized from a counting parse.
+        let count = ParameterIOArena::<OwnedStore<AampNode<'_>>>::from_binary(&data)
+            .unwrap()
+            .len();
+        let mut buffer: Vec<AampNode<'_>> = Vec::with_capacity(count);
+        let arena =
+            ParameterIOArena::<BorrowedStore<'_, AampNode<'_>>>::from_binary_in(
+                &data,
+                buffer.spare_capacity_mut(),
+            )
+            .unwrap();
+        assert_eq!(
+            arena.to_text(),
+            expected,
+            "BorrowedStore byte-identity failed for {}",
+            path.display()
+        );
+
+        // `ParameterIOStack` has a fixed 4096-node capacity: skip documents
+        // that do not fit. Parsed in place so the inline store is never moved
+        // by value.
+        let mut stack = ParameterIOStack::<4096>::new();
+        if stack.parse_in_place(&data).is_ok() {
+            assert_eq!(
+                stack.to_text(),
+                expected,
+                "ParameterIOStack byte-identity failed for {}",
+                path.display()
+            );
+        }
+    }
+}
+
+// ---------------------------------------------------------------------------
+// AAMP: direct fixture check
+// ---------------------------------------------------------------------------
+
+#[test]
+fn aamp_fixture_engine_rom_horse_link() {
+    let data = aamp_load(Path::new("test/aamp/EngineRom_Horse_Link.bphysics"));
+    let expected =
+        fs::read_to_string("test/fixtures/aamp/EngineRom_Horse_Link.bphysics.yml.expected")
+            .unwrap();
+    assert_eq!(
+        ParameterIORef::from_binary(&data).unwrap().to_text(),
+        expected
+    );
+    assert_eq!(
+        ParameterIOArena::<OwnedStore<AampNode<'_>>>::from_binary(&data)
+            .unwrap()
+            .to_text(),
+        expected
+    );
+}
+
+// ---------------------------------------------------------------------------
+// AAMP: roundtrip through the owned YAML parser
+// ---------------------------------------------------------------------------
+
+#[test]
+fn aamp_roundtrip_corpus() {
+    for path in aamp_corpus_files() {
+        let data = aamp_load(&path);
+        let ref_text = ParameterIORef::from_binary(&data).unwrap().to_text();
+        let roundtripped = ParameterIO::from_text(&ref_text).unwrap();
+        let original = ParameterIO::from_binary(&data).unwrap();
+        assert_eq!(
+            roundtripped,
+            original,
+            "roundtrip failed for {}",
+            path.display()
+        );
+    }
+}
+
+// ---------------------------------------------------------------------------
+// AAMP: stack arena reuse
+// ---------------------------------------------------------------------------
+
+#[test]
+fn aamp_stack_parse_in_place_reuse() {
+    // Both documents are a few hundred bytes and fit the 4096-node store.
+    let first = aamp_load(Path::new("test/aamp/Horse.blifecondition"));
+    let second = aamp_load(Path::new("test/aamp/AS/Horse_Link_Surprised.bas"));
+    let first_expected = ParameterIO::from_binary(&first).unwrap().to_text();
+    let second_expected = ParameterIO::from_binary(&second).unwrap().to_text();
+
+    let mut stack = ParameterIOStack::<4096>::new();
+    stack.parse_in_place(&first).unwrap();
+    assert_eq!(stack.to_text(), first_expected);
+
+    // Re-parsing discards the previous document (`Store::clear`).
+    stack.parse_in_place(&second).unwrap();
+    assert_eq!(stack.to_text(), second_expected);
+}
+
+// ---------------------------------------------------------------------------
+// AAMP: minimal archive, header values, malformed input
+// ---------------------------------------------------------------------------
+
+/// A minimal valid AAMP archive: header, `"xml"` data type at 0x30 and an
+/// empty root list named `param_root` at 0x34.
+fn aamp_minimal_root_bytes() -> Vec<u8> {
+    let mut out = b"AAMP".to_vec();
+    out.extend_from_slice(&2u32.to_le_bytes()); // format version
+    out.extend_from_slice(&3u32.to_le_bytes()); // flags: LE + UTF-8
+    out.extend_from_slice(&0u32.to_le_bytes()); // file size (unused)
+    out.extend_from_slice(&7u32.to_le_bytes()); // pio_version
+    out.extend_from_slice(&4u32.to_le_bytes()); // pio_offset: root at 0x34
+    out.extend_from_slice(&[0u8; 24]); // counts and section sizes
+    out.extend_from_slice(b"xml\0"); // data_type at 0x30
+    out.extend_from_slice(&roead::aamp::hash_name("param_root").to_le_bytes());
+    out.extend_from_slice(&[0u8; 8]); // lists_rel, list_count, objects_rel, object_count
+    out
+}
+
+#[test]
+fn aamp_minimal_archive() {
+    let data = aamp_minimal_root_bytes();
+    let owned = ParameterIO::from_binary(&data).unwrap();
+    assert_eq!(owned.version, 7);
+    assert_eq!(owned.data_type, "xml");
+
+    let expected = owned.to_text();
+    assert_eq!(
+        ParameterIORef::from_binary(&data).unwrap().to_text(),
+        expected
+    );
+    let arena = ParameterIOArena::<OwnedStore<AampNode<'_>>>::from_binary(&data).unwrap();
+    assert_eq!(arena.version(), 7);
+    assert_eq!(arena.data_type(), "xml");
+    assert_eq!(arena.to_text(), expected);
+}
+
+#[test]
+fn aamp_malformed_input_errors() {
+    let bad_magic = b"NOPE".to_vec();
+    assert!(ParameterIO::from_binary(&bad_magic).is_err());
+    assert!(ParameterIORef::from_binary(&bad_magic).is_err());
+    assert!(ParameterIOArena::<OwnedStore<AampNode<'_>>>::from_binary(&bad_magic).is_err());
+
+    // Truncated header.
+    let truncated = b"AAMP".to_vec();
+    assert!(ParameterIO::from_binary(&truncated).is_err());
+    assert!(ParameterIORef::from_binary(&truncated).is_err());
+    assert!(ParameterIOArena::<OwnedStore<AampNode<'_>>>::from_binary(&truncated).is_err());
+
+    // Unsupported format version.
+    let mut bad_version = aamp_minimal_root_bytes();
+    bad_version[4..8].copy_from_slice(&3u32.to_le_bytes());
+    assert!(ParameterIO::from_binary(&bad_version).is_err());
+    assert!(ParameterIORef::from_binary(&bad_version).is_err());
+    assert!(ParameterIOArena::<OwnedStore<AampNode<'_>>>::from_binary(&bad_version).is_err());
+}
+
+/// Root list -> object `"Obj"` -> two params both named `"Dup"`, an `Int`
+/// with values 1 then 2.
+fn aamp_duplicate_param_bytes() -> Vec<u8> {
+    let mut bytes = aamp_minimal_root_bytes();
+    // Root entry at 0x34: objects table at 0x34 + 4*4 = 0x44.
+    bytes[0x34 + 8..0x34 + 10].copy_from_slice(&(4u16).to_le_bytes()); // objects_rel
+    bytes[0x34 + 10..0x34 + 12].copy_from_slice(&[1u8, 0]); // object_count
+    // Object entry "Obj" at 0x44: params table at 0x44 + 4*4 = 0x54.
+    bytes.resize(0x54, 0);
+    bytes[0x44..0x48].copy_from_slice(&roead::aamp::hash_name("Obj").to_le_bytes());
+    bytes[0x48..0x4a].copy_from_slice(&(4u16).to_le_bytes()); // params_rel
+    bytes[0x4a..0x4c].copy_from_slice(&[2u8, 0]); // param_count
+    // Param entries at 0x54 and 0x5c; data at 0x64 and 0x68.
+    bytes.resize(0x6c, 0);
+    let dup = roead::aamp::hash_name("Dup").to_le_bytes();
+    bytes[0x54..0x58].copy_from_slice(&dup);
+    bytes[0x58..0x5b].copy_from_slice(&[4u8, 0, 0]); // data_rel = 4 -> 0x64
+    bytes[0x5b] = 2; // Int
+    bytes[0x5c..0x60].copy_from_slice(&dup);
+    bytes[0x60..0x63].copy_from_slice(&[3u8, 0, 0]); // data_rel = 3 -> 0x68
+    bytes[0x63] = 2; // Int
+    bytes[0x64..0x68].copy_from_slice(&1i32.to_le_bytes());
+    bytes[0x68..0x6c].copy_from_slice(&2i32.to_le_bytes());
+    bytes
+}
+
+#[test]
+fn aamp_duplicate_names_match_owned() {
+    // The owned maps collapse duplicate names (first position, last value);
+    // the borrowed emitters must do the same.
+    let data = aamp_duplicate_param_bytes();
+    let expected = ParameterIO::from_binary(&data).unwrap().to_text();
+    assert_eq!(
+        ParameterIORef::from_binary(&data).unwrap().to_text(),
+        expected
+    );
+    assert_eq!(
+        ParameterIOArena::<OwnedStore<AampNode<'_>>>::from_binary(&data)
+            .unwrap()
+            .to_text(),
+        expected
+    );
 }

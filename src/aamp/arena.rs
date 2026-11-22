@@ -27,7 +27,7 @@ pub use storage::NodeId;
 
 /// A fixed-capacity arena backed by a [`FixedStore`](crate::storage::FixedStore).
 pub type ParameterIOStack<'a, const N: usize> =
-    ParameterIOArena<storage::FixedStore<AampNode<'a>, N>>;
+    ParameterIOArena<'a, storage::FixedStore<AampNode<'a>, N>>;
 
 /// The payload of a node in a [`ParameterIOArena`].
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -167,12 +167,14 @@ impl<'a> AampNode<'a> {
 
 /// A flat AAMP parameter IO stored in `S`, with all payloads borrowed from the
 /// input buffer.
-pub struct ParameterIOArena<S> {
+pub struct ParameterIOArena<'a, S> {
     store: S,
     root: NodeId,
+    version: u32,
+    data_type: &'a str,
 }
 
-impl<'a, S: Store<AampNode<'a>> + Default> ParameterIOArena<S> {
+impl<'a, S: Store<AampNode<'a>> + Default> ParameterIOArena<'a, S> {
     /// Read a parameter archive from binary data, borrowing all strings and
     /// payloads from `data`.
     ///
@@ -202,6 +204,8 @@ impl<'a, S: Store<AampNode<'a>> + Default> ParameterIOArena<S> {
         let mut this = Self {
             store: S::default(),
             root: NodeId::none(),
+            version: 0,
+            data_type: "",
         };
         this.parse_in_place(data)?;
         Ok(this)
@@ -212,6 +216,8 @@ impl<'a, S: Store<AampNode<'a>> + Default> ParameterIOArena<S> {
         Self {
             store: S::default(),
             root: NodeId::none(),
+            version: 0,
+            data_type: "",
         }
     }
 
@@ -223,7 +229,7 @@ impl<'a, S: Store<AampNode<'a>> + Default> ParameterIOArena<S> {
     /// store.
     pub fn parse_in_place(&mut self, data: &'a [u8]) -> Result<()> {
         self.store.clear();
-        let root = {
+        let (root, version, data_type) = {
             let mut sink = ArenaSink {
                 store: &mut self.store,
                 stack: [(NodeId::none(), None); AAMP_MAX_DEPTH + 1],
@@ -232,11 +238,13 @@ impl<'a, S: Store<AampNode<'a>> + Default> ParameterIOArena<S> {
             reader_mod::parse_aamp(data, &mut sink)?
         };
         self.root = root;
+        self.version = version;
+        self.data_type = data_type;
         Ok(())
     }
 }
 
-impl<'s, 'a> ParameterIOArena<storage::BorrowedStore<'s, AampNode<'a>>> {
+impl<'s, 'a> ParameterIOArena<'a, storage::BorrowedStore<'s, AampNode<'a>>> {
     /// Read a parameter archive into caller-provided `slots`, borrowing all
     /// strings and payloads from `data`. No allocation occurs.
     ///
@@ -247,7 +255,7 @@ impl<'s, 'a> ParameterIOArena<storage::BorrowedStore<'s, AampNode<'a>>> {
         slots: &'s mut [core::mem::MaybeUninit<AampNode<'a>>],
     ) -> Result<Self> {
         let mut store = storage::BorrowedStore::new(slots);
-        let root = {
+        let (root, version, data_type) = {
             let mut sink = ArenaSink {
                 store: &mut store,
                 stack: [(NodeId::none(), None); AAMP_MAX_DEPTH + 1],
@@ -255,24 +263,41 @@ impl<'s, 'a> ParameterIOArena<storage::BorrowedStore<'s, AampNode<'a>>> {
             };
             reader_mod::parse_aamp(data, &mut sink)?
         };
-        Ok(ParameterIOArena { store, root })
+        Ok(ParameterIOArena {
+            store,
+            root,
+            version,
+            data_type,
+        })
     }
 }
 
-impl<S> core::fmt::Debug for ParameterIOArena<S> {
+impl<S> core::fmt::Debug for ParameterIOArena<'_, S> {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         f.debug_struct("ParameterIOArena")
             .field("root", &self.root)
+            .field("version", &self.version)
+            .field("data_type", &self.data_type)
             .field("store", &"..")
             .finish()
     }
 }
 
-impl<'a, S: Store<AampNode<'a>>> ParameterIOArena<S> {
+impl<'a, S: Store<AampNode<'a>>> ParameterIOArena<'a, S> {
     /// The root node id (always `Some` after a successful
     /// [`from_binary`](ParameterIOArena::from_binary)).
     pub fn root(&self) -> Option<NodeId> {
         Some(self.root)
+    }
+
+    /// The data version from the header (not the AAMP format version).
+    pub fn version(&self) -> u32 {
+        self.version
+    }
+
+    /// The data type string from the header (e.g. `"xml"`).
+    pub fn data_type(&self) -> &'a str {
+        self.data_type
     }
 
     /// Get a shared reference to a node by id.

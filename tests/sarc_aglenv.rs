@@ -1,4 +1,4 @@
-#![cfg(feature = "std")]
+#![cfg(all(feature = "sarc", feature = "std"))]
 
 //! Checks that the checked-in AGLEnv alignment table
 //! (`src/sarc/aglenv.rs`) matches `data/aglenv_file_info.json`.

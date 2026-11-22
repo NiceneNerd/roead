@@ -52,6 +52,8 @@ mod owned;
 mod parser;
 mod reader;
 #[cfg(feature = "yaml")]
+mod ref_text;
+#[cfg(feature = "yaml")]
 mod text;
 #[cfg(feature = "alloc")]
 mod writer;

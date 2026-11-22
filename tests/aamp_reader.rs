@@ -92,8 +92,8 @@ fn buffer_int_bytes() -> Vec<u8> {
 /// Compares two arenas' traversals recursively: node names, payloads and
 /// child order.
 fn assert_arena_traversal_eq<'a, S1: Store<AampNode<'a>>, S2: Store<AampNode<'a>>>(
-    a: &ParameterIOArena<S1>,
-    b: &ParameterIOArena<S2>,
+    a: &ParameterIOArena<'a, S1>,
+    b: &ParameterIOArena<'a, S2>,
     id1: NodeId,
     id2: NodeId,
 ) {
@@ -338,7 +338,7 @@ mod alloc_tests {
     /// over objects and lists by name.
     fn assert_ref_matches_arena<'a, S: Store<AampNode<'a>>>(
         ref_list: &ParameterListRef<'a>,
-        arena: &ParameterIOArena<S>,
+        arena: &ParameterIOArena<'a, S>,
         id: NodeId,
     ) {
         let node = arena.node(id).expect("node missing from arena");
@@ -363,7 +363,7 @@ mod alloc_tests {
 
     fn assert_arena_object_eq<'a, S: Store<AampNode<'a>>>(
         ref_obj: &ParameterObjectRef<'a>,
-        arena: &ParameterIOArena<S>,
+        arena: &ParameterIOArena<'a, S>,
         id: NodeId,
     ) {
         let node = arena.node(id).expect("node missing from arena");
@@ -379,7 +379,7 @@ mod alloc_tests {
 
     fn assert_arena_param_eq<'a, S: Store<AampNode<'a>>>(
         ref_param: &ParameterRef<'a>,
-        arena: &ParameterIOArena<S>,
+        arena: &ParameterIOArena<'a, S>,
         id: NodeId,
     ) {
         let node = arena.node(id).expect("node missing from arena");
