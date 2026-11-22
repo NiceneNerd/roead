@@ -19,10 +19,10 @@ and what to write instead.
 | Features | What you get |
 | --- | --- |
 | *(none)* | Pure `core` library: the error type and shared utilities. Each format module needs its own feature. |
-| `alloc` | Everything above plus every allocating type and the owned BYML/AAMP parsers and writers. |
+| `alloc` | Everything above plus allocation support. With `byml` or `aamp`, this enables the format's owned types, parsers, and writers. |
 | `std` | `alloc` plus the standard library (implies `alloc`). |
 | `byml`, `aamp`, `sarc`, `yaz0` | Enable the corresponding module. Each module self-gates its items, so e.g. `--no-default-features --features byml` compiles the core-only BYML walk and arena readers without an allocator. |
-| `yaml` | Owned *and* borrowed BYML/AAMP ⇄ YAML. Implies `std` (it depends on `ryml`). |
+| `yaml` | Owned *and* borrowed YAML support for each enabled BYML/AAMP module. Implies `std` (it depends on `ryml`). |
 | `with-serde` | `serde` derives for the owned types. `serde_json` is no longer a dependency. |
 
 The default feature set is `std, alloc, aamp, byml, sarc, yaz0`.

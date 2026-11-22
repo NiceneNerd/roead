@@ -1,10 +1,8 @@
 //! Generic node stores shared by the flat arena readers
 //! ([`crate::byml::arena`] and [`crate::aamp::arena`]).
 //!
-//! All stores hold nodes of type `T` in a contiguous, never-merged backing
-//! and hand out [`NodeId`] indices. Nodes are written exactly once and never
-//! removed or moved, so references into a stable prefix of the store remain
-//! valid for the lifetime of the borrow.
+//! All stores hold nodes of type `T` in contiguous storage and hand out
+//! [`NodeId`] indices into the initialized prefix.
 //!
 //! This module is core-only: none of the stores require an allocator beyond
 //! what the caller provides.
@@ -48,8 +46,9 @@ impl From<u32> for NodeId {
 /// `get_mut` must only hand out references to initialized slots, and a slot
 /// must be written exactly once (before it is read).
 ///
-/// Implementations never run `T`'s destructor (on `clear` or drop), so `T`
-/// should be a plain-data node type.
+/// [`FixedStore`] and [`BorrowedStore`] never run `T`'s destructor (on
+/// `clear` or drop), so `T` should be a plain-data node type. [`OwnedStore`]
+/// follows `Vec`'s normal drop behavior.
 pub trait Store<T> {
     /// Number of initialized nodes.
     fn len(&self) -> usize;
@@ -79,7 +78,7 @@ pub trait Store<T> {
 
     /// Allocate the next node id, checking for `u32` overflow. `u32::MAX`
     /// is reserved for [`NodeId::none`], so a store may hold at most
-    /// `u32::MAX - 1` nodes.
+    /// `u32::MAX` nodes.
     fn next_id(&self) -> Result<NodeId> {
         if self.len() >= u32::MAX as usize {
             return Err(Error::CapacityExceeded(self.len()));
@@ -93,7 +92,7 @@ pub trait Store<T> {
 /// [`OwnedStore`] has no fixed capacity: it grows like a `Vec` and is bounded
 /// only by available memory, so [`push`](Store::push) never returns
 /// [`Error::CapacityExceeded`] in practice (only if a node count ever
-/// exceeded `u32::MAX`, which is unreachable for creatable stores).
+/// reached `u32::MAX`, which is unreachable for creatable stores).
 #[cfg(feature = "alloc")]
 pub struct OwnedStore<T> {
     nodes: Vec<T>,
