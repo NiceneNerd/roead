@@ -63,6 +63,9 @@ static FILES: &[&str] = &[
 #[cfg(feature = "yaml")]
 mod text;
 
+#[cfg(feature = "yaml")]
+mod ref_text;
+
 #[cfg(feature = "alloc")]
 mod owned;
 mod reader;
