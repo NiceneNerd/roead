@@ -71,8 +71,8 @@ pub struct File<'a> {
 }
 
 impl<'a> PartialEq for File<'a> {
-    /// Compares `name`, `data`, and `index` only — deliberately not the
-    /// backing `Sarc`, so equality is O(file) rather than O(archive size).
+    /// Compares `name`, `data`, and `index` only (deliberately not the
+    /// backing `Sarc`), so equality is O(file) rather than O(archive size).
     fn eq(&self, other: &Self) -> bool {
         self.name == other.name && self.data == other.data && self.index == other.index
     }

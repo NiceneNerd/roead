@@ -221,8 +221,6 @@ impl<'a, S: Store<Node<'a>> + Default> BymlArena<S> {
     /// caller-provided memory ([`OwnedStore`], [`FixedStore`]); use
     /// [`from_binary_in`](BymlArena::from_binary_in) for [`BorrowedStore`].
     ///
-    /// # Stack use
-    ///
     /// Constructing the store and returning the arena moves the whole
     /// inline store by value a few times, which debug builds do not elide.
     /// For large [`FixedStore`] capacities (or very small stacks), prefer

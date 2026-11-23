@@ -36,19 +36,19 @@ library, `alloc` adds the allocating types, and `std` (which implies `alloc`)
 enables the standard library. The owned `Byml` and `ParameterIO` types need
 `alloc`, but the format walks do not:
 
-* **BYML**: `BymlRef` borrows a tree in place; `byml::arena::BymlArena` (over an
+* BYML: `BymlRef` borrows a tree in place; `byml::arena::BymlArena` (over an
   `OwnedStore`, an inline `BymlStack`, or a caller-owned `BorrowedStore`) is
   flat, fixed-capacity, and needs no allocator.
-* **AAMP**: `ParameterIORef` mirrors `ParameterIO` over the input buffer, and
+* AAMP: `ParameterIORef` mirrors `ParameterIO` over the input buffer, and
   `aamp::arena::ParameterIOArena`/`ParameterIOStack` provide the flat
   allocator-free form.
-* **SARC**: `Sarc::new` borrows the archive and never allocates.
-* **Yaz0**: decompression into a caller-provided buffer is core-only, and the
+* SARC: `Sarc::new` borrows the archive and never allocates.
+* Yaz0: decompression into a caller-provided buffer is core-only, and the
   crate has no dependencies at all.
 
 With the `yaml` feature, all four borrowed readers can emit YAML directly
 (`BymlRef::to_text`, `BymlArena::to_text`, `ParameterIORef::to_text`,
-`ParameterIOArena::to_text`), byte-for-byte identical to the owned emitters.
+`ParameterIOArena::to_text`).
 
 For API documentation, see the docs for each module.
 

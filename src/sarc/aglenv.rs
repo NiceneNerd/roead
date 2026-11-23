@@ -1,4 +1,4 @@
-//! Generated from `data/aglenv_file_info.json` — do not edit by hand.
+//! Generated from `data/aglenv_file_info.json`; do not edit by hand.
 //! Regenerate/verify with `UPDATE_AGLENV=1 cargo test --all-features --test sarc_aglenv`.
 /// `(extension, data alignment)` requirements flattened in JSON entry order:
 /// each source entry contributes `(ext, align)` then `(bext, align)`, entries

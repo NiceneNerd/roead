@@ -104,7 +104,7 @@ fn scan_json(json: &str) -> Vec<(&str, usize)> {
 }
 
 fn table_header() -> String {
-    "//! Generated from `data/aglenv_file_info.json` — do not edit by hand.\n\
+    "//! Generated from `data/aglenv_file_info.json`; do not edit by hand.\n\
      //! Regenerate/verify with `UPDATE_AGLENV=1 cargo test --all-features --test sarc_aglenv`.\n\
      /// `(extension, data alignment)` requirements flattened in JSON entry order:\n\
      /// each source entry contributes `(ext, align)` then `(bext, align)`, entries\n\

@@ -1,18 +1,11 @@
-//! Flat, fixed-capacity AAMP readers that need no allocator at all.
+//! Flat, fixed-capacity AAMP readers that need no allocator..
 //!
 //! All nodes are stored in a plain store ([`OwnedStore`](crate::storage::OwnedStore),
 //! [`FixedStore`](crate::storage::FixedStore), or a caller-provided
 //! [`BorrowedStore`](crate::storage::BorrowedStore)) and every payload
-//! (`&str`, `&[u8]`) is borrowed from the input buffer. Nodes are referenced
-//! by [`NodeId`] indices and linked into sibling lists, so a document is
-//! traversed with a cursor/index API rather than owned handles.
+//! (`&str`, `&[u8]`) is borrowed from the input buffer.
 //!
-//! This module compiles with `--no-default-features` (pure `core`) and works
-//! on `no_std` targets without an allocator.
-//!
-//! The shared format walk lives in `super::reader` and is generic over the
-//! `AampSink` trait; this module provides the arena sink used by
-//! [`ParameterIOArena::from_binary`].
+//! This module works on `no_std` targets.
 
 use super::Name;
 use super::reader::{
@@ -220,8 +213,6 @@ impl<'a, S: Store<AampNode<'a>> + Default> ParameterIOArena<'a, S> {
     /// [`from_binary_in`](ParameterIOArena::from_binary_in) for
     /// [`BorrowedStore`](crate::storage::BorrowedStore).
     ///
-    /// # Stack use
-    ///
     /// Constructing the store and returning the arena moves the whole
     /// inline store by value a few times, which debug builds do not elide.
     /// For large [`FixedStore`](crate::storage::FixedStore) capacities (or
@@ -328,7 +319,11 @@ impl<'a, S: Store<AampNode<'a>>> ParameterIOArena<'a, S> {
     /// The root node id, or `None` if the arena is empty (never parsed, or
     /// the last parse failed).
     pub fn root(&self) -> Option<NodeId> {
-        if self.root.is_none() { None } else { Some(self.root) }
+        if self.root.is_none() {
+            None
+        } else {
+            Some(self.root)
+        }
     }
 
     /// The data version from the header (not the AAMP format version).

@@ -1,9 +1,8 @@
 # Migrating from roead 1.x to 2.0
 
-roead 2.0 is a `no_std`-first release. The owned (allocating) API keeps its
-behavior and, for BYML and AAMP, its exact binary and YAML output, but a
-number of types and signatures changed. This guide lists every breaking change
-and what to write instead.
+roead 2.0 focuses especially on adding `no_std` support and zero-copy readers.
+The owned (allocating) API keeps its behavior and, for BYML and AAMP, its
+exact binary and YAML output, but a number of types and signatures changed.
 
 ## Toolchain
 
@@ -16,14 +15,14 @@ and what to write instead.
 
 `roead` builds as a pure `core` library with no features:
 
-| Features | What you get |
-| --- | --- |
-| *(none)* | Pure `core` library: the error type and shared utilities. Each format module needs its own feature. |
-| `alloc` | Everything above plus allocation support. With `byml` or `aamp`, this enables the format's owned types, parsers, and writers. |
-| `std` | `alloc` plus the standard library (implies `alloc`). |
+| Features                       | What you get                                                                                                                                                                                |
+| ------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| _(none)_                       | Pure `core` library: the error type and shared utilities. Each format module needs its own feature.                                                                                         |
+| `alloc`                        | Everything above plus allocation support. With `byml` or `aamp`, this enables the format's owned types, parsers, and writers.                                                               |
+| `std`                          | `alloc` plus the standard library (implies `alloc`).                                                                                                                                        |
 | `byml`, `aamp`, `sarc`, `yaz0` | Enable the corresponding module. Each module self-gates its items, so e.g. `--no-default-features --features byml` compiles the core-only BYML walk and arena readers without an allocator. |
-| `yaml` | Owned *and* borrowed YAML support for each enabled BYML/AAMP module. Implies `std` (it depends on `ryml`). |
-| `with-serde` | `serde` derives for the owned types. `serde_json` is no longer a dependency. |
+| `yaml`                         | Owned _and_ borrowed YAML support for each enabled BYML/AAMP module. Implies `std` (it depends on `ryml`).                                                                                  |
+| `with-serde`                   | `serde` derives for the owned types. `serde_json` is no longer a dependency.                                                                                                                |
 
 The default feature set is `std, alloc, aamp, byml, sarc, yaz0`.
 
@@ -111,4 +110,3 @@ materializing an owned tree.
   data (`src/sarc/aglenv.rs`) instead of being parsed from
   `data/aglenv_file_info.json` at runtime. `tests/sarc_aglenv.rs` verifies it
   against the JSON (`UPDATE_AGLENV=1` to regenerate).
-- `Cargo.lock` is not tracked.

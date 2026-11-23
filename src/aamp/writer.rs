@@ -91,11 +91,11 @@ where
 /// read back identically from those bytes:
 /// - Scalars (Bool/I32/U32/F32): 4 bytes at `data_offset`.
 /// - Vec2: 8 bytes. Vec3: 12 bytes.
-/// - Wide4 (Vec4/Color/Quat): 16 bytes of four f32s — mutually interchangeable.
+/// - Wide4 (Vec4/Color/Quat): 16 bytes of four f32s, mutually interchangeable.
 /// - Curve (Curve1-4): N × 128 bytes.
 /// - Buffer (BufferInt/BufferF32/BufferU32/BufferBinary): count u32 at
 ///   `data_offset - 4`, elements at `data_offset`. Buffer parameters must
-///   NEVER share data with non-buffer parameters (the count prefix), which is
+///   never share data with non-buffer parameters (the count prefix), which is
 ///   exactly what the old bare-value hash allowed.
 /// - Strings (group 6): never reach `write_parameter_data` (they go to the
 ///   string section); assigned their own group defensively.
