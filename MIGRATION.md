@@ -80,10 +80,10 @@ for byte, so a tree does not have to be built just to write it out.
   `len_f32()` (likewise for the int and u32 buffers). `as_curve1` returns
   `&CurveRef` instead of `&[Curve; 1]`; iterate with `CurveRef::iter()` or
   read one entry with `curve(i)`.
-- The generic `as_int` and `as_num` accessors exist only on the owned
-  types. On `BymlRef`, use the concrete `as_i32`, `as_u32`, `as_i64`,
-  `as_u64`, `as_float`, and `as_double`; on `ParameterRef`, use `as_i32`,
-  `as_u32`, and `as_f32`.
+- The generic `as_int` and `as_num` casting accessors are available on the
+  borrowed types too (`BymlRef`, `ParameterRef`, and the arena `Node`), so
+  code that tolerated an int where a float was expected, or the reverse,
+  carries over unchanged.
 - Mutation is owned-only. The `as_mut_*` accessors, the `into_*` consuming
   accessors, and the `with_*` builders do not exist on the borrowed types;
   call `to_owned()` first when a document has to be modified. `From<&Byml>`
