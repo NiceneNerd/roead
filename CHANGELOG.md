@@ -63,6 +63,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - `BinarySerde(binrw::Error)` requires `binrw`; under `std` it keeps
     `#[error(transparent)]` + `#[from]` so `?` still works on binrw errors,
     otherwise it is a plain variant with a descriptive display message.
+  - `Yaz0Error` was removed, as the Yaz0 module no longer uses C++.
+- `byml::BymlError` was removed; BYML parse errors are reported through
+  `Error` now.
 - `Result` is now `core::result::Result<T, Error>`.
 - `Endian`'s binrw derive was removed entirely; use `Endian::from_bom` to
   interpret a SARC BOM.
@@ -76,10 +79,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     decompresses Yaz0 input automatically.
   - The `sarc` module is gated on `feature = "sarc"` only; the writer
     (`SarcWriter`) remains `std`-only.
-- Yaz0 has zero dependencies (`yaz0 = []`); `decompress_into`,
+- Yaz0 has zero dependencies (`yaz0 = []`), so the feature no longer needs
+  CMake, a C++ toolchain, or the bundled submodules. `decompress_into`,
   `decompress_unchecked`, and header parsing (`get_header`/`checked_header`)
   are core-only and available without `alloc`. Compression, `decompress`, and
   `decompress_if` require `alloc`; `compress_if` requires `std`.
+  `get_header` now takes a `&[u8]` instead of `impl AsRef<[u8]>`.
 - `File` equality now compares `name`, `data`, and `index` only (O(file))
   instead of the whole backing archive (O(files × size)).
 
