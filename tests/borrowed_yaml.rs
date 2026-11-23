@@ -115,7 +115,12 @@ fn byte_identity_corpus() {
 fn fixture_a1_dynamic() {
     let file = load("A-1_Dynamic.byml");
     let data = prepared(&file);
-    let expected = fs::read_to_string("test/fixtures/byml/A-1_Dynamic.byml.yml.expected").unwrap();
+    // Normalize CRLF in case the checkout converted line endings despite
+    // .gitattributes (e.g. a pre-existing clone); the emitter always uses LF.
+    let expected =
+        fs::read_to_string("test/fixtures/byml/A-1_Dynamic.byml.yml.expected")
+            .unwrap()
+            .replace("\r\n", "\n");
     assert_eq!(
         BymlRef::from_binary(data.as_ref()).unwrap().to_text(),
         expected

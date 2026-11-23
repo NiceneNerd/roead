@@ -1,0 +1,6 @@
+# Fixture files under test/ and data/ are compared byte-for-byte or parsed
+# by the test suite. Never let git convert their line endings on checkout;
+# Windows runners default to core.autocrlf=true, which would rewrite the
+# committed LF-only .yml.expected files to CRLF and break the comparisons.
+test/** -text
+data/** -text

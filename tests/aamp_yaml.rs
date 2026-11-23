@@ -101,9 +101,11 @@ fn aamp_byte_identity_corpus() {
 #[test]
 fn aamp_fixture_engine_rom_horse_link() {
     let data = aamp_load(Path::new("test/aamp/EngineRom_Horse_Link.bphysics"));
-    let expected =
-        fs::read_to_string("test/fixtures/aamp/EngineRom_Horse_Link.bphysics.yml.expected")
-            .unwrap();
+    // Normalize CRLF in case the checkout converted line endings despite
+    // .gitattributes (e.g. a pre-existing clone); the emitter always uses LF.
+    let expected = fs::read_to_string("test/fixtures/aamp/EngineRom_Horse_Link.bphysics.yml.expected")
+        .unwrap()
+        .replace("\r\n", "\n");
     assert_eq!(
         ParameterIORef::from_binary(&data).unwrap().to_text(),
         expected

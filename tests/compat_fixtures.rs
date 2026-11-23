@@ -364,8 +364,10 @@ mod harness {
     }
 
     /// Text comparison: reports the first differing line, then the byte diff.
+    /// CRLF in the committed file is normalized away first, so a checkout
+    /// that converted line endings despite .gitattributes still passes.
     pub fn compare_text(label: &str, expected: &[u8], actual: &[u8]) {
-        let exp_text = String::from_utf8_lossy(expected);
+        let exp_text = String::from_utf8_lossy(expected).replace("\r\n", "\n");
         let act_text = String::from_utf8_lossy(actual);
         for (n, (le, la)) in exp_text.lines().zip(act_text.lines()).enumerate() {
             if le != la {
@@ -373,7 +375,7 @@ mod harness {
                 break;
             }
         }
-        compare_bytes(label, expected, actual);
+        compare_bytes(label, exp_text.as_bytes(), actual);
     }
 
     /// Write one artifact in update mode and record its size/sha256.
