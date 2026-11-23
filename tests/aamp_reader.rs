@@ -829,4 +829,20 @@ mod alloc_tests {
         // to_owned round trip.
         assert_eq!(ref_tree.to_owned(), pio);
     }
+
+    #[test]
+    fn generic_numeric_accessors() {
+        assert_eq!(ParameterRef::I32(-3).as_int::<i64>().unwrap(), -3);
+        assert_eq!(ParameterRef::I32(-3).as_int::<u8>().unwrap(), 253);
+        assert_eq!(ParameterRef::U32(7).as_num::<f32>().unwrap(), 7.0);
+        assert_eq!(ParameterRef::F32(1.5).as_num::<f64>().unwrap(), 1.5);
+        assert!(matches!(
+            ParameterRef::Bool(true).as_int::<u32>(),
+            Err(Error::TypeError(..))
+        ));
+        assert!(matches!(
+            ParameterRef::StringRef("1").as_num::<f32>(),
+            Err(Error::TypeError(..))
+        ));
+    }
 }

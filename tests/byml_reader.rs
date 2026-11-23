@@ -108,6 +108,41 @@ fn expect_err_in<'a, 's>(
 // ---------------------------------------------------------------------------
 
 #[test]
+fn arena_generic_numeric_accessors() {
+    let node = Node {
+        payload: Payload::I32(-3),
+        key: Key::None,
+        aux: 0,
+        first_child: NodeId::none(),
+        next_sibling: NodeId::none(),
+        child_count: 0,
+    };
+    assert_eq!(node.as_int::<i64>().unwrap(), -3);
+    assert_eq!(node.as_int::<u8>().unwrap(), 253); // `as`-semantics wrap
+    assert_eq!(node.as_num::<f32>().unwrap(), -3.0);
+
+    let double = Node {
+        payload: Payload::Double(2.5),
+        ..node
+    };
+    assert_eq!(double.as_num::<f64>().unwrap(), 2.5);
+    assert_eq!(double.as_num::<f32>().unwrap(), 2.5);
+    assert!(matches!(
+        double.as_int::<i32>(),
+        Err(Error::TypeError(..))
+    ));
+
+    let string = Node {
+        payload: Payload::String("1"),
+        ..node
+    };
+    assert!(matches!(
+        string.as_num::<f32>(),
+        Err(Error::TypeError(..))
+    ));
+}
+
+#[test]
 fn arena_smoke() {
     // A little-endian array of [Bool(true), I32(42)].
     let mut doc = header(Endian::Little, 2, 0, 0, 0x10);
@@ -411,6 +446,23 @@ fn self_referential_container() {
 #[cfg(feature = "alloc")]
 mod alloc_tests {
     use super::*;
+
+    #[test]
+    fn generic_numeric_accessors() {
+        assert_eq!(BymlRef::U32(7).as_int::<i64>().unwrap(), 7);
+        assert_eq!(BymlRef::I32(-3).as_int::<u8>().unwrap(), 253);
+        assert_eq!(BymlRef::I64(9).as_num::<f32>().unwrap(), 9.0);
+        assert_eq!(BymlRef::Float(1.5).as_num::<f64>().unwrap(), 1.5);
+        assert_eq!(BymlRef::Double(2.5).as_num::<f32>().unwrap(), 2.5);
+        assert!(matches!(
+            BymlRef::Bool(true).as_int::<i32>(),
+            Err(Error::TypeError(..))
+        ));
+        assert!(matches!(
+            BymlRef::String("1").as_num::<f32>(),
+            Err(Error::TypeError(..))
+        ));
+    }
 
     #[test]
     fn cross_equality_corpus() {

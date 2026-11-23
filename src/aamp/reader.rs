@@ -13,6 +13,7 @@
 //! are ever created.
 
 use crate::{Error, Result, TinyString, types::*};
+use num_traits::AsPrimitive;
 
 #[cfg(feature = "alloc")]
 use alloc::{boxed::Box, vec::Vec};
@@ -321,6 +322,40 @@ impl<'a> ParameterRef<'a> {
         match self {
             ParameterRef::I32(i) => Ok(*i),
             _ => Err(Error::TypeError(self.type_name(), "Int")),
+        }
+    }
+
+    /// Get the inner value as an integer of any type. Casts the value using
+    /// [`as`](https://doc.rust-lang.org/std/keyword.as.html) where necessary.
+    /// Note that this is subject to all the normal risks of casting with `as`.
+    pub fn as_int<T>(&self) -> Result<T>
+    where
+        T: Copy + 'static,
+        i32: AsPrimitive<T>,
+        u32: AsPrimitive<T>,
+    {
+        match self {
+            ParameterRef::I32(i) => Ok(i.as_()),
+            ParameterRef::U32(u) => Ok(u.as_()),
+            _ => Err(Error::TypeError(self.type_name(), "an integer")),
+        }
+    }
+
+    /// Get the inner value as a number of any type. Casts the value using
+    /// [`as`](https://doc.rust-lang.org/std/keyword.as.html) where necessary.
+    /// Note that this is subject to all the normal risks of casting with `as`.
+    pub fn as_num<T>(&self) -> Result<T>
+    where
+        T: Copy + 'static,
+        i32: AsPrimitive<T>,
+        u32: AsPrimitive<T>,
+        f32: AsPrimitive<T>,
+    {
+        match self {
+            ParameterRef::I32(i) => Ok(i.as_()),
+            ParameterRef::U32(u) => Ok(u.as_()),
+            ParameterRef::F32(f) => Ok(f.as_()),
+            _ => Err(Error::TypeError(self.type_name(), "a number")),
         }
     }
 

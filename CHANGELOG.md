@@ -36,6 +36,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   emitters, so no owned tree has to be materialized. `ParameterIOArena` also
   retains the header's `version` and `data_type` (`version()`, `data_type()`)
   so it can emit them without the owned type.
+- The zero-copy readers expose the owned types' generic `as_int`/`as_num`
+  casting accessors (`BymlRef`, AAMP `ParameterRef`, and the BYML arena's
+  `Node`), so the same code tolerates int/float mismatches in hand-edited
+  game files on either API.
 - Container nesting is capped at 128 levels (`BYML_MAX_DEPTH`,
   `AAMP_MAX_DEPTH`), which also bounds malicious self-referential input.
 

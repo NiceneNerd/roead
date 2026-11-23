@@ -10,6 +10,8 @@
 //! `Vec`s and hash maps); the walk does not.
 
 use crate::{Endian, Error, Result, TinyString};
+#[cfg(feature = "alloc")]
+use num_traits::AsPrimitive;
 use super::arena::Key;
 
 #[cfg(feature = "alloc")]
@@ -559,6 +561,50 @@ impl<'a> BymlRef<'a> {
             Ok(*v)
         } else {
             Err(Error::TypeError(self.type_name(), "U64"))
+        }
+    }
+
+    /// Get the inner value as an integer of any type. Casts the value using
+    /// [`as`](https://doc.rust-lang.org/std/keyword.as.html) where necessary.
+    /// Note that this is subject to all the normal risks of casting with `as`.
+    pub fn as_int<T>(&self) -> Result<T>
+    where
+        T: Copy + 'static,
+        i32: AsPrimitive<T>,
+        u32: AsPrimitive<T>,
+        i64: AsPrimitive<T>,
+        u64: AsPrimitive<T>,
+    {
+        match self {
+            BymlRef::I32(i) => Ok(i.as_()),
+            BymlRef::I64(i) => Ok(i.as_()),
+            BymlRef::U32(i) => Ok(i.as_()),
+            BymlRef::U64(i) => Ok(i.as_()),
+            _ => Err(Error::TypeError(self.type_name(), "an integer")),
+        }
+    }
+
+    /// Get the inner value as a number of any type. Casts the value using
+    /// [`as`](https://doc.rust-lang.org/std/keyword.as.html) where necessary.
+    /// Note that this is subject to all the normal risks of casting with `as`.
+    pub fn as_num<T>(&self) -> Result<T>
+    where
+        T: Copy + 'static,
+        i32: AsPrimitive<T>,
+        u32: AsPrimitive<T>,
+        i64: AsPrimitive<T>,
+        u64: AsPrimitive<T>,
+        f32: AsPrimitive<T>,
+        f64: AsPrimitive<T>,
+    {
+        match self {
+            BymlRef::I32(i) => Ok(i.as_()),
+            BymlRef::I64(i) => Ok(i.as_()),
+            BymlRef::U32(i) => Ok(i.as_()),
+            BymlRef::U64(i) => Ok(i.as_()),
+            BymlRef::Float(i) => Ok(i.as_()),
+            BymlRef::Double(i) => Ok(i.as_()),
+            _ => Err(Error::TypeError(self.type_name(), "a number")),
         }
     }
 

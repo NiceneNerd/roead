@@ -15,6 +15,7 @@
 //! [`BymlArena::from_binary`].
 
 use crate::{Error, Result};
+use num_traits::AsPrimitive;
 use super::reader::{self as reader_mod, BymlSink, BYML_MAX_DEPTH, ContainerKind, Leaf};
 
 pub use crate::storage::{BorrowedStore, FixedStore, NodeId, Store};
@@ -171,6 +172,50 @@ impl<'a> Node<'a> {
         match self.payload {
             Payload::U64(v) => Ok(v),
             _ => Err(Error::TypeError(self.kind(), "U64")),
+        }
+    }
+
+    /// Get the inner value as an integer of any type. Casts the value using
+    /// [`as`](https://doc.rust-lang.org/std/keyword.as.html) where necessary.
+    /// Note that this is subject to all the normal risks of casting with `as`.
+    pub fn as_int<T>(&self) -> Result<T>
+    where
+        T: Copy + 'static,
+        i32: AsPrimitive<T>,
+        u32: AsPrimitive<T>,
+        i64: AsPrimitive<T>,
+        u64: AsPrimitive<T>,
+    {
+        match self.payload {
+            Payload::I32(i) => Ok(i.as_()),
+            Payload::I64(i) => Ok(i.as_()),
+            Payload::U32(i) => Ok(i.as_()),
+            Payload::U64(i) => Ok(i.as_()),
+            _ => Err(Error::TypeError(self.kind(), "an integer")),
+        }
+    }
+
+    /// Get the inner value as a number of any type. Casts the value using
+    /// [`as`](https://doc.rust-lang.org/std/keyword.as.html) where necessary.
+    /// Note that this is subject to all the normal risks of casting with `as`.
+    pub fn as_num<T>(&self) -> Result<T>
+    where
+        T: Copy + 'static,
+        i32: AsPrimitive<T>,
+        u32: AsPrimitive<T>,
+        i64: AsPrimitive<T>,
+        u64: AsPrimitive<T>,
+        f32: AsPrimitive<T>,
+        f64: AsPrimitive<T>,
+    {
+        match self.payload {
+            Payload::I32(i) => Ok(i.as_()),
+            Payload::I64(i) => Ok(i.as_()),
+            Payload::U32(i) => Ok(i.as_()),
+            Payload::U64(i) => Ok(i.as_()),
+            Payload::Float(i) => Ok(i.as_()),
+            Payload::Double(i) => Ok(i.as_()),
+            _ => Err(Error::TypeError(self.kind(), "a number")),
         }
     }
 
