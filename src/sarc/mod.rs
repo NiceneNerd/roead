@@ -46,6 +46,8 @@ mod aglenv;
 mod parse;
 #[cfg(feature = "std")]
 mod write;
+#[cfg(feature = "alloc")]
+use alloc::vec::Vec;
 pub use parse::Sarc;
 #[cfg(feature = "std")]
 pub use write::SarcWriter;

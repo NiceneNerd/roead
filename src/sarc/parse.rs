@@ -1,6 +1,9 @@
 use core::hash::{Hash, Hasher};
 use core::mem::size_of;
 
+#[cfg(feature = "alloc")]
+use alloc::borrow::Cow;
+
 use super::*;
 use crate::{Endian, Error, Result, TinyString};
 
@@ -82,6 +85,9 @@ pub struct Sarc<'a> {
     data_offset: u32,
     names_offset: u32,
     endian: Endian,
+    #[cfg(feature = "alloc")]
+    data: Cow<'a, [u8]>,
+    #[cfg(not(feature = "alloc"))]
     data: &'a [u8],
 }
 
@@ -122,31 +128,72 @@ impl<'a, S: core::borrow::Borrow<str>> core::ops::Index<S> for Sarc<'a> {
     }
 }
 
+struct SarcMeta {
+    num_files: u16,
+    entries_offset: u16,
+    hash_multiplier: u32,
+    data_offset: u32,
+    names_offset: u32,
+    endian: Endian,
+}
+
 impl<'a> Sarc<'_> {
     /// Parses a SARC archive from binary data.
     ///
-    /// The data is borrowed, not owned: `Sarc` holds a `&'a [u8]` and never
-    /// allocates.
+    /// With the `alloc` feature, `data` may be anything convertible into a
+    /// `Cow<'a, [u8]>` (`Vec<u8>`, `&[u8]`, ...), and the data is owned or
+    /// borrowed accordingly. If the `yaz0` feature is also enabled,
+    /// Yaz0-compressed input is decompressed automatically and the
+    /// decompressed buffer is kept alive by the returned `Sarc`.
+    ///
+    /// Without `alloc`, `data` must be a `&'a [u8]`: the data is borrowed, not
+    /// owned, and `Sarc` never allocates. Yaz0-compressed input is then not
+    /// decompressed here; decompress it with [`crate::yaz0::decompress_if`]
+    /// first and pass the resulting slice.
     ///
     /// ```rust
     /// let raw: &[u8] = b"SARC\x00\x14\xfe\xff\x00\x00\x00\x28\x00\x00\x00\x28\x01\x00\x00\x00SFAT\x00\x0c\x00\x00\x00\x00\x00\x65SFNT\x00\x08\x00\x00";
     /// let sarc = roead::sarc::Sarc::new(raw).unwrap();
     /// assert_eq!(sarc.len(), 0);
     /// ```
+    #[cfg(feature = "alloc")]
+    pub fn new<T: Into<Cow<'a, [u8]>>>(data: T) -> crate::Result<Sarc<'a>> {
+        let mut data = data.into();
+        #[cfg(feature = "yaz0")]
+        if data.starts_with(b"Yaz0") {
+            data = crate::yaz0::decompress(&data)?.into();
+        }
+        let meta = Self::parse_sarc(&data)?;
+        Ok(Sarc {
+            data,
+            num_files: meta.num_files,
+            entries_offset: meta.entries_offset,
+            hash_multiplier: meta.hash_multiplier,
+            data_offset: meta.data_offset,
+            names_offset: meta.names_offset,
+            endian: meta.endian,
+        })
+    }
+
+    /// Parses a SARC archive from binary data, borrowing it as `&'a [u8]`.
     ///
-    /// Yaz0-compressed archives are **not** decompressed here; decompress them
-    /// with [`crate::yaz0::decompress_if`] first and pass the resulting slice:
-    ///
-    /// ```rust
-    /// # #[cfg(feature = "yaz0")]
-    /// # {
-    /// # use roead::yaz0;
-    /// # let raw: &[u8] = b"";
-    /// let decompressed = yaz0::decompress_if(raw);
-    /// assert!(decompressed.is_empty());
-    /// # }
-    /// ```
+    /// This is the no-`alloc` form of [`Sarc::new`]; see its docs for the
+    /// `alloc` behavior.
+    #[cfg(not(feature = "alloc"))]
     pub fn new(data: &'a [u8]) -> crate::Result<Sarc<'a>> {
+        let meta = Self::parse_sarc(data)?;
+        Ok(Sarc {
+            data,
+            num_files: meta.num_files,
+            entries_offset: meta.entries_offset,
+            hash_multiplier: meta.hash_multiplier,
+            data_offset: meta.data_offset,
+            names_offset: meta.names_offset,
+            endian: meta.endian,
+        })
+    }
+
+    fn parse_sarc(data: &[u8]) -> Result<SarcMeta> {
         if data.len() < 0x14 {
             return Err(Error::InsufficientData(data.len(), 0x14));
         }
@@ -229,8 +276,7 @@ impl<'a> Sarc<'_> {
             return Err(Error::InvalidData("Invalid name table offset in SARC"));
         }
 
-        Ok(Sarc {
-            data,
+        Ok(SarcMeta {
             data_offset,
             endian,
             entries_offset: entries_offset as u16,
@@ -271,7 +317,7 @@ impl<'a> Sarc<'_> {
         while a <= b {
             let m: u32 = (a + b) / 2;
             let entry_offset = self.entries_offset as usize + 0x10 * m as usize;
-            let hash = read_u32(self.data, entry_offset, self.endian)?;
+            let hash = read_u32(&self.data, entry_offset, self.endian)?;
             match needle_hash.cmp(&hash) {
                 core::cmp::Ordering::Less => match m.checked_sub(1) {
                     Some(v) => b = v,
@@ -364,10 +410,10 @@ impl<'a> Sarc<'_> {
 
     fn read_entry(&self, offset: usize) -> Result<ResFatEntry> {
         Ok(ResFatEntry {
-            name_hash: read_u32(self.data, offset, self.endian)?,
-            rel_name_opt_offset: read_u32(self.data, offset + 4, self.endian)?,
-            data_begin: read_u32(self.data, offset + 8, self.endian)?,
-            data_end: read_u32(self.data, offset + 12, self.endian)?,
+            name_hash: read_u32(&self.data, offset, self.endian)?,
+            rel_name_opt_offset: read_u32(&self.data, offset + 4, self.endian)?,
+            data_begin: read_u32(&self.data, offset + 8, self.endian)?,
+            data_end: read_u32(&self.data, offset + 12, self.endian)?,
         })
     }
 
