@@ -42,7 +42,9 @@ enables the standard library. The owned `Byml` and `ParameterIO` types need
 * AAMP: `ParameterIORef` mirrors `ParameterIO` over the input buffer, and
   `aamp::arena::ParameterIOArena`/`ParameterIOStack` provide the flat
   allocator-free form.
-* SARC: `Sarc::new` borrows the archive and never allocates.
+* SARC: without `alloc`, `Sarc::new` borrows the archive and never
+  allocates; with `alloc` (the default), it accepts `Into<Cow<'a, [u8]>>`
+  and decompresses Yaz0 input automatically when `yaz0` is on.
 * Yaz0: decompression into a caller-provided buffer is core-only, and the
   crate has no dependencies at all.
 

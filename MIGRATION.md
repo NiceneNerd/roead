@@ -46,14 +46,19 @@ The default feature set is `std, alloc, aamp, byml, sarc, yaz0`.
 // 1.x
 let sarc = Sarc::new(bytes)?; // took Into<Cow<[u8]>>, owned the data,
                               // decompressed Yaz0 automatically
-// 2.0
-let decompressed = roead::yaz0::decompress_if(bytes);
-let sarc = Sarc::new(decompressed.as_ref())?; // borrows &'a [u8]
+// 2.0 with `alloc` (the default): unchanged, same generic signature
+let sarc = Sarc::new(bytes)?;
+// 2.0 without `alloc`: borrows only
+let sarc = Sarc::new(&bytes[..])?;
 ```
 
-- `Sarc::new` borrows the input and never allocates or owns it.
-- Automatic Yaz0 decompression was removed; call
-  `yaz0::decompress_if` (or `yaz0::decompress_into`) first.
+- With `alloc` (in the default feature set), `Sarc::new` keeps the 1.x
+  signature `new<T: Into<Cow<'a, [u8]>>>`: it owns the data when given an
+  owned buffer and, with `yaz0` enabled, decompresses Yaz0 input
+  automatically.
+- Without `alloc`, `Sarc::new(data: &'a [u8])` borrows the input and never
+  allocates or owns it. Automatic Yaz0 decompression is unavailable there;
+  call `yaz0::decompress_if` (or `yaz0::decompress_into`) first.
 - `Endian` no longer derives `binrw` traits. Use `Endian::from_bom` to
   interpret a SARC big-endian marker.
 - `File` equality now compares `name`, `data`, and `index` (O(file)) instead

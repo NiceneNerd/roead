@@ -66,12 +66,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `Result` is now `core::result::Result<T, Error>`.
 - `Endian`'s binrw derive was removed entirely; use `Endian::from_bom` to
   interpret a SARC BOM.
-- The SARC reader is now alloc-free and no longer requires `std`:
-  - `Sarc::new(data: &'a [u8]) -> Result<Sarc<'a>>` borrows the data and
-    never allocates or owns it. The old `new<T: Into<Cow<'a, [u8]>>>`
-    signature and automatic Yaz0 decompression are gone: decompress
-    Yaz0-compressed archives with `yaz0::decompress_if` first, then
+- The SARC reader no longer requires `std` and works without an allocator:
+  - Without `alloc`, `Sarc::new(data: &'a [u8]) -> Result<Sarc<'a>>` borrows
+    the data and never allocates or owns it. Decompress Yaz0-compressed
+    archives with `yaz0::decompress_if` first, then
     `Sarc::new(decompressed.as_ref())`.
+  - With `alloc` (in the default feature set), `Sarc::new` keeps the 1.x
+    signature `new<T: Into<Cow<'a, [u8]>>>` and, with `yaz0` enabled,
+    decompresses Yaz0 input automatically.
   - The `sarc` module is gated on `feature = "sarc"` only; the writer
     (`SarcWriter`) remains `std`-only.
 - Yaz0 has zero dependencies (`yaz0 = []`); `decompress_into`,
