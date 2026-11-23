@@ -97,12 +97,12 @@ jobs:
         cargo check --target thumbv7em-none-eabihf ${{ matrix.args }}
 
   msrv:
-    name: MSRV 1.100
+    name: MSRV 1.88
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v4
     - name: Install MSRV toolchain
-      uses: dtolnay/rust-toolchain@1.100
+      uses: dtolnay/rust-toolchain@1.88
     - name: Check MSRV build
       run: cargo check --all-features
 

@@ -41,7 +41,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
-- Bumped edition to 2024 and MSRV to 1.100; crate version is now 2.0.0.
+- Bumped edition to 2024 and MSRV to 1.88; crate version is now 2.0.0.
 - New feature split: `std` implies `alloc`, both are on by default, and
   `--no-default-features` builds a pure `no_std` library. The `std` feature
   gathers the std-only dependencies (yaml machinery, name table, ...), while

@@ -6,7 +6,7 @@ exact binary and YAML output, but a number of types and signatures changed.
 
 ## Toolchain
 
-- **MSRV is now 1.100** and the crate uses **edition 2024**. Upgrade the
+- **MSRV is now 1.88** and the crate uses **edition 2024**. Upgrade the
   toolchain before upgrading roead.
 - The optional `yaml` feature still needs a C++ toolchain because `ryml`
   builds C++ code; everything else is pure Rust.

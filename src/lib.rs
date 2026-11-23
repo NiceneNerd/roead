@@ -34,7 +34,7 @@
 //! ## Building from Source
 //!
 //! roead is pure Rust and builds with any relatively recent stable release
-//! (MSRV 1.100), with no C++ toolchain, CMake, or submodules. The optional
+//! (MSRV 1.88), with no C++ toolchain, CMake, or submodules. The optional
 //! `yaml` feature is the exception, as it depends on the `ryml` crate.
 //!
 //! ## Feature model

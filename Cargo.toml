@@ -9,7 +9,7 @@ repository = "https://github.com/NiceneNerd/roead"
 keywords = ["Nintendo", "aamp", "byml", "sarc", "yaz0"]
 categories = ["game-development", "parsing"]
 edition = "2024"
-rust-version = "1.100"
+rust-version = "1.88"
 exclude = ["/test"]
 
 [dependencies]

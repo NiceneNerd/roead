@@ -57,7 +57,7 @@ For API documentation, see the docs for each module.
 ## Building from Source
 
 roead is pure Rust (except the optional `yaml` feature, which builds the `ryml`
-C++ library) and builds with Rust 1.100 or later using edition 2024. See
+C++ library) and builds with Rust 1.88 or later using edition 2024. See
 [MIGRATION.md](MIGRATION.md) for the changes between 1.x and 2.0.
 
 ## Contributing
